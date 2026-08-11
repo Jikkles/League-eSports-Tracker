@@ -1,0 +1,2230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="LoL Tracker">
+<meta name="format-detection" content="telephone=no">
+<title>League Esports Tracker · Season 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* lolesports.com palette: pure-black canvas, near-black surfaces, white type,
+     colour reserved for live state, league identity and team logos */
+  --bg:#000000; --bg2:#0A0A0A; --panel:#111111; --panel2:#181818; --line:#242424; --line2:#333333;
+  --gold:#FFFFFF; --gold-dim:#3A3A3A; --cyan:#0BC6E3; --cyan-lo:#33D6EF; --teal:#0BC6E3;
+  --text:#FFFFFF; --dim:#8E8E8E; --faint:#6A6A6A;
+  --live:#E8394A; --win:#31C46F; --loss:#E8394A;
+  --lec:#00C8C8; --lck:#C8D2E0; --lpl:#FF4B3E; --lcs:#4C7DFF; --intl:#FFFFFF;
+  --hover:rgba(255,255,255,.06); --radius:8px; --pill:999px;
+  --disp:'Inter',system-ui,sans-serif; --mono:'IBM Plex Mono',Consolas,monospace; --body:'Inter',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scrollbar-color:#3A3A3A var(--bg)}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.5;min-height:100vh;}
+a{color:var(--cyan);text-decoration:none}
+a:hover{color:var(--cyan-lo);text-decoration:underline}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ============ HEADER ============ */
+header{border-bottom:1px solid var(--line);background:#0C0C0C;position:sticky;top:0;z-index:50}
+.hdr-top{display:flex;align-items:center;gap:16px;padding:10px 20px;max-width:1900px;margin:0 auto}
+.logo{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.4px;text-transform:uppercase;white-space:nowrap}
+.logo .gold{color:var(--cyan)}
+.logo small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--faint);font-weight:400}
+.hdr-status{margin-left:auto;display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--faint);margin-right:5px;vertical-align:1px}
+.dot.ok{background:var(--win);box-shadow:0 0 6px var(--win)}
+.dot.err{background:var(--loss)}
+.btn{background:#1C1C1C;border:1px solid #262626;color:var(--text);font-family:var(--body);font-weight:600;font-size:12px;padding:7px 16px;letter-spacing:.2px;border-radius:var(--pill);transition:background .12s ease,color .12s ease,border-color .12s ease}
+.btn:hover{background:#2A2A2A;border-color:#3A3A3A;color:#FFFFFF}
+.btn.pri,.btn:active{background:var(--cyan);border-color:var(--cyan);color:#001014}
+.btn.small{padding:3px 9px;font-size:10px}
+
+/* ticker */
+.ticker{border-top:1px solid var(--line);overflow:hidden;position:relative;background:#000000}
+.ticker::before,.ticker::after{content:'';position:absolute;top:0;bottom:0;width:60px;z-index:2;pointer-events:none}
+.ticker::before{left:0;background:linear-gradient(90deg,#000,transparent)}
+.ticker::after{right:0;background:linear-gradient(-90deg,#000,transparent)}
+.ticker-track{display:flex;gap:36px;padding:7px 0;width:max-content;animation:tick 45s linear infinite}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ticker-track{animation:none}}
+.tick-item{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap;display:flex;align-items:center;gap:8px}
+.tick-item b{color:var(--text);font-weight:600}
+.tick-lg{font-family:var(--body);font-weight:800;font-size:12px;letter-spacing:.8px}
+
+.live-chip{display:inline-flex;align-items:center;gap:5px;background:var(--live);border:1px solid var(--live);color:#FFFFFF;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:3px}
+.live-chip::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--live);animation:pulse 1.4s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.live-chip::before{animation:none}}
+
+/* ============ TABS ============ */
+nav{max-width:1900px;margin:0 auto;display:flex;gap:4px;padding:0 20px}
+.tab{position:relative;font-family:var(--body);font-weight:700;font-size:14px;letter-spacing:1.6px;text-transform:uppercase;color:var(--dim);
+  background:transparent;border:none;padding:11px 18px;margin:4px 0 12px;border-radius:var(--radius);
+  transition:color .12s ease,background .12s ease}
+/* hover: raised dark chip with a cyan rule sitting just beneath it */
+.tab::after{content:'';position:absolute;left:0;right:0;bottom:-7px;height:3px;border-radius:2px;background:transparent;transition:background .12s ease}
+.tab:hover{color:#FFFFFF;background:#1E1E1E}
+.tab:hover::after{background:var(--cyan)}
+.tab.active{color:#FFFFFF}
+.tab.active::after{background:var(--tabclr,var(--cyan))}
+.tab.active:hover::after{background:var(--tabclr,var(--cyan))}
+.tab[data-tab=home]{--tabclr:var(--cyan)} .tab[data-tab=lec]{--tabclr:var(--lec)}
+.tab[data-tab=lck]{--tabclr:var(--lck)} .tab[data-tab=lpl]{--tabclr:var(--lpl)} .tab[data-tab=lcs]{--tabclr:var(--lcs)}
+
+/* ============ LAYOUT ============ */
+.wrap{max-width:1900px;margin:0 auto;padding:20px 24px;display:grid;grid-template-columns:1fr 370px;gap:22px;align-items:start}
+main{min-width:0}
+aside{display:flex;flex-direction:column;gap:20px;position:sticky;top:158px}
+@media (max-width:1050px){.wrap{grid-template-columns:1fr}aside{position:static}}
+.page{display:none}
+.page.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* panels with hextech corner brackets */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);position:relative;padding:18px;margin-bottom:20px;overflow:hidden}
+.panel.rg{border-top:2px solid var(--rg,var(--line2))}
+.p-head{display:flex;align-items:baseline;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.p-title{font-family:var(--disp);font-weight:800;font-size:23px;letter-spacing:-.2px;text-transform:none;color:#FFFFFF}
+.p-sub{font-family:var(--mono);font-size:12px;letter-spacing:1px;color:var(--dim);text-transform:uppercase}
+.p-head .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.p-title.link{cursor:pointer;transition:color .12s ease}
+.p-title.link:hover{color:var(--cyan)}
+.p-title .chev{font-weight:600;color:var(--faint);font-size:20px;vertical-align:1px}
+.p-title.link:hover .chev{color:var(--cyan)}
+.eyebrow{font-family:var(--body);font-size:15px;font-weight:700;letter-spacing:1.4px;color:var(--dim);text-transform:uppercase;margin-bottom:8px}
+
+/* ============ MATCH ROWS ============ */
+.match{display:grid;grid-template-columns:120px 1fr auto 1fr 140px;gap:10px;align-items:center;padding:14px 12px;margin-bottom:8px;background:var(--panel2);border:1px solid transparent;border-radius:var(--radius);font-size:16px}
+.match:last-child{margin-bottom:0}
+.match:hover{background:#1F1F1F;border-color:var(--line2)}
+.match .when{font-family:var(--mono);font-size:15px;color:var(--text)}
+.match .when .d{color:var(--dim);font-size:12px;display:block}
+.match .t1,.match .t2{display:flex;align-items:center;gap:6px;min-width:0;font-weight:600}
+.match .t1{justify-content:flex-end}
+.match .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--mono);font-weight:600;font-size:24px;letter-spacing:1px;line-height:1.1}
+.match .tlogo,.match .tmono{width:26px;height:26px}
+.match .twrap,.match .winner-tag{flex:none}
+.match .code{color:var(--faint);font-family:var(--mono);font-size:10px;margin:0 4px}
+.match .score{font-family:var(--mono);font-weight:600;font-size:17px;padding:3px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;white-space:nowrap}
+.match .score .w{color:var(--win)} .match .score .l{color:var(--faint)}
+.match .score .lo{color:var(--loss);font-weight:700}
+.match .meta{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right}
+.match.is-live{background:rgba(232,57,74,.07);box-shadow:inset 3px 0 0 var(--live)}
+.match.is-live .score{border-color:rgba(232,57,74,.55)}
+.winner-tag{color:var(--win)}
+@media (max-width:640px){.match{grid-template-columns:62px 1fr auto 1fr;gap:6px;padding:12px 10px;font-size:12px}.match .meta{display:none}
+  .match .nm{font-size:17px;letter-spacing:.5px}.match .tlogo,.match .tmono{width:20px;height:20px}
+  /* phone: tighter chrome, safe-area padding, no horizontal overflow */
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  .wrap{padding:0 12px}
+  .panel{padding:14px 12px;border-radius:var(--radius)}
+  .p-title{font-size:20px}
+  .logo{font-size:19px}.logo small{display:none}
+  nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  .tab{font-size:12px;padding:10px 12px;letter-spacing:1px;flex:none}
+  .two-col{grid-template-columns:1fr}
+  .modal{width:100vw;padding:20px 14px;border-radius:0;min-height:100vh}
+  .modal-bg{padding:0}
+  .modal h2{font-size:26px}
+  .m-meta{gap:10px;font-size:12px}
+  .bracket{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tbl-big td{font-size:15px;padding:9px 5px}
+  .tbl-big .rank-cell{font-size:12px;width:26px}
+  th{font-size:11px;padding:9px 5px}
+  .ag-row{gap:8px;padding:10px 4px}
+  .cardgrid{grid-template-columns:1fr}
+  .btn{padding:8px 14px}          /* larger tap targets */
+  .vod-btn{padding:6px 12px}
+  .sim-toolbar{gap:6px}
+}
+@media (min-width:641px) and (max-width:1400px){.match .nm{font-size:21px}}
+
+/* standings table */
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{font-family:var(--body);font-weight:600;font-size:12px;letter-spacing:.4px;color:var(--dim);text-transform:none;text-align:left;padding:12px 10px;background:#1A1A1A;border-bottom:1px solid var(--line)}
+th:first-child{border-top-left-radius:var(--radius)} th:last-child{border-top-right-radius:var(--radius)}
+td{padding:9px 8px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right;font-family:var(--mono)}
+.rank-cell{font-family:var(--mono);color:var(--faint);width:30px}
+.streak-w{color:var(--win);font-family:var(--mono);font-size:11px}
+.streak-l{color:var(--loss);font-family:var(--mono);font-size:11px}
+.bar-wrap{background:var(--panel2);height:5px;width:100%;margin-top:3px}
+.bar{height:100%;background:var(--rg,var(--gold))}
+
+/* team logos */
+.twrap{display:inline-flex;align-items:center;vertical-align:middle}
+.tlogo{width:22px;height:22px;object-fit:contain;display:block}
+.tmono{display:none;width:22px;height:22px;align-items:center;justify-content:center;background:var(--panel2);border:1px solid var(--line2);font-family:var(--mono);font-size:8px;color:var(--dim)}
+.tmono.only{display:inline-flex}
+.match .t1 .twrap{margin-left:8px}
+.match .t2 .twrap{margin-right:8px}
+.rk-row .tlogo,.rk-row .tmono{width:20px;height:20px}
+td .twrap{margin-right:8px}
+td .tlogo,td .tmono{width:18px;height:18px}
+.tbl-big td{font-size:19px;padding:12px 10px;font-weight:600}
+.tbl-big .rank-cell{font-size:15px;width:40px}
+.tbl-big td.num{font-size:19px}
+.tbl-big .tlogo,.tbl-big .tmono{width:24px;height:24px}
+.nextcard .vs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.nextcard .tlogo,.nextcard .tmono{width:18px;height:18px}
+
+/* watch panel */
+.watch-live{display:flex;align-items:center;gap:12px;padding:12px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;font-size:14px}
+.watch-embed{aspect-ratio:16/9;background:var(--bg2);border:1px solid var(--line);margin-bottom:10px}
+.watch-embed iframe{width:100%;height:100%;border:none;display:block}
+a.btn-watchlive{display:inline-flex;align-items:center;gap:8px;background:var(--live);color:#fff !important;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1.5px;padding:9px 20px;border-radius:var(--radius);text-transform:uppercase;margin-left:auto;transition:filter .12s ease}
+a.btn-watchlive::before{content:'▶';font-size:10px}
+a.btn-watchlive:hover{filter:brightness(1.12);text-decoration:none}
+a.btn-watchlive.sm{padding:5px 12px;font-size:10px;letter-spacing:1px;margin:6px 0 0;margin-left:0}
+.match a.btn-watchlive.sm{margin-left:14px}
+.watch-links{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.stream-note{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.vod-btn{background:#1C1C1C;border:1px solid #262626;color:var(--dim);font-family:var(--body);font-weight:600;font-size:10px;padding:3px 10px;border-radius:var(--pill);transition:background .12s ease,color .12s ease}
+.vod-btn:hover{background:var(--cyan);border-color:var(--cyan);color:#001014}
+.vod-links{display:inline-flex;gap:6px}
+.vod-links a{font-family:var(--mono);font-size:10px;border:1px solid rgba(91,155,255,.45);border-radius:3px;padding:2px 6px}
+
+/* bracket simulator */
+.sim-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.sim-toolbar select{background:var(--panel2);border:1px solid var(--line2);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 9px;border-radius:var(--radius)}
+.pool{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:11px;background:var(--panel2);border:1px dashed var(--line2);border-radius:var(--radius);min-height:42px}
+.pool-hint{font-family:var(--mono);font-size:10px;color:var(--faint);align-self:center}
+.pool-add{display:flex;gap:8px;align-items:center;margin:8px 0 2px}
+.pool-add input{background:var(--panel2);border:1px solid var(--line2);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:var(--radius);width:240px;max-width:100%}
+.pool-add input:focus{border-color:var(--cyan);outline:none}
+.chip .chip-x{background:none;border:none;color:var(--faint);font-family:var(--mono);font-size:10px;line-height:1;padding:0 0 0 4px;cursor:pointer}
+.chip .chip-x:hover{color:var(--loss)}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line2);border-radius:var(--radius);padding:5px 11px;font-size:12px;font-weight:600;cursor:grab;user-select:none;transition:background .12s ease,border-color .12s ease}
+.chip:hover{background:#242424;border-color:var(--rg,var(--cyan))}
+.chip.sel{border-color:var(--cyan);background:var(--cyan);color:#001014}
+.chip .tlogo,.chip .tmono{width:16px;height:16px}
+.chip .x{color:var(--faint);margin-left:2px;font-family:var(--mono);font-size:10px}
+.bracket{display:grid;gap:14px 18px;padding:6px 2px;align-items:stretch}
+.bcell{display:flex;flex-direction:column;gap:12px;justify-content:center;min-width:0;height:100%}
+.bgroup-label{display:inline-block;background:#1A1A1A;color:var(--dim);font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;padding:5px 12px;border-radius:var(--pill);margin-bottom:-4px;align-self:flex-start}
+.bmatch{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.bslot{display:flex;align-items:center;gap:8px;padding:9px 10px;min-height:40px;font-size:14px;font-weight:600;border-bottom:1px solid var(--line)}
+.bslot:last-child{border-bottom:none}
+.bslot .tbd{color:var(--faint);font-weight:400}
+.bslot.clickable{cursor:pointer}
+.bslot.clickable:hover{background:var(--hover)}
+.bslot.seed-open{outline:1px dashed var(--line2);outline-offset:-4px}
+.bslot.dragover{background:rgba(11,198,227,.14);outline:1px dashed var(--cyan);outline-offset:-4px}
+.bslot .tname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.bslot.winner{color:#FFFFFF;background:rgba(255,255,255,.06);box-shadow:inset 3px 0 0 var(--win)}
+.bslot.winner .tname::after{content:' ◆';color:var(--win);font-size:11px}
+.bslot .rm{background:none;border:none;color:var(--faint);font-family:var(--mono);font-size:14px;line-height:1;padding:2px 4px;cursor:pointer;flex:none}
+.bslot .prob{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--faint);flex:none;padding:1px 6px;background:var(--panel2);border:1px solid var(--line)}
+.bslot .prob.fav{color:#001014;background:var(--cyan);border-color:var(--cyan)}
+.bslot.eliminated .prob{opacity:.4}
+.odds-strip{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-top:12px;padding:12px 14px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius)}
+.odds-lbl{font-family:var(--body);font-weight:700;font-size:13px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim)}
+.odds-item{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600}
+.odds-item b{font-family:var(--mono);color:var(--cyan)}
+.odds-item .tlogo,.odds-item .tmono{width:16px;height:16px}
+.odds-note{font-family:var(--mono);font-size:9px;color:var(--faint);margin-left:auto}
+.bslot .rm:hover{color:var(--loss)}
+.bslot.eliminated{color:var(--faint);text-decoration:line-through;text-decoration-color:rgba(232,57,74,.65)}
+.bslot .seedno{font-family:var(--mono);font-size:9px;color:var(--faint);border:1px solid var(--line2);padding:0 4px}
+.bslot .tlogo,.bslot .tmono{width:18px;height:18px}
+.sim-champ{margin-top:12px;padding:14px;text-align:center;border:1px solid var(--line2);border-radius:var(--radius);background:linear-gradient(180deg,rgba(255,255,255,.07),transparent)}
+.sim-champ .lbl{font-family:var(--body);font-weight:600;font-size:11px;letter-spacing:1.2px;color:var(--dim);text-transform:uppercase}
+.sim-champ .name{font-family:var(--disp);font-weight:800;font-size:27px;letter-spacing:-.4px;margin-top:4px}
+
+/* honours timeline */
+.honour{display:grid;grid-template-columns:86px 1fr;gap:14px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.honour:last-child{border-bottom:none}
+.honour .date{font-family:var(--mono);font-size:11px;color:var(--faint);padding-top:2px}
+.honour .ev{font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:-.1px}
+.honour .ev .champ{color:var(--cyan)}
+.honour .detail{font-size:12px;color:var(--dim);margin-top:1px}
+.honour.upcoming .ev{color:var(--dim)}
+.honour.upcoming .ev .champ{color:var(--teal)}
+
+/* honours click affordance */
+.honour.linked{cursor:pointer;position:relative;padding-right:26px}
+.honour.linked:hover{background:var(--hover)}
+.honour.linked::after{content:'›';position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--disp);font-size:22px;color:var(--faint)}
+.honour.linked:hover::after{color:var(--cyan)}
+
+/* tournament modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.86);backdrop-filter:blur(3px);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:var(--radius);max-width:1500px;width:94vw;position:relative;padding:26px 30px;margin:auto 0}
+.modal-close{position:absolute;top:12px;right:12px;background:none;border:1px solid var(--line2);color:var(--dim);font-family:var(--mono);font-size:14px;width:32px;height:32px;line-height:1;border-radius:var(--radius);transition:background .12s ease,color .12s ease,border-color .12s ease}
+.modal-close:hover{background:#2A2A2A;border-color:var(--line2);color:#FFFFFF}
+.modal h2{font-family:var(--disp);font-weight:800;font-size:36px;letter-spacing:-.8px;text-transform:none;line-height:1.1}
+.modal h2 .champ{color:var(--cyan)}
+.modal .m-meta{display:flex;gap:20px;flex-wrap:wrap;margin:10px 0 4px;font-family:var(--mono);font-size:12px;color:var(--dim)}
+.modal .m-meta b{color:var(--text);font-weight:600}
+.modal .m-blurb{font-size:14px;color:var(--dim);margin:8px 0 14px;max-width:75ch}
+.m-section{margin-top:18px}
+.m-section .eyebrow{font-size:16px;margin-bottom:10px}
+.podium{display:flex;gap:12px;flex-wrap:wrap}
+.podium .step{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:9px 14px;font-weight:600;font-size:15px}
+.podium .step .medal{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:1px}
+.podium .step:nth-child(1) .medal{color:#E9C46A}
+.podium .step:nth-child(2) .medal{color:#B8C2D0}
+.podium .step:nth-child(3) .medal{color:#B08D57}
+.podium .tlogo,.podium .tmono{width:22px;height:22px}
+.team-chips{display:flex;gap:6px;flex-wrap:wrap}
+.team-chips .chip{cursor:default}
+.kr-row{display:grid;grid-template-columns:170px 1fr auto 1fr;gap:10px;align-items:center;padding:9px 8px;border-bottom:1px solid var(--line);font-size:15px}
+.kr-row:last-child{border-bottom:none}
+.kr-row .rd{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.5px;text-transform:uppercase}
+.kr-row .a{text-align:right;font-weight:600}.kr-row .b{font-weight:600}
+.kr-row .sc{font-family:var(--mono);font-weight:600;font-size:16px;padding:2px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:4px}
+.kr-row .sc .w{color:var(--win)}.kr-row .sc .l{color:var(--faint)}
+.stage-label{font-family:var(--body);font-weight:600;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:6px;margin:16px 0 6px}
+.m-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.bslot .bs{font-family:var(--mono);font-weight:600;font-size:15px;padding:1px 8px;background:var(--panel2);border:1px solid var(--line);flex:none}
+.bslot.winner .bs{border-color:var(--line2);color:#FFFFFF}
+.bracket-note{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:6px}
+.m-upcoming{display:flex;align-items:center;gap:14px;background:rgba(91,155,255,.08);border:1px solid rgba(91,155,255,.45);border-radius:var(--radius);padding:14px 16px;margin-top:14px}
+.m-upcoming .big{font-family:var(--disp);font-weight:800;font-size:20px;letter-spacing:.4px;color:var(--cyan)}
+.m-upcoming .d{font-family:var(--mono);font-size:13px;color:var(--text)}
+
+/* summary cards on home */
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.nextcard{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--rg,var(--gold));border-radius:var(--radius);padding:14px 16px;transition:background .12s ease,border-color .12s ease}
+.nextcard:hover{background:#1C1C1C;border-color:var(--line2);border-left-color:var(--rg,var(--gold))}
+.nextcard .lg{font-family:var(--body);font-weight:800;font-size:14px;letter-spacing:.8px;color:var(--rg,var(--cyan))}
+.nextcard .vs{font-weight:600;font-size:14px;margin:6px 0 2px}
+.nextcard .tm{font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+/* merged cross-region agenda */
+.ag-day{font-family:var(--body);font-size:17px;font-weight:800;letter-spacing:-.2px;color:#FFFFFF;text-transform:none;padding:14px 4px 8px;border-bottom:1px solid var(--line)}
+.ag-row{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer}
+.ag-row:last-child{border-bottom:none}
+.ag-row:hover{background:var(--hover)}
+.ag-lg{font-family:var(--body);font-weight:800;font-size:13px;letter-spacing:.8px;color:var(--ag,var(--cyan))}
+.ag-vs{display:flex;align-items:center;gap:6px;font-weight:600;font-size:15px;flex-wrap:wrap}
+.ag-vs .tlogo,.ag-vs .tmono{width:18px;height:18px}
+.ag-when{font-family:var(--mono);font-size:13px;text-align:right;white-space:nowrap}
+.ag-when .cdn{display:block;font-size:10px;color:var(--faint);letter-spacing:.5px}
+.cdn-mini{font-family:var(--mono);font-size:10px;color:var(--cyan)}
+.sched-blk{margin-top:20px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sched-blk:first-child{margin-top:0}
+@media (max-width:640px){.ag-row{grid-template-columns:48px 1fr auto;font-size:12px}.ag-vs{font-size:12px}}
+
+/* top-10 clash badge */
+.big-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--body);font-size:10px;font-weight:700;letter-spacing:.6px;color:#001014;background:var(--cyan);border:1px solid var(--cyan);padding:2px 9px;border-radius:var(--pill);text-transform:uppercase;white-space:nowrap}
+
+/* playoff cutline + form dots */
+tr.cutline td{border-bottom:2px solid var(--cyan)}
+tr.cutline-pi td{border-bottom:2px dashed var(--line2)}
+.grp-head{font-family:var(--body);font-weight:800;font-size:15px;letter-spacing:-.1px;color:#FFFFFF;margin:16px 0 8px}
+.grp-head:first-child{margin-top:0}
+tr.t-click{cursor:pointer}
+tr.t-click:hover td{background:#181818}
+tr.t-click:hover td:nth-child(2){color:var(--cyan)}
+.form-dots{font-family:var(--mono);font-size:12px;letter-spacing:2px;white-space:nowrap}
+.form-dots .fw{color:var(--win)} .form-dots .fl{color:var(--loss)} .form-dots .fe{color:var(--faint)}
+
+/* sidebar: rankings */
+.rk-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
+.rk-row:last-child{border-bottom:none}
+.rk-num{font-family:var(--body);font-weight:800;font-size:20px;width:30px;color:#FFFFFF;text-align:right}
+.rk-row:nth-child(n+4) .rk-num{color:var(--faint)}
+.rk-name{font-weight:600;flex:1;font-size:15px;line-height:1.25}
+.rk-name .rk-wl{display:block;font-family:var(--mono);font-size:11px;color:var(--faint);font-weight:400}
+.rk-pts{font-family:var(--mono);font-size:12px;color:var(--dim);white-space:nowrap}
+.rk-move{font-family:var(--mono);font-size:11px;width:26px;text-align:center}
+.rk-move.up{color:var(--win)} .rk-move.down{color:var(--loss)} .rk-move.flat{color:var(--faint)}
+.rk-region{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--faint);border:1px solid var(--line2);padding:1px 6px}
+.rk-note{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:8px}
+
+/* predictor */
+.pred-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
+.field input[type=number]{width:100%;background:var(--bg2);border:1px solid var(--line2);color:var(--text);font-family:var(--mono);font-size:13px;padding:6px 8px}
+.field input[type=range]{width:100%;accent-color:var(--gold)}
+.field.full{grid-column:1/-1}
+.pred-out{background:var(--panel2);border:1px solid var(--line);padding:12px;text-align:center;margin-bottom:10px}
+.pred-out .pct{font-family:var(--disp);font-weight:700;font-size:42px;letter-spacing:1px;color:var(--gold);line-height:1}
+.pred-out .lbl{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;margin-top:4px}
+.pred-secondary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.pred-secondary .pred-out{margin-bottom:0}
+.pred-secondary .pct{font-size:24px;color:var(--teal)}
+.dist{display:flex;align-items:flex-end;gap:2px;height:70px;margin-top:6px}
+.dist .col{flex:1;background:var(--gold-dim);min-height:1px;position:relative}
+.dist .col.hit{background:var(--gold)}
+.dist .col:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--line2);font-family:var(--mono);font-size:9px;padding:2px 6px;white-space:nowrap;z-index:5;color:var(--text)}
+.dist-axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--faint);margin-top:3px}
+.hint{font-family:var(--mono);font-size:10px;color:var(--faint);line-height:1.6}
+
+/* region hero strip */
+.region-hero{display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:14px 16px;background:linear-gradient(90deg,color-mix(in srgb,var(--rg) 10%,transparent),transparent 70%);border:1px solid var(--line);border-left:4px solid var(--rg)}
+.region-hero h1{font-family:var(--disp);font-weight:700;font-size:34px;letter-spacing:4px;line-height:1;color:var(--rg)}
+.region-hero .sub{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.5px}
+.region-hero .links{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+.loading{font-family:var(--mono);font-size:11px;color:var(--faint);padding:14px;text-align:center}
+.err-msg{font-family:var(--mono);font-size:11px;color:var(--loss);padding:10px;border:1px dashed rgba(224,82,96,.4);margin:6px 0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:900px){.two-col{grid-template-columns:1fr}}
+footer{max-width:1900px;margin:0 auto;padding:10px 20px 30px;font-family:var(--mono);font-size:10px;color:var(--faint);border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-top">
+    <div class="logo">LEAGUE ESPORTS <span class="gold">TRACKER</span><small>LEC · LCK · LPL · LCS · SEASON 2026</small></div>
+    <div class="hdr-status">
+      <span id="apiStatus"><span class="dot"></span>API: connecting…</span>
+      <span id="lastRefresh"></span>
+      <button class="btn" id="refreshBtn">⟳ Refresh</button>
+    </div>
+  </div>
+  <nav>
+    <button class="tab active" data-tab="home">Home</button>
+    <button class="tab" data-tab="lec">LEC</button>
+    <button class="tab" data-tab="lck">LCK</button>
+    <button class="tab" data-tab="lpl">LPL</button>
+    <button class="tab" data-tab="lcs">LCS</button>
+  </nav>
+  <div class="ticker"><div class="ticker-track" id="tickerTrack"></div></div>
+</header>
+
+<div class="wrap">
+<main>
+
+  <!-- ============ HOME ============ -->
+  <section class="page active" id="page-home">
+    <div class="panel">
+      <div class="p-head"><div class="p-title">Live Now</div><span class="p-sub" id="liveCount"></span></div>
+      <div id="homeLive"><div class="loading">Checking for live broadcasts…</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="p-head"><div class="p-title">Next 48 Hours</div><span class="p-sub" id="agendaSub">all regions · local time</span></div>
+      <div id="homeAgenda"><div class="loading">Loading schedules…</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="p-head"><div class="p-title">Next Up · By Region</div><span class="p-sub">local time</span></div>
+      <div class="cardgrid" id="homeNext"><div class="loading">Loading schedules…</div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <div class="p-head"><div class="p-title">2026 Honours Board</div><span class="p-sub">internationals &amp; majors</span></div>
+        <div id="honoursBoard"></div>
+      </div>
+      <div class="panel">
+        <div class="p-head"><div class="p-title">Season Storylines</div></div>
+        <div id="storylines" style="font-size:15.5px;line-height:1.75;color:var(--dim);display:flex;flex-direction:column;gap:16px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- region pages injected -->
+  <section class="page" id="page-lec"></section>
+  <section class="page" id="page-lck"></section>
+  <section class="page" id="page-lpl"></section>
+  <section class="page" id="page-lcs"></section>
+
+</main>
+
+<aside>
+  <div class="panel">
+    <div class="p-head"><div class="p-title" style="font-size:18px">Global Power Rankings</div>
+      <div class="right"><a class="btn small" href="https://lolesports.com/en-GB/power-rankings" target="_blank" rel="noopener">lolesports ↗</a></div></div>
+    <div id="rankList"></div>
+    <div class="rk-note" id="rkNote"></div>
+  </div>
+
+  </aside>
+</div>
+
+<footer>
+  LEAGUE ESPORTS TRACKER · unofficial fan tool · live data via the lolesports.com public API · deep stats: Leaguepedia (lol.fandom.com) &amp; Liquipedia (liquipedia.net) · state saved in localStorage
+</footer>
+
+<script>
+/* =====================================================================
+   LEAGUE ESPORTS TRACKER — Season 2026
+   (localStorage keys keep the historical nexusdesk_ prefix so saved
+   state survives the rename)
+   Single-file, offline-capable. Live data from the same unofficial API
+   the lolesports website uses; everything degrades to baked-in season
+   data + external links if the API is unreachable.
+===================================================================== */
+
+const API = 'https://esports-api.lolesports.com/persisted/gw';
+const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z'; // public key shipped in the lolesports web client
+const HL = 'en-GB';
+const LS = k => 'nexusdesk_' + k;
+
+const REGIONS = {
+  lec:{ name:'LEC', full:'League of Legends EMEA Championship', color:'var(--lec)', slug:'lec',
+        yt:'https://www.youtube.com/@LEC/live', twitch:'https://www.twitch.tv/lec', vods:'https://www.youtube.com/@LEC/videos',
+        wiki:'https://lol.fandom.com/wiki/LEC/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LEC/2026',
+        splitLabel:'Summer 2026', defaultGames:9, defFormat:'de6',
+        cuts:[{after:6, kind:'po'}] },   // single table, top 6 -> playoffs
+  lck:{ name:'LCK', full:'League of Legends Champions Korea', color:'var(--lck)', slug:'lck',
+        yt:'https://www.youtube.com/@LCK/live', twitch:'https://www.twitch.tv/lck', vods:'https://www.youtube.com/@LCK/videos',
+        wiki:'https://lol.fandom.com/wiki/LCK/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LCK/2026',
+        splitLabel:'Rounds 3–4 2026', defaultGames:15, defFormat:'de6b',
+        // Legend: 1-2 -> playoffs, 3-5 -> play-in. Rise: 1 -> playoffs, 2-4 -> play-in, 5 out
+        groupCuts:{ legend:[{after:2, kind:'po'}], rise:[{after:1, kind:'po'},{after:4, kind:'pi'}] } },
+  lpl:{ name:'LPL', full:'League of Legends Pro League', color:'var(--lpl)', slug:'lpl',
+        bili:'https://live.bilibili.com/6', yt:'https://www.youtube.com/@LPL/live', vods:'https://www.youtube.com/@LPL/videos',
+        wiki:'https://lol.fandom.com/wiki/LPL/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026',
+        splitLabel:'Split 3 2026', defaultGames:14, defFormat:'de10',
+        // Ascend: 1-6 -> playoffs, 7-8 -> Knights Rivals play-in. Nirvana: 1-2 -> play-in, rest out
+        groupCuts:{ ascend:[{after:6, kind:'po'}], nirvana:[{after:2, kind:'pi'}] } },
+  lcs:{ name:'LCS', full:'League Championship Series', color:'var(--lcs)', slug:'lcs',
+        yt:'https://www.youtube.com/@LCS/live', twitch:'https://www.twitch.tv/lcs', vods:'https://www.youtube.com/@LCS/videos',
+        wiki:'https://lol.fandom.com/wiki/LCS/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LCS/2026/Summer',
+        splitLabel:'Summer 2026', defaultGames:14, defFormat:'de6b',
+        cuts:[{after:6, kind:'po'}] }    // single table, top 6 -> playoffs
+};
+
+/* -------- Baked-in 2026 season data (verified Aug 2026) -------- */
+const HONOURS = [
+  {date:'Jan–Mar', ev:'LCK Cup', champ:'Gen.G', detail:'def. BNK FearX 3–0 in Hong Kong · MVP: Canyon · both finalists → First Stand', done:true,
+   d:{ dates:'14 Jan – 1 Mar 2026', host:'CHZZK LoL Park, Seoul · Finals: Kai Tak Arena, Hong Kong (first LCK event abroad)',
+       fmt:'Ten teams in a group draft (Baron vs Elder) with cross-group round robin and a Bo5 Super Week, into a play-in and a six-team double-elim playoff. Both finalists qualified for First Stand. Defending champions HLE were eliminated after the group stage.',
+       podium:[['Gen.G','Champions · MVP: Canyon'],['BNK FearX','Runners-up — First Stand qualified'],['','']],
+       teams:['Gen.G','T1','BNK FearX','Dplus KIA','KIWOOM DRX','DN SOOPers','Nongshim RedForce','KT Rolster','Hanjin Brion','Hanwha Life Esports'],
+       results:[],
+       brackets:[{title:'Playoffs — double elimination', note:'Play-in stage on Liquipedia', cols:5, matches:[
+         {g:'Round 1', col:1,row:1, a:'BNK FearX',sa:3, b:'DN SOOPers',sb:2},
+         {g:'Round 1', col:1,row:1, a:'Dplus KIA',sa:3, b:'KIWOOM DRX',sb:2},
+         {g:'Round 2', col:2,row:1, a:'Gen.G',sa:3, b:'Dplus KIA',sb:1},
+         {g:'Round 2', col:2,row:1, a:'BNK FearX',sa:3, b:'T1',sb:1},
+         {g:'Round 3', col:3,row:1, a:'Gen.G',sa:3, b:'BNK FearX',sb:1},
+         {g:'Lower Round 1', col:2,row:2, a:'DN SOOPers',sa:3, b:'KIWOOM DRX',sb:1},
+         {g:'Lower Round 2', col:3,row:2, a:'Dplus KIA',sa:3, b:'DN SOOPers',sb:1},
+         {g:'Lower Round 3', col:4,row:2, a:'Dplus KIA',sa:3, b:'T1',sb:2},
+         {g:'Lower Final', col:5,row:2, a:'BNK FearX',sa:3, b:'Dplus KIA',sb:0},
+         {g:'Grand Final · Hong Kong', col:5,row:1, a:'Gen.G',sa:3, b:'BNK FearX',sb:0}]}],
+       wiki:'https://lol.fandom.com/wiki/LCK_Cup_2026', liqui:'https://liquipedia.net/leagueoflegends/LCK/2026/Cup' }},
+  {date:'Jan–Mar', ev:'LCS Lock-In', champ:'LYON', detail:'def. Cloud9 KIA 3–1 in the final · MVP: Inspired · the LCS returns after the LTA', done:true,
+   d:{ dates:'24 Jan – 1 Mar 2026', host:'Riot Games Arena, Los Angeles',
+       fmt:'The LCS\'s opening event of its comeback season: 8 teams in two groups, top six into a double-elim playoff — seeds 1–2 per group upper, the rest lower. LYON dropped into the lower bracket out of groups and won four straight elimination series to take the title.',
+       podium:[['LYON','Champions · MVP: Inspired'],['Cloud9 KIA','Runners-up — unbeaten until the final'],['','']],
+       teams:['LYON','Cloud9 KIA','Sentinels','FlyQuest','Team Liquid','Disguised','Dignitas','Shopify Rebellion'],
+       results:[],
+       brackets:[{title:'Playoffs — double elimination', cols:5, matches:[
+         {g:'Upper Round 1', col:1,row:1, a:'Cloud9 KIA',sa:3, b:'FlyQuest',sb:0},
+         {g:'Upper Round 1', col:1,row:1, a:'Sentinels',sa:3, b:'Disguised',sb:2},
+         {g:'Upper Final', col:2,row:1, a:'Cloud9 KIA',sa:3, b:'Sentinels',sb:0},
+         {g:'Lower Round 1', col:2,row:2, a:'LYON',sa:3, b:'FlyQuest',sb:0},
+         {g:'Lower Round 1', col:2,row:2, a:'Team Liquid',sa:3, b:'Disguised',sb:0},
+         {g:'Lower Round 2', col:3,row:2, a:'LYON',sa:3, b:'Team Liquid',sb:1},
+         {g:'Lower Final', col:4,row:2, a:'LYON',sa:3, b:'Sentinels',sb:1},
+         {g:'Grand Final', col:5,row:0, a:'LYON',sa:3, b:'Cloud9 KIA',sb:1}]}],
+       wiki:'https://lol.fandom.com/wiki/LCS/2026_Season/Lock-In', liqui:'https://liquipedia.net/leagueoflegends/LCS/2026/Lock-In' }},
+  {date:'22 Mar', ev:'First Stand', champ:'Bilibili Gaming', detail:'def. G2 Esports 3\u20131 \u00b7 S\u00e3o Paulo \u00b7 FMVP: Bin \u00b7 LPL earns 2nd MSI bracket seed', done:true,
+   d:{ dates:'16\u201322 Mar 2026', host:'Riot Games Arena, S\u00e3o Paulo, Brazil', slug:'first_stand',
+       fmt:'Eight teams \u2014 two each from the LCK and LPL, one each from the LEC, LCP, LCS and CBLOL. Two GSL-style double-elim groups (all Bo5 Fearless Draft) send their top two into a single-elimination knockout. The winning region earned a second bye into the MSI bracket stage.',
+       podium:[['Bilibili Gaming','Champions \u00b7 FMVP: Bin \u00b7 first international title'],['G2 Esports','Runners-up \u2014 first LEC international final in 6+ years'],['','']],
+       teams:['Bilibili Gaming','JD Gaming','Gen.G','BNK FearX','G2 Esports','Secret Whales'], teamsNote:'plus the LCS and CBLOL representatives \u2014 full field on Liquipedia',
+       results:[],
+       brackets:[
+        {title:'Group A \u2014 GSL double elimination', note:'Group B (Gen.G, JD Gaming + LCS/CBLOL reps) on Liquipedia', cols:3, matches:[
+         {g:'Opening Matches', col:1,row:1, a:'Bilibili Gaming',sa:3, b:'BNK FearX',sb:2},
+         {g:'Opening Matches', col:1,row:1, a:'G2 Esports',sa:3, b:'Secret Whales',sb:0},
+         {g:'Winners Match', col:2,row:1, a:'Bilibili Gaming',sa:3, b:'G2 Esports',sb:0},
+         {g:'Elimination Match', col:2,row:2, a:'BNK FearX',sa:3, b:'Secret Whales',sb:0},
+         {g:'Decider Match', col:3,row:2, a:'G2 Esports',sa:3, b:'BNK FearX',sb:0}]},
+        {title:'Knockout Stage \u2014 single elimination', cols:2, matches:[
+         {g:'Semifinals', col:1,row:1, a:'Bilibili Gaming',sa:3, b:'JD Gaming',sb:0},
+         {g:'Semifinals', col:1,row:1, a:'G2 Esports',sa:3, b:'Gen.G',sb:0},
+         {g:'Grand Final', col:2,row:0, a:'Bilibili Gaming',sa:3, b:'G2 Esports',sb:1}]}],
+       wiki:'https://lol.fandom.com/wiki/2026_First_Stand', liqui:'https://liquipedia.net/leagueoflegends/First_Stand_Tournament/2026' }},
+  {date:'Spring', ev:'LEC Versus', champ:'G2 Esports', detail:'def. Karmine Corp 3–2 in the final · MVP: Caps', done:true,
+   d:{ dates:'17 Jan – 1 Mar 2026', host:'Riot Games Arena, Berlin · Finals: Olimpic Arena, Badalona',
+       fmt:'12 teams: the 10 LEC partners plus ERL invitees Karmine Corp Blue and Los Ratones. Bo1 single round robin, top 8 into a double-elim playoff (Bo3 early rounds, Bo5 from the semis). Champion qualified for First Stand. G2 entered the bracket as the 7 seed and won the whole thing.',
+       podium:[['G2 Esports','Champions · MVP: Caps · from the 7 seed'],['Karmine Corp','Runners-up — 1 seed after the round robin'],['','']],
+       teams:['G2 Esports','Karmine Corp','Natus Vincere','Team Vitality','Team Heretics','GIANTX','Movistar KOI','Fnatic','SK Gaming','Shifters','Karmine Corp Blue','Los Ratones'], teamsNote:'all 12 — SK Gaming, Shifters and both ERL sides missed the top-8 cut',
+       results:[],
+       brackets:[{title:'Playoffs — full 8-team double elimination', cols:6, matches:[
+         {g:'Upper Quarterfinals (Bo3)', col:1,row:1, a:'Karmine Corp',sa:2, b:'GIANTX',sb:0},
+         {g:'Upper Quarterfinals (Bo3)', col:1,row:1, a:'Team Heretics',sa:0, b:'G2 Esports',sb:2},
+         {g:'Upper Quarterfinals (Bo3)', col:1,row:1, a:'Natus Vincere',sa:2, b:'Fnatic',sb:0},
+         {g:'Upper Quarterfinals (Bo3)', col:1,row:1, a:'Team Vitality',sa:0, b:'Movistar KOI',sb:2},
+         {g:'Upper Semifinals (Bo3)', col:2,row:1, a:'Karmine Corp',sa:0, b:'G2 Esports',sb:2},
+         {g:'Upper Semifinals (Bo3)', col:2,row:1, a:'Natus Vincere',sa:0, b:'Movistar KOI',sb:2},
+         {g:'Upper Final', col:3,row:1, a:'G2 Esports',sa:3, b:'Movistar KOI',sb:0},
+         {g:'Lower Round 1 (Bo3)', col:2,row:2, a:'Team Heretics',sa:1, b:'GIANTX',sb:2},
+         {g:'Lower Round 1 (Bo3)', col:2,row:2, a:'Team Vitality',sa:2, b:'Fnatic',sb:0},
+         {g:'Lower Quarterfinals (Bo3)', col:3,row:2, a:'Natus Vincere',sa:1, b:'GIANTX',sb:2},
+         {g:'Lower Quarterfinals (Bo3)', col:3,row:2, a:'Karmine Corp',sa:2, b:'Team Vitality',sb:1},
+         {g:'Lower Semifinal', col:4,row:2, a:'GIANTX',sa:0, b:'Karmine Corp',sb:3},
+         {g:'Lower Final · Badalona', col:5,row:2, a:'Movistar KOI',sa:2, b:'Karmine Corp',sb:3},
+         {g:'Grand Final · Badalona', col:6,row:0, a:'G2 Esports',sa:3, b:'Karmine Corp',sb:2}]}],
+       wiki:'https://lol.fandom.com/wiki/LEC/2026_Season/Versus_Season', liqui:'https://liquipedia.net/leagueoflegends/LEC/2026/Versus' }},
+  {date:'Spring', ev:'LEC Spring', champ:'G2 Esports', detail:'def. Karmine Corp 3–2 · FMVP: SkewMond · both finalists → MSI', done:true,
+   d:{ dates:'28 Mar – 7 Jun 2026 · Playoffs 23 May – 7 Jun', host:'Riot Games Arena, Berlin + Madrid & Paris roadshows',
+       fmt:'10 teams · Bo3 single round robin · top 6 into a double-elim playoff, seeds 1–4 upper, 5–6 lower, all Bo5. Winner went to the MSI bracket stage, runner-up to the MSI play-in. G2 already held an EWC spot, so that seed passed down to 3rd-place Movistar KOI.',
+       podium:[['G2 Esports','Champions · Finals MVP: SkewMond · MSI bracket seed'],['Karmine Corp','Runners-up — MSI play-in seed'],['Movistar KOI','3rd — inherited the EWC seed']],
+       teams:[], results:[],
+       brackets:[{title:'Playoffs — full 6-team double elimination', cols:5, matches:[
+         {g:'Upper Semifinals', col:1,row:1, a:'Team Vitality',sa:0, b:'Movistar KOI',sb:3},
+         {g:'Upper Semifinals', col:1,row:1, a:'Karmine Corp',sa:1, b:'G2 Esports',sb:3},
+         {g:'Upper Final', col:2,row:1, a:'Movistar KOI',sa:2, b:'G2 Esports',sb:3},
+         {g:'Lower Quarterfinals', col:2,row:2, a:'Natus Vincere',sa:1, b:'Karmine Corp',sb:3},
+         {g:'Lower Quarterfinals', col:2,row:2, a:'GIANTX',sa:3, b:'Team Vitality',sb:0},
+         {g:'Lower Semifinal', col:3,row:2, a:'Karmine Corp',sa:3, b:'GIANTX',sb:0},
+         {g:'Lower Final', col:4,row:2, a:'Movistar KOI',sa:0, b:'Karmine Corp',sb:3},
+         {g:'Grand Final', col:5,row:0, a:'G2 Esports',sa:3, b:'Karmine Corp',sb:2}]}],
+       wiki:'https://lol.fandom.com/wiki/LEC/2026_Season/Spring_Season', liqui:'https://liquipedia.net/leagueoflegends/LEC/2026/Spring' }},
+  {date:'8 Mar', ev:'LPL Split 1', champ:'Bilibili Gaming', detail:'def. Ninjas in Pyjamas 3–0 · finalists → First Stand', done:true,
+   d:{ dates:'14 Jan – 8 Mar 2026 · Winter split', host:'Club arenas across China (roadshow format)',
+       fmt:'14 teams in three groups (Ascend / Perseverance / Nirvana), Knights Rivals play-in, then an 8-team double-elim playoff — all Bo5 Fearless Draft. Both finalists qualified for First Stand. NIP were swept 0–3 by BLG in the opening round, then ran the entire lower bracket back to the final.',
+       podium:[['Bilibili Gaming','Champions — First Stand seed 1'],['Ninjas in Pyjamas','Runners-up — lower-bracket run from an 0–3 start'],['','']],
+       teams:['Bilibili Gaming','JD Gaming','Top Esports','Anyone\'s Legend','Weibo Gaming','Ninjas in Pyjamas','Invictus Gaming','Team WE'],
+       results:[],
+       brackets:[{title:'Playoffs — Upper Bracket & Final', note:'Full lower bracket (NIP\'s run) on Liquipedia', cols:4, matches:[
+         {g:'Upper Quarterfinals', col:1,row:1, a:'JD Gaming',sa:3, b:'Top Esports',sb:2},
+         {g:'Upper Quarterfinals', col:1,row:1, a:'Anyone\'s Legend',sa:3, b:'Team WE',sb:0},
+         {g:'Upper Quarterfinals', col:1,row:1, a:'Weibo Gaming',sa:3, b:'Invictus Gaming',sb:0},
+         {g:'Upper Quarterfinals', col:1,row:1, a:'Bilibili Gaming',sa:3, b:'Ninjas in Pyjamas',sb:0},
+         {g:'Upper Semifinals', col:2,row:1, a:'JD Gaming',sa:3, b:'Anyone\'s Legend',sb:2},
+         {g:'Upper Semifinals', col:2,row:1, a:'Bilibili Gaming',sa:3, b:'Weibo Gaming',sb:0},
+         {g:'Upper Final', col:3,row:1, a:'Bilibili Gaming',sa:null, b:'JD Gaming',sb:null, w:0},
+         {g:'Grand Final', col:4,row:0, a:'Bilibili Gaming',sa:3, b:'Ninjas in Pyjamas',sb:0}]}],
+       wiki:'https://lol.fandom.com/wiki/LPL/2026_Season/Split_1', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026/Split_1' }},
+  {date:'14 Jun', ev:'LPL Split 2', champ:'Bilibili Gaming', detail:'def. Top Esports 3–0 in Wuhan · FMVP: Knight · finalists → MSI with bracket byes', done:true,
+   d:{ dates:'Apr – 14 Jun 2026 · Spring split', host:'Club arenas across China · Finals: Wuhan',
+       fmt:'Same 14 teams in Ascend/Nirvana with the Knights Rivals play-in into an 8-team double-elim playoff, all Bo5 Fearless. Both finalists went to MSI — with bracket-stage byes after BLG won First Stand. Team WE upset BLG 3–1 in the opening round; BLG answered by winning four straight lower-bracket series and sweeping the final.',
+       podium:[['Bilibili Gaming','Champions · FMVP: Knight · through the lower bracket'],['Top Esports','Runners-up — MSI seed 2'],['Team WE','3rd — the upset run ends in the lower final']],
+       teams:[],
+       results:[],
+       brackets:[{title:'Playoffs — full 8-team double elimination', cols:6, matches:[
+         {g:'Round 1', col:1,row:1, a:'JD Gaming',sa:3, b:'TT Gaming',sb:1},
+         {g:'Round 1', col:1,row:1, a:'Top Esports',sa:3, b:'LGD Gaming',sb:0},
+         {g:'Round 1', col:1,row:1, a:'Anyone\'s Legend',sa:3, b:'EDward Gaming',sb:0},
+         {g:'Round 1', col:1,row:1, a:'Bilibili Gaming',sa:1, b:'Team WE',sb:3},
+         {g:'Round 2', col:2,row:1, a:'JD Gaming',sa:1, b:'Top Esports',sb:3},
+         {g:'Round 2', col:2,row:1, a:'Anyone\'s Legend',sa:0, b:'Team WE',sb:3},
+         {g:'Upper Final', col:3,row:1, a:'Top Esports',sa:null, b:'Team WE',sb:null, w:0},
+         {g:'Lower Round 1', col:2,row:2, a:'TT Gaming',sa:2, b:'LGD Gaming',sb:3},
+         {g:'Lower Round 1', col:2,row:2, a:'EDward Gaming',sa:0, b:'Bilibili Gaming',sb:3},
+         {g:'Lower Round 2', col:3,row:2, a:'Anyone\'s Legend',sa:3, b:'LGD Gaming',sb:0},
+         {g:'Lower Round 2', col:3,row:2, a:'JD Gaming',sa:1, b:'Bilibili Gaming',sb:3},
+         {g:'Lower Round 3', col:4,row:2, a:'Anyone\'s Legend',sa:null, b:'Bilibili Gaming',sb:null, w:1},
+         {g:'Lower Final', col:5,row:2, a:'Team WE',sa:null, b:'Bilibili Gaming',sb:null, w:1},
+         {g:'Grand Final · Wuhan', col:6,row:0, a:'Bilibili Gaming',sa:3, b:'Top Esports',sb:0}]}],
+       wiki:'https://lol.fandom.com/wiki/LPL/2026_Season/Split_2', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026/Split_2' }},
+  {date:'14 Jun', ev:'LCK Road to MSI', champ:'Hanwha Life Esports', detail:'HLE 3–1 T1 for seed 1 · T1 3–2 Gen.G for seed 2 · rebuilt roster: Zeus & Gumayusi (ex-T1) + Kanavi + Zeka', done:true,
+   d:{ dates:'6 – 14 Jun 2026', host:'CHZZK LoL Park, Seoul · Rounds 3–5: Wonju DB Promy Arena',
+       fmt:'The LCK\'s MSI qualifier, seeded by the Rounds 1–2 double round robin (HLE topped it at 15–3). All Bo5: the top two contest the seed-1 match while seeds 3–6 climb a king-of-the-hill gauntlet; its survivor meets the seed-1 loser for the last ticket. Defending MSI champions Gen.G fell 3–2 at the final hurdle.',
+       podium:[['Hanwha Life Esports','MSI seed 1 · def. T1 3–1 in Wonju · MVP: Kanavi'],['T1','MSI seed 2 · def. Gen.G 3–2 — 2.27M peak viewers'],['Gen.G','3rd — title defence ends one series short']],
+       teams:[],
+       results:[],
+       brackets:[{title:'Full ladder — all Bo5', cols:4, matches:[
+         {g:'Round 1', col:1,row:1, a:'Dplus KIA',sa:3, b:'Hanjin Brion',sb:0},
+         {g:'Round 2', col:2,row:1, a:'KT Rolster',sa:3, b:'Dplus KIA',sb:2},
+         {g:'Round 4', col:3,row:1, a:'Gen.G',sa:3, b:'KT Rolster',sb:0},
+         {g:'MSI Seed 1 · Wonju', col:3,row:2, a:'Hanwha Life Esports',sa:3, b:'T1',sb:1},
+         {g:'Round 5 · MSI Seed 2', col:4,row:0, a:'T1',sa:3, b:'Gen.G',sb:2}]}],
+       wiki:'https://lol.fandom.com/wiki/LCK/2026_Season/Road_to_MSI', liqui:'https://liquipedia.net/leagueoflegends/LCK/2026/Road_to_MSI' }},
+  {date:'14 Jun', ev:'LCS Spring', champ:'LYON', detail:'def. Team Liquid 3–0 · back-to-back titles · both finalists → MSI, LYON → EWC', done:true,
+   d:{ dates:'4 Apr – 14 Jun 2026', host:'Riot Games Arena, Los Angeles',
+       fmt:'8 teams · Bo3 single round robin into a six-team double-elim playoff, all Bo5. The champion took the MSI bracket seed plus the EWC spot; the runner-up went to the MSI play-in. LYON went back-to-back after the Lock-In — and carried it into a 3rd-place MSI run.',
+       podium:[['LYON','Champions · MSI bracket seed + EWC spot'],['Team Liquid Alienware','Runners-up — MSI play-in seed'],['Cloud9 KIA','3rd — missed MSI by one series']],
+       teams:[], results:[],
+       brackets:[{title:'Playoffs — full 6-team double elimination', cols:5, matches:[
+         {g:'Upper Semifinals', col:1,row:1, a:'Cloud9 KIA',sa:3, b:'FlyQuest',sb:2},
+         {g:'Upper Semifinals', col:1,row:1, a:'LYON',sa:3, b:'Team Liquid Alienware',sb:2},
+         {g:'Upper Final', col:2,row:1, a:'LYON',sa:3, b:'Cloud9 KIA',sb:0},
+         {g:'Lower Quarterfinals', col:2,row:2, a:'FlyQuest',sa:3, b:'Sentinels',sb:0},
+         {g:'Lower Quarterfinals', col:2,row:2, a:'Team Liquid Alienware',sa:3, b:'Shopify Rebellion',sb:0},
+         {g:'Lower Semifinal', col:3,row:2, a:'Team Liquid Alienware',sa:3, b:'FlyQuest',sb:1},
+         {g:'Lower Final', col:4,row:2, a:'Team Liquid Alienware',sa:3, b:'Cloud9 KIA',sb:0},
+         {g:'Grand Final', col:5,row:0, a:'LYON',sa:3, b:'Team Liquid Alienware',sb:0}]}],
+       wiki:'https://lol.fandom.com/wiki/LCS/2026_Season/Spring_Playoffs', liqui:'https://liquipedia.net/leagueoflegends/LCS/2026/Spring/Playoffs' }},
+  {date:'12 Jul', ev:'MSI', champ:'Hanwha Life Esports', detail:'def. BLG 3–2 · Daejeon · FMVP: Zeus · ends BLG\'s Golden Road · Kanavi steals Baron in game 5', done:true,
+   d:{ dates:'Late Jun – 12 Jul 2026', host:'Daejeon, South Korea', slug:'msi',
+       fmt:'11 teams: two seeds from LCK, LPL, LEC, LCS and LCP plus the CBLOL champion. Play-in feeds an 8-team double-elim bracket; the LPL held two bracket byes as First Stand winners. Winner earns a Worlds slot (conditional on reaching domestic playoffs).',
+       podium:[['Hanwha Life Esports','Champions · FMVP: Zeus'],['Bilibili Gaming','Runners-up — Golden Road ends'],['LYON','3rd — beat G2 en route']],
+       teams:['Hanwha Life Esports','T1','Bilibili Gaming','Top Esports','G2 Esports','Karmine Corp','LYON','Team Liquid Alienware','Team Secret Whales','Relove Deep Cross Gaming','FURIA'], teamsNote:'the full 11-team field',
+       results:[],
+       brackets:[
+        {title:'Play-In — all six series ended 3-0', cols:4, matches:[
+         {g:'Round 1', col:1,row:1, a:'T1',sa:3, b:'Team Liquid Alienware',sb:0},
+         {g:'Round 1', col:1,row:1, a:'Karmine Corp',sa:3, b:'Relove Deep Cross Gaming',sb:0},
+         {g:'Round 2', col:2,row:1, a:'T1',sa:3, b:'Karmine Corp',sb:0},
+         {g:'Lower Round 1', col:2,row:2, a:'Team Liquid Alienware',sa:3, b:'Relove Deep Cross Gaming',sb:0},
+         {g:'Lower Round 2', col:3,row:2, a:'Team Liquid Alienware',sa:3, b:'Karmine Corp',sb:0},
+         {g:'Qualification', col:4,row:0, a:'T1',sa:3, b:'Team Liquid Alienware',sb:0}]},
+        {title:'Bracket Stage', cols:6, matches:[
+         {g:'Upper Quarterfinals', col:1,row:1, a:'Bilibili Gaming',sa:null, b:'T1',sb:null, w:0},
+         {g:'Upper Quarterfinals', col:1,row:1, a:'Top Esports',sa:2, b:'G2 Esports',sb:3},
+         {g:'Upper Quarterfinals', col:1,row:1, a:'Hanwha Life Esports',sa:3, b:'Team Secret Whales',sb:0},
+         {g:'Upper Quarterfinals', col:1,row:1, a:'LYON',sa:3, b:'FURIA',sb:0},
+         {g:'Upper Semifinals', col:2,row:1, a:'Hanwha Life Esports',sa:3, b:'G2 Esports',sb:0},
+         {g:'Upper Semifinals', col:2,row:1, a:'Bilibili Gaming',sa:3, b:'LYON',sb:0},
+         {g:'Upper Final', col:3,row:1, a:'Bilibili Gaming',sa:3, b:'Hanwha Life Esports',sb:1},
+         {g:'Lower Round 1', col:2,row:2, a:'T1',sa:3, b:'FURIA',sb:0},
+         {g:'Lower Round 1', col:2,row:2, a:'Team Secret Whales',sa:3, b:'Top Esports',sb:1},
+         {g:'Lower Round 2', col:3,row:2, a:'G2 Esports',sa:3, b:'T1',sb:1},
+         {g:'Lower Round 2', col:3,row:2, a:'LYON',sa:3, b:'Team Secret Whales',sb:0},
+         {g:'Lower Round 3', col:4,row:2, a:'LYON',sa:3, b:'G2 Esports',sb:0},
+         {g:'Lower Final', col:5,row:2, a:'Hanwha Life Esports',sa:3, b:'LYON',sb:2},
+         {g:'Grand Final', col:6,row:0, a:'Hanwha Life Esports',sa:3, b:'Bilibili Gaming',sb:2}]}],
+       wiki:'https://lol.fandom.com/wiki/2026_Mid-Season_Invitational', liqui:'https://liquipedia.net/leagueoflegends/Mid-Season_Invitational/2026' }},
+  {date:'19 Jul', ev:'Esports World Cup', champ:'Dplus KIA', detail:'def. Karmine Corp 3–0 · Paris · Gen.G 3rd · non-Riot, Riot-sanctioned', done:true,
+   d:{ dates:'15–19 Jul 2026', host:'Porte de Versailles, Paris (moved from Riyadh)', slug:'ewc',
+       fmt:'16 teams: regional champions + reigning EWC champion + 9 online qualifiers · $2M prize pool · Bo1 group marathon into single-elim playoffs. Not Riot-run, but officially sanctioned.',
+       podium:[['Dplus KIA','Champions — $600k'],['Karmine Corp','Runners-up'],['Gen.G','3rd — two-time defending champions dethroned']],
+       teams:['Dplus KIA','Karmine Corp','Gen.G','Hanwha Life Esports','T1','AG.AL','Team Secret','GAM Esports','MIBR.LOS','Movistar KOI','Sentinels'], teamsNote:'confirmed attendees from coverage — full 16-team field on Liquipedia',
+       results:[],
+       brackets:[{title:'Playoffs — single elimination (QF/SF Bo3, Final Bo5)', note:'Group marathon on Liquipedia', cols:3, matches:[
+         {g:'Quarterfinals', col:1,row:1, a:'T1',sa:2, b:'Hanwha Life Esports',sb:0},
+         {g:'Quarterfinals', col:1,row:1, a:'Karmine Corp',sa:2, b:'AG.AL',sb:0},
+         {g:'Quarterfinals', col:1,row:1, a:'Gen.G',sa:2, b:'JD Gaming',sb:0},
+         {g:'Quarterfinals', col:1,row:1, a:'Dplus KIA',sa:2, b:'Bilibili Gaming',sb:1},
+         {g:'Semifinals', col:2,row:1, a:'Karmine Corp',sa:2, b:'T1',sb:1},
+         {g:'Semifinals', col:2,row:1, a:'Dplus KIA',sa:2, b:'Gen.G',sb:1},
+         {g:'Grand Final', col:3,row:1, a:'Dplus KIA',sa:3, b:'Karmine Corp',sb:0},
+         {g:'3rd Place Match', col:3,row:2, a:'Gen.G',sa:2, b:'T1',sb:1}]}],
+       wiki:'https://lol.fandom.com/wiki/Esports_World_Cup_2026', liqui:'https://liquipedia.net/leagueoflegends/Esports_World_Cup/2026' }},
+  {date:'Aug', ev:'KeSPA Cup', champ:'In progress', detail:'Running now alongside LCK Rounds 3–4', done:false,
+   d:{ dates:'August 2026 · in progress', host:'South Korea', upcoming:true,
+       fmt:'Korea\'s traditional off-circuit cup, running alongside LCK Rounds 3–4 with LCK and Challengers sides involved.',
+       podium:[], teams:[], results:[],
+       wiki:'https://lol.fandom.com/wiki/KeSPA_Cup_2026', liqui:'https://liquipedia.net/leagueoflegends/KeSPA_Cup/2026' }},
+  {date:'Oct–Nov', ev:'Worlds 2026', champ:'North America', detail:'Final: Barclays Center, NYC · 14 Nov · T1 three-time defending champions', done:false,
+   d:{ dates:'October – 14 November 2026', host:'United States · Final: Barclays Center, Brooklyn NYC', slug:'worlds', upcoming:true,
+       fmt:'The World Championship comes to North America. HLE\'s MSI title carries a conditional auto-qualification; the LCK, LPL, LEC and LCS each send their top three from the summer playoffs. T1 defend a three-peat.',
+       podium:[], teams:[], results:[],
+       wiki:'https://lol.fandom.com/wiki/2026_Season_World_Championship', liqui:'https://liquipedia.net/leagueoflegends/World_Championship/2026' }}
+];
+
+const STORYLINES = [
+  '<b style="color:var(--text)">The Golden Road that wasn\'t.</b> BLG won First Stand, both LPL splits and ran the MSI upper bracket — then HLE beat them twice in a week, closing the 3–2 final off a Kanavi Baron steal.',
+  '<b style="color:var(--text)">HLE\'s rebuild paid off instantly.</b> Last in the LCK Cup, then restructured around Zeus, Gumayusi, Kanavi and Zeka — first international title in org history. Zeus is now the second player ever (after Faker) with both Worlds and MSI Finals MVP.',
+  '<b style="color:var(--text)">Europe is back in finals.</b> G2 made the First Stand final (beating Gen.G en route) and Karmine Corp made the EWC final. Neither closed, but the LEC has two international finalists in one year.',
+  '<b style="color:var(--text)">The LCS returns.</b> The LTA lasted one season; NA is back to an 8-team LCS with partner + guest teams. Summer runs 25 Jul – 4 Oct.',
+  '<b style="color:var(--text)">Road to NYC.</b> Worlds comes to North America with the final at Barclays Center — T1 defending a three-peat.'
+];
+
+/* Mirror of lolesports.com official Global Power Rankings — updated 9 Aug 2026 */
+const POWER_RANKINGS_ASOF = '9 Aug 2026';
+const POWER_RANKINGS = [
+  {t:'Bilibili Gaming',     r:'LPL', pts:1552, wl:'41-9',  move:0},
+  {t:'Hanwha Life Esports', r:'LCK', pts:1546, wl:'23-10', move:0},
+  {t:'T1',                  r:'LCK', pts:1512, wl:'26-11', move:0},
+  {t:'Gen.G',               r:'LCK', pts:1500, wl:'27-8',  move:0},
+  {t:'G2 Esports',          r:'LEC', pts:1473, wl:'28-13', move:0},
+  {t:'LYON',                r:'LCS', pts:1458, wl:'20-8',  move:0},
+  {t:'Top Esports',         r:'LPL', pts:1420, wl:'24-18', move:0},
+  {t:'Karmine Corp',        r:'LEC', pts:1405, wl:'29-11', move:1},
+  {t:'Anyone\'s Legend',    r:'LPL', pts:1400, wl:'26-14', move:1},
+  {t:'kt Rolster',          r:'LCK', pts:1396, wl:'18-12', move:-2}
+];
+
+/* -------- state -------- */
+let leagueIds = JSON.parse(localStorage.getItem(LS('leagueIds')) || 'null'); // {lec:id,...}
+let scheduleCache = {};  // slug -> events[]
+let liveEvents = [];
+let apiOk = null;
+
+const $ = s => document.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if(cls) e.className = cls; if(html!=null) e.innerHTML = html; return e; };
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* -------- team logos (harvested from API, cached locally) -------- */
+let teamLogos = JSON.parse(localStorage.getItem(LS('logos')) || '{}'); // normalised name -> url
+const nk = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+
+function addLogo(name, code, url) {
+  if (!name || !url) return;
+  url = url.replace(/^http:/,'https:');
+  teamLogos[nk(name)] = url;
+  if (code) teamLogos[nk(code)] = url;
+}
+function harvestLogos(events) {
+  for (const ev of events||[])
+    for (const t of ev.match?.teams||[]) addLogo(t.name, t.code, t.image);
+}
+async function fetchAllTeams() {
+  const last = +localStorage.getItem(LS('teamsFetched')) || 0;
+  if (Date.now() - last < 7*24*3600e3 && Object.keys(teamLogos).length > 40) return;
+  try {
+    const data = await api('/getTeams');
+    for (const t of data.data.teams||[]) addLogo(t.name, t.code, t.image);
+    localStorage.setItem(LS('teamsFetched'), String(Date.now()));
+  } catch(e){}
+}
+const LOGO_ALIAS = { 'agal':'anyoneslegend', 'teamsecretwhales':'secretwhales', 'relovedeepcrossgaming':'deepcrossgaming', 'geng':'gengesports', 'gengesports':'geng', 'jdgaming':'jdg', 'jdg':'jdgaming', 'cloud9kia':'cloud9' };
+function findLogo(name) {
+  const key = nk(name);
+  if (teamLogos[key]) return teamLogos[key];
+  if (LOGO_ALIAS[key] && teamLogos[LOGO_ALIAS[key]]) return teamLogos[LOGO_ALIAS[key]];
+  // substring fallback: 'Team Liquid Alienware' -> 'teamliquid', 'Relove Deep Cross Gaming' -> 'deepcrossgaming'
+  if (key.length >= 4) {
+    for (const k of Object.keys(teamLogos)) {
+      if (k.length >= 4 && (key.includes(k) || k.includes(key))) return teamLogos[k];
+    }
+  }
+  return null;
+}
+function logoHTML(name) {
+  const url = findLogo(name);
+  const initials = esc(String(name||'?').split(/\s+/).map(w=>w[0]||'').join('').slice(0,3).toUpperCase());
+  if (!url) return `<span class="twrap"><span class="tmono only">${initials}</span></span>`;
+  return `<span class="twrap"><img class="tlogo" src="${esc(url)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'"><span class="tmono">${initials}</span></span>`;
+}
+
+/* =====================================================================
+   API LAYER
+===================================================================== */
+/* Transports: direct first, then public CORS proxies. A page opened from a
+   file:// URL (or some in-app browsers) has a null origin and the direct call
+   is blocked before it leaves the device — the proxy route rescues that case.
+   The working transport is remembered so later calls skip the dead ones.      */
+const PROXIES = ['', 'https://corsproxy.io/?url=', 'https://api.codetabs.com/v1/proxy?quest='];
+let transport = Math.min(PROXIES.length-1, Math.max(0, +localStorage.getItem(LS('transport')) || 0));
+let lastApiError = '';
+
+async function apiOnce(url, prefix) {
+  const target = prefix ? prefix + encodeURIComponent(url.toString()) : url.toString();
+  const res = await fetch(target, { headers: { 'x-api-key': API_KEY } });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+async function api(path, params={}) {
+  const url = new URL(API + path);
+  url.searchParams.set('hl', HL);
+  for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
+  const order = [transport, ...PROXIES.map((_,i) => i).filter(i => i !== transport)];
+  let err = null;
+  for (const i of order) {
+    try {
+      const out = await apiOnce(url, PROXIES[i]);
+      if (i !== transport) { transport = i; localStorage.setItem(LS('transport'), String(i)); }
+      lastApiError = '';
+      return out;
+    } catch (e) { err = e; }
+  }
+  lastApiError = (err && err.message) ? err.message : 'network error';
+  throw err || new Error('network error');
+}
+
+let allLeagues = JSON.parse(localStorage.getItem(LS('allLeagues')) || '{}'); // every slug -> id
+async function resolveLeagues() {
+  if (leagueIds && Object.keys(leagueIds).length === 4 && Object.keys(allLeagues).length) return leagueIds;
+  const data = await api('/getLeagues');
+  const out = {};
+  for (const lg of data.data.leagues) {
+    const slug = (lg.slug||'').toLowerCase();
+    allLeagues[slug] = lg.id;
+    if (REGIONS[slug]) out[slug] = lg.id;
+  }
+  if (Object.keys(out).length) {
+    leagueIds = out;
+    localStorage.setItem(LS('leagueIds'), JSON.stringify(out));
+    localStorage.setItem(LS('allLeagues'), JSON.stringify(allLeagues));
+  }
+  return leagueIds;
+}
+
+async function fetchSchedule(slug) {
+  const id = leagueIds?.[slug];
+  if (!id) return [];
+  const first = await api('/getSchedule', { leagueId:id });
+  let events = first.data.schedule.events || [];
+  // pull one page of history so completed results + records have depth
+  const older = first.data.schedule.pages?.older;
+  if (older) {
+    try {
+      const prev = await api('/getSchedule', { leagueId:id, pageToken: older });
+      events = (prev.data.schedule.events||[]).concat(events);
+    } catch(e){}
+  }
+  // de-dupe by match id + start time
+  const seen = new Set();
+  events = events.filter(ev => {
+    const k = (ev.match?.id||'') + ev.startTime;
+    if (seen.has(k)) return false; seen.add(k); return true;
+  });
+  scheduleCache[slug] = events;
+  return events;
+}
+
+async function fetchLive() {
+  const data = await api('/getLive');
+  liveEvents = data.data.schedule?.events || [];
+  return liveEvents;
+}
+
+/* -------- official standings -------- */
+let standingsCache = JSON.parse(localStorage.getItem(LS('standings')) || '{}'); // slug -> [{ordinal,name,code,wins,losses}]
+
+async function fetchStandings(slug) {
+  const id = leagueIds?.[slug];
+  if (!id) return null;
+  try {
+    const tData = await api('/getTournamentsForLeague', { leagueId:id });
+    const tours = tData.data?.leagues?.[0]?.tournaments || [];
+    const now = Date.now();
+    let cur = tours.find(t => Date.parse(t.startDate) <= now && now <= Date.parse(t.endDate) + 86400e3);
+    if (!cur) cur = tours.filter(t => Date.parse(t.startDate) <= now).sort((a,b)=>Date.parse(b.startDate)-Date.parse(a.startDate))[0];
+    if (!cur) return null;
+    let sData;
+    try { sData = await api('/getStandingsV3', { tournamentId: cur.id }); }
+    catch(e) { sData = await api('/getStandings', { tournamentId: cur.id }); }
+    // pick the STAGE covering the most unique teams, then merge all of its
+    // sections — group-split seasons (e.g. LCK Split 3) return one section
+    // per group, and taking just the biggest section drops half the league
+    let bestStage = null, bestCount = 0;
+    for (const s of sData.data?.standings || [])
+      for (const stage of s.stages || []) {
+        const seen = new Set();
+        for (const sec of stage.sections || [])
+          for (const rk of sec.rankings || [])
+            for (const t of rk.teams || []) seen.add(t.id || t.name);
+        if (seen.size > bestCount) { bestCount = seen.size; bestStage = stage; }
+      }
+    if (!bestStage) return null;
+    const secs = (bestStage.sections || []).filter(sec => sec.rankings?.length);
+    if (!secs.length) return null;
+    const rows = [];
+    const dup = new Set();
+    for (const sec of secs) {
+      const gname = sec.name || '';
+      for (const rk of sec.rankings) {
+        for (const t of rk.teams || []) {
+          const k = t.id || t.name;
+          if (dup.has(k)) continue; dup.add(k);
+          addLogo(t.name, t.code, t.image);
+          rows.push({ ordinal: rk.ordinal, gordinal: rk.ordinal, group: gname,
+                      name: t.name, code: t.code,
+                      wins: t.record?.wins ?? 0, losses: t.record?.losses ?? 0 });
+        }
+      }
+    }
+    const merged = secs.length > 1;
+    if (merged) {
+      // group ordinals aren't comparable across groups — re-rank by record
+      rows.sort((a,b) => (b.wins - a.wins) || (a.losses - b.losses) || String(a.name).localeCompare(b.name));
+      rows.forEach((r,i) => {
+        r.ordinal = (i > 0 && rows[i-1].wins === r.wins && rows[i-1].losses === r.losses)
+          ? rows[i-1].ordinal : i + 1;
+      });
+    }
+    if (rows.length) {
+      standingsCache[slug] = { tourn: (cur.slug || '') + (merged ? ' \u00B7 groups combined' : ''), start: cur.startDate || '', rows };
+      localStorage.setItem(LS('standings'), JSON.stringify(standingsCache));
+    }
+    return standingsCache[slug];
+  } catch(e) { return null; }
+}
+
+/* =====================================================================
+   RENDER HELPERS
+===================================================================== */
+function fmtCountdown(iso) {
+  const ms = new Date(iso) - Date.now();
+  if (ms <= 0) return 'starting now';
+  const m = Math.floor(ms/60000), h = Math.floor(m/60), d = Math.floor(h/24);
+  if (d >= 1) return `in ${d}d ${h%24}h`;
+  if (h >= 1) return `in ${h}h ${m%60}m`;
+  return `in ${m}m`;
+}
+function fmtWhen(iso) {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
+  const time = d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  return {day, time};
+}
+
+/* short team label: prefer the API's official code (FNC, KC, G2), else build
+   one from the name so a code-less entry still fits the narrow panels */
+function teamAbbr(t) {
+  if (!t) return 'TBD';
+  const name = t.name || 'TBD';
+  if (t.code) return t.code.toUpperCase();
+  if (name === 'TBD') return 'TBD';
+  const words = name.replace(/[^A-Za-z0-9 ]/g,'').split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].slice(0,4).toUpperCase();
+  return words.map(w => w[0]).join('').slice(0,4).toUpperCase();
+}
+
+function matchRow(ev) {
+  const t = ev.match?.teams || [];
+  const a = t[0]||{}, b = t[1]||{};
+  const live = ev.state === 'inProgress';
+  const done = ev.state === 'completed';
+  const {day,time} = fmtWhen(ev.startTime);
+  const strat = ev.match?.strategy?.count ? 'Bo'+ev.match.strategy.count : '';
+  let score;
+  if (done || live) {
+    const aw = a.result?.gameWins ?? 0, bw = b.result?.gameWins ?? 0;
+    const aWin = a.result?.outcome === 'win';
+    const bWin = b.result?.outcome === 'win';
+    score = `<span class="${aWin?'w':(done?'l':'')}">${aw}</span> – <span class="${bWin?'w':(done?'l':'')}">${bw}</span>`;
+  } else {
+    score = time;
+  }
+  const row = el('div','match'+(live?' is-live':''));
+  const bothTBD = (!a.name || a.name==='TBD') && (!b.name || b.name==='TBD');
+  if (live && bothTBD) {
+    row.innerHTML = `
+    <div class="when"><span class="live-chip">LIVE</span><span class="d">${esc(day)}</span></div>
+    <div style="grid-column:2/-1;font-weight:600">${esc((ev.league?.name||'League'))} broadcast is live — match details not yet posted</div>`;
+    return row;
+  }
+  row.innerHTML = `
+    <div class="when">${live?'<span class="live-chip">LIVE</span>':esc(time)}<span class="d">${esc(day)}</span></div>
+    <div class="t1">${a.result?.outcome==='win'?'<span class="winner-tag">◆</span>':''}<span class="nm" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</span>${logoHTML(a.name)}</div>
+    <div><span class="score">${score}</span></div>
+    <div class="t2">${logoHTML(b.name)}<span class="nm" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</span>${b.result?.outcome==='win'?'<span class="winner-tag">◆</span>':''}</div>
+    <div class="meta">${(!done && !live && bigMatch(ev))?BIG_BADGE+'<br>':''}${esc(ev.blockName||'')}${strat?' · '+strat:''}</div>`;
+  if (done && ev.match?.id) {
+    const meta = row.querySelector('.meta');
+    const btn = el('button','vod-btn','▶ VOD');
+    btn.addEventListener('click', () => loadVods(btn, ev.match.id));
+    meta.appendChild(document.createElement('br'));
+    meta.appendChild(btn);
+  }
+  return row;
+}
+
+async function loadVods(btn, matchId) {
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const data = await api('/getEventDetails', { id: matchId });
+    const games = data.data?.event?.match?.games || [];
+    let first = null;
+    for (const g of games) {
+      const yts = (g.vods||[]).filter(v => (v.provider||'').toLowerCase()==='youtube' && v.parameter);
+      // prefer the official English broadcast VOD; fall back to any YouTube VOD
+      const v = yts.find(v => (v.locale||'').toLowerCase().startsWith('en')) || yts[0];
+      if (v) { first = v.parameter; break; }
+    }
+    if (first) {
+      const a = el('a','vod-btn','▶ Watch VOD');
+      a.href = 'https://www.youtube.com/watch?v=' + encodeURIComponent(first);
+      a.target = '_blank'; a.rel = 'noopener';
+      a.style.textDecoration = 'none';
+      btn.replaceWith(a);
+    } else {
+      btn.textContent = 'no VOD yet';
+    }
+  } catch(e) {
+    btn.textContent = 'VOD n/a';
+  }
+}
+
+/* Aggregate a W/L table from completed events in the most recent tournament block */
+function computeRecords(events) {
+  const done = events.filter(e => e.state==='completed' && e.match?.teams?.length===2);
+  if (!done.length) return null;
+  const rec = {};
+  for (const ev of done) {
+    for (const t of ev.match.teams) {
+      if (!t.name || t.name==='TBD') continue;
+      rec[t.name] = rec[t.name] || {w:0,l:0,last:[]};
+      const won = t.result?.outcome==='win';
+      rec[t.name][won?'w':'l']++;
+      rec[t.name].last.push(won?'W':'L');
+    }
+  }
+  return Object.entries(rec)
+    .map(([name,r]) => ({name, ...r, pct: r.w/(r.w+r.l)}))
+    .sort((x,y) => y.pct - x.pct || y.w - x.w);
+}
+
+/* fetched events restricted to the CURRENT split \u2014 the schedule cache pulls a
+   page of history that can cross split boundaries; the standings fetch knows
+   the current tournament's start date, so trim to it (1-day slack for TZ).
+   Falls back to everything until the first standings fetch lands. */
+function splitEvents(slug) {
+  const all = scheduleCache[slug] || [];
+  const st = standingsCache[slug]?.start ? Date.parse(standingsCache[slug].start) : NaN;
+  if (!isFinite(st)) return all;
+  return all.filter(ev => Date.parse(ev.startTime) >= st - 86400e3);
+}
+
+/* top-10 clash detection against the baked-in power rankings */
+function isTop10(name) {
+  if (!name || name==='TBD') return false;
+  const k = nk(name);
+  return POWER_RANKINGS.some(r => nk(r.t) === k);
+}
+function bigMatch(ev) {
+  const t = ev.match?.teams || [];
+  return t.length===2 && isTop10(t[0]?.name) && isTop10(t[1]?.name);
+}
+const BIG_BADGE = '<span class="big-badge">\u2694 Top-10 clash</span>';
+
+/* chronological form + streak per team from completed events */
+function computeForm(events) {
+  const done = (events||[])
+    .filter(e => e.state==='completed' && e.match?.teams?.length===2)
+    .sort((a,b) => new Date(a.startTime) - new Date(b.startTime));
+  const f = {};
+  for (const ev of done) {
+    for (const t of ev.match.teams) {
+      if (!t.name || t.name==='TBD') continue;
+      const k = nk(t.name);
+      f[k] = f[k] || [];
+      f[k].push(t.result?.outcome==='win');
+    }
+  }
+  const out = {};
+  for (const [k,arr] of Object.entries(f)) {
+    const last5 = arr.slice(-5);
+    let n = 0; const w = arr[arr.length-1];
+    for (let i=arr.length-1; i>=0 && arr[i]===w; i--) n++;
+    out[k] = {
+      dots: last5.map(x => `<span class="${x?'fw':'fl'}">\u25CF</span>`).join('') +
+            '<span class="fe">' + '\u00B7'.repeat(Math.max(0,5-last5.length)) + '</span>',
+      streak: (w?'W':'L') + n,
+      sw: w,
+      w5: last5.filter(Boolean).length,
+      n5: last5.length
+    };
+  }
+  return out;
+}
+function formCells(form, name) {
+  const f = form[nk(name)];
+  if (!f) return '<td><span class="form-dots"><span class="fe">\u00B7\u00B7\u00B7\u00B7\u00B7</span></span></td><td class="num">\u2014</td>';
+  return `<td><span class="form-dots">${f.dots}</span></td><td class="num"><span class="${f.sw?'streak-w':'streak-l'}">${f.streak}</span></td>`;
+}
+
+/* merged cross-region agenda for the Home tab */
+function renderAgenda() {
+  const box = $('#homeAgenda'); if (!box) return;
+  const now = Date.now(), horizon = now + 48*3600*1000;
+  let all = [];
+  for (const slug of Object.keys(REGIONS))
+    for (const ev of (scheduleCache[slug]||[]))
+      if (ev.state==='unstarted') all.push({slug, ev});
+  all.sort((a,b) => new Date(a.ev.startTime) - new Date(b.ev.startTime));
+  let list = all.filter(x => { const t = +new Date(x.ev.startTime); return t >= now-3600e3 && t <= horizon; });
+  let sub = 'all regions \u00B7 local time';
+  if (!list.length) { list = all.slice(0,8); sub = 'nothing in 48h \u2014 next fixtures shown'; }
+  const subEl = $('#agendaSub'); if (subEl) subEl.textContent = sub;
+  if (!list.length) {
+    box.innerHTML = `<div class="loading">${apiOk===false ? 'API unreachable \u2014 schedules will appear once it responds.' : 'No upcoming fixtures in the fetched window.'}</div>`;
+    return;
+  }
+  box.innerHTML = '';
+  let lastDay = '';
+  for (const {slug, ev} of list) {
+    const R = REGIONS[slug];
+    const {day,time} = fmtWhen(ev.startTime);
+    if (day !== lastDay) { box.appendChild(el('div','ag-day', esc(day))); lastDay = day; }
+    const t = ev.match?.teams||[];
+    const strat = ev.match?.strategy?.count ? 'Bo'+ev.match.strategy.count : '';
+    const row = el('div','ag-row');
+    row.style.setProperty('--ag', R.color);
+    row.innerHTML = `<div class="ag-lg">${R.name}</div>
+      <div class="ag-vs">${logoHTML(t[0]?.name)} ${esc(t[0]?.name||'TBD')} <span class="code" style="color:var(--faint)">vs</span> ${logoHTML(t[1]?.name)} ${esc(t[1]?.name||'TBD')}${bigMatch(ev)?' '+BIG_BADGE:''}</div>
+      <div class="ag-when">${esc(time)}${strat?' <span style="color:var(--faint);font-size:10px">'+strat+'</span>':''}<span class="cdn">${esc(fmtCountdown(ev.startTime))}</span></div>`;
+    row.addEventListener('click', () => switchTab(slug));
+    box.appendChild(row);
+  }
+}
+
+/* =====================================================================
+   PAGE BUILDERS
+===================================================================== */
+function buildRegionPage(slug) {
+  const R = REGIONS[slug];
+  const page = $('#page-'+slug);
+  page.innerHTML = '';
+  page.style.setProperty('--rg', R.color);
+
+  const hero = el('div','region-hero');
+  hero.style.setProperty('--rg', R.color);
+  hero.innerHTML = `<h1>${R.name}</h1>
+    <div><div class="sub">${esc(R.full)}</div><div class="sub" style="color:var(--gold)">${esc(R.splitLabel)}</div></div>
+    <div class="links">
+      <a class="btn small" href="${R.wiki}" target="_blank" rel="noopener">Leaguepedia ↗</a>
+      <a class="btn small" href="${R.liqui}" target="_blank" rel="noopener">Liquipedia ↗</a>
+    </div>`;
+  page.appendChild(hero);
+
+  // watch panel (links, no embeds — embeds get blocked)
+  const sp = el('div','panel rg');
+  sp.style.setProperty('--rg', R.color);
+  sp.innerHTML = `<div class="p-head"><div class="p-title">Watch</div><span class="p-sub" id="strState-${slug}"></span></div>
+    <div id="watchLive-${slug}"></div>
+    <div class="watch-links" id="strLinks-${slug}"></div>
+    <div class="stream-note" id="strNote-${slug}"></div>`;
+  page.appendChild(sp);
+
+  // schedule + results
+  const two = el('div','two-col');
+  const sched = el('div','panel rg'); sched.style.setProperty('--rg', R.color);
+  sched.innerHTML = `<div class="p-head"><div class="p-title link" id="schedOpen-${slug}" role="button" tabindex="0" title="Open the full remaining schedule">Schedule <span class="chev">›</span></div><span class="p-sub">upcoming · local time</span></div>
+    <div id="sched-${slug}"><div class="loading">Loading…</div></div>`;
+  const res = el('div','panel rg'); res.style.setProperty('--rg', R.color);
+  res.innerHTML = `<div class="p-head"><div class="p-title">Recent Results</div><span class="p-sub">▶ VOD finds the YouTube links per game</span></div>
+    <div id="results-${slug}"><div class="loading">Loading…</div></div>`;
+  two.appendChild(sched); two.appendChild(res);
+  page.appendChild(two);
+  const schedBtn = sched.querySelector('#schedOpen-'+slug);
+  const openSched = () => openScheduleModal(slug);
+  schedBtn.addEventListener('click', openSched);
+  schedBtn.addEventListener('keydown', e => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); openSched(); } });
+
+  // standings table
+  const st = el('div','panel rg'); st.style.setProperty('--rg', R.color);
+  st.innerHTML = `<div class="p-head"><div class="p-title">Current Standings</div>
+      <span class="p-sub" id="tableSrc-${slug}">official standings via lolesports</span></div>
+    <div id="table-${slug}"><div class="loading">Loading…</div></div>`;
+  page.appendChild(st);
+
+  // playoff simulator
+  const sim = el('div','panel rg'); sim.style.setProperty('--rg', R.color);
+  sim.innerHTML = `<div class="p-head"><div class="p-title">Playoff Simulator</div>
+      <span class="p-sub">place teams in seeds, click a team to advance it</span>
+      <div class="right">
+        <button class="btn small" id="simSeed-${slug}">Seed from standings</button>
+        <button class="btn small" id="simFav-${slug}">Sim favourites</button>
+        <button class="btn small" id="simClearW-${slug}">Clear results</button>
+        <button class="btn small" id="simReset-${slug}">Reset all</button>
+      </div></div>
+    <div class="sim-toolbar">
+      <label class="p-sub" for="simFmt-${slug}">Format</label>
+      <select id="simFmt-${slug}">
+        <option value="de6">6-team double elim — LEC (seeds 1–4 upper, 5–6 lower)</option>
+        <option value="de6b">6-team double elim — LCK / LCS (seeds 1–2 bye to Round 2)</option>
+        <option value="de10">10-team double elim — LPL Split 3 (seeds 1–2 bye to Semis)</option>
+        <option value="de8">8-team double elimination</option>
+        <option value="se4">4-team single elimination</option>
+      </select>
+      <span class="p-sub">check <a href="${R.liqui}" target="_blank" rel="noopener">Liquipedia</a> for the confirmed bracket</span>
+    </div>
+    <div class="pool" id="simPool-${slug}"></div>
+    <div class="pool-add">
+      <input id="simAdd-${slug}" placeholder="Team missing? Type its name…" aria-label="Add a team to the pool manually">
+      <button class="btn small" id="simAddBtn-${slug}">+ Add</button>
+    </div>
+    <div class="bracket" id="simBracket-${slug}"></div>
+    <div id="simChamp-${slug}"></div>`;
+  page.appendChild(sim);
+
+  // region honours 2026
+  const hon = el('div','panel rg'); hon.style.setProperty('--rg', R.color);
+  const items = HONOURS.filter(h => regionHonourFilter(slug, h));
+  hon.innerHTML = `<div class="p-head"><div class="p-title">${R.name} · 2026 So Far</div></div>` +
+    (items.length ? items.map(h => honourHTML(h)).join('') : '<div class="loading">—</div>');
+  page.appendChild(hon);
+  wireHonours(hon);
+
+  renderWatch(slug, null);
+  initSim(slug);
+}
+
+function regionHonourFilter(slug, h) {
+  const pod = (h.d?.podium || []).map(x => x[0]).join(' ');
+  const s = (h.ev + ' ' + h.champ + ' ' + h.detail + ' ' + pod).toLowerCase();
+  if (slug==='lec') return /lec|g2|karmine|movistar/.test(s);
+  if (slug==='lck') return /lck|hanwha|gen\.g|dplus|t1|kespa/.test(s);
+  if (slug==='lpl') return /lpl|bilibili|top esports|anyone/.test(s);
+  if (slug==='lcs') return /lcs|lyon|lta|north america|barclays|team liquid|cloud9|flyquest|sentinels/.test(s);
+  return false;
+}
+
+function honourHTML(h) {
+  const idx = HONOURS.indexOf(h);
+  return `<div class="honour${h.done?'':' upcoming'}${h.d?' linked':''}" data-hidx="${idx}" ${h.d?'role="button" tabindex="0" title="Open tournament details"':''}>
+    <div class="date">${esc(h.date)}</div>
+    <div><div class="ev">${esc(h.ev)} — <span class="champ">${esc(h.champ)}</span></div>
+    <div class="detail">${esc(h.detail)}</div></div></div>`;
+}
+function wireHonours(container) {
+  container.querySelectorAll('.honour.linked').forEach(elm => {
+    const open = () => openHonour(+elm.dataset.hidx);
+    elm.addEventListener('click', open);
+    elm.addEventListener('keydown', e => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); open(); } });
+  });
+}
+
+/* =====================================================================
+   TOURNAMENT DETAIL MODAL
+===================================================================== */
+function resultBracketHTML(bd) {
+  // bd: {title, note, cols, matches:[{g,col,row,a,sa,b,sb,w}]}
+  const cells = {}; const order = [];
+  for (const m of bd.matches) {
+    const key = m.col + '-' + m.row;
+    if (!cells[key]) { cells[key] = {col:m.col, row:m.row, items:[]}; order.push(key); }
+    cells[key].items.push(m);
+  }
+  let inner = '';
+  for (const key of order) {
+    const c = cells[key];
+    let cell = `<div class="bcell" style="grid-column:${c.col};grid-row:${c.row===0?'1 / 3':c.row}">`;
+    let lastG = null;
+    for (const m of c.items) {
+      if (m.g !== lastG) { cell += `<span class="bgroup-label">${esc(m.g)}</span>`; lastG = m.g; }
+      const aWin = m.sa!=null ? m.sa > m.sb : m.w === 0;
+      const bWin = m.sa!=null ? m.sb > m.sa : m.w === 1;
+      const sc = x => m.sa==null ? '–' : x;
+      cell += `<div class="bmatch">
+        <div class="bslot${aWin?' winner':' eliminated'}">${logoHTML(m.a)}<span class="tname">${esc(m.a)}</span><span class="bs">${sc(m.sa)}</span></div>
+        <div class="bslot${bWin?' winner':' eliminated'}">${logoHTML(m.b)}<span class="tname">${esc(m.b)}</span><span class="bs">${sc(m.sb)}</span></div>
+      </div>`;
+    }
+    inner += cell + '</div>';
+  }
+  return `<div class="m-section"><div class="eyebrow">${esc(bd.title||'Bracket')}</div>
+    <div class="bracket" style="grid-template-columns:repeat(${bd.cols}, minmax(0,1fr));grid-template-rows:auto auto">${inner}</div>
+    ${bd.note?'<div class="bracket-note">'+esc(bd.note)+'</div>':''}</div>`;
+}
+
+function krScore(sa, sb) {
+  if (sa==null || sb==null) return '<span class="sc">won</span>';
+  return `<span class="sc"><span class="${sa>sb?'w':'l'}">${sa}</span> – <span class="${sb>sa?'w':'l'}">${sb}</span></span>`;
+}
+
+function openHonour(idx) {
+  const h = HONOURS[idx];
+  if (!h || !h.d) return;
+  const d = h.d;
+  closeModal();
+  const bg = el('div','modal-bg');
+  bg.id = 'tModal';
+  const box = el('div','modal');
+  let html = `<button class="modal-close" aria-label="Close">✕</button>
+    <div class="eyebrow">${esc(h.date)} 2026</div>
+    <h2>${esc(h.ev)}${h.done && h.champ !== 'In progress' ? ' — <span class="champ">'+esc(h.champ)+'</span>' : ''}</h2>
+    <div class="m-meta"><span>📅 <b>${esc(d.dates||'')}</b></span><span>📍 <b>${esc(d.host||'')}</b></span></div>
+    <div class="m-blurb">${esc(d.fmt||'')}</div>`;
+
+  if (d.upcoming) {
+    html += `<div class="m-upcoming"><span class="big">${h.done===false && h.champ==='In progress' ? 'IN PROGRESS' : 'UPCOMING'}</span><span class="d">${esc(d.dates||'')}</span></div>`;
+  }
+
+  const pod = (d.podium||[]).filter(x => x[0]);
+  if (pod.length) {
+    html += `<div class="m-section"><div class="eyebrow">Podium</div><div class="podium">` +
+      pod.map((x,i) => `<div class="step"><span class="medal">${['1st','2nd','3rd'][i]||''}</span>${logoHTML(x[0])}<span>${esc(x[0])}<div style="font-weight:400;font-size:11px;color:var(--dim)">${esc(x[1]||'')}</div></span></div>`).join('') +
+      `</div></div>`;
+  }
+
+  if ((d.teams||[]).length) {
+    html += `<div class="m-section"><div class="eyebrow">Teams</div><div class="team-chips">` +
+      d.teams.map(t => `<span class="chip">${logoHTML(t)}<span>${esc(t)}</span></span>`).join('') +
+      `</div>${d.teamsNote?'<div class="hint" style="margin-top:6px">'+esc(d.teamsNote)+'</div>':''}</div>`;
+  }
+
+  for (const bd of (d.brackets||[])) html += resultBracketHTML(bd);
+
+  if ((d.results||[]).length) {
+    html += `<div class="m-section"><div class="eyebrow">Key results</div>` +
+      d.results.map(r => `<div class="kr-row"><span class="rd">${esc(r.r)}</span>
+        <span class="a">${esc(r.a)}${logoHTML(r.a)}</span>${krScore(r.sa,r.sb)}<span class="b">${logoHTML(r.b)}${esc(r.b)}</span></div>`).join('') +
+      `</div>`;
+  }
+
+  if (d.slug && !d.upcoming) {
+    html += `<div class="m-section"><div class="eyebrow">Full match record</div><div id="modalResults"><div class="loading">Fetching every series from the lolesports archive…</div></div></div>`;
+  }
+
+  html += `<div class="m-links">
+    ${d.liqui?`<a class="btn small" href="${d.liqui}" target="_blank" rel="noopener">Bracket &amp; full field on Liquipedia ↗</a>`:''}
+    ${d.wiki?`<a class="btn small" href="${d.wiki}" target="_blank" rel="noopener">Leaguepedia ↗</a>`:''}
+  </div>`;
+
+  box.innerHTML = html;
+  bg.appendChild(box);
+  document.body.appendChild(bg);
+  document.body.style.overflow = 'hidden';
+  box.querySelector('.modal-close').addEventListener('click', closeModal);
+  bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
+  document.addEventListener('keydown', modalEsc);
+  if (d.slug && !d.upcoming) loadEventResults(d.slug);
+}
+function modalEsc(e){ if (e.key==='Escape') closeModal(); }
+function closeModal() {
+  const m = document.getElementById('tModal');
+  if (m) m.remove();
+  document.body.style.overflow = '';
+  document.removeEventListener('keydown', modalEsc);
+}
+
+/* -------- full remaining schedule for a region's current split -------- */
+function openScheduleModal(slug) {
+  const R = REGIONS[slug];
+  if (!R) return;
+  closeModal();
+  const now = Date.now();
+  const events = splitEvents(slug)
+    .filter(ev => ev.match?.teams?.length === 2 && (ev.state === 'unstarted' || ev.state === 'inProgress'))
+    .sort((a,b) => new Date(a.startTime) - new Date(b.startTime));
+  const bg = el('div','modal-bg'); bg.id = 'tModal';
+  const box = el('div','modal');
+  box.innerHTML = `<button class="modal-close" aria-label="Close">\u2715</button>
+    <div class="eyebrow">${esc(R.name)} \u00b7 ${esc(R.splitLabel)}</div>
+    <h2>Remaining Schedule</h2>
+    <div class="m-meta"><span>${events.length} ${events.length===1?'match':'matches'} still to play</span>
+      <span>All times local</span></div>
+    <div id="schedAll">${events.length ? '' : '<div class="loading">No upcoming fixtures in the fetched window \u2014 the rest of the calendar is on Liquipedia.</div>'}</div>
+    <div class="m-links"><a class="btn small" href="${R.liqui}" target="_blank" rel="noopener">Full calendar on Liquipedia \u2197</a>
+      <a class="btn small" href="${R.wiki}" target="_blank" rel="noopener">Leaguepedia \u2197</a></div>
+    <div class="hint" style="margin-top:8px">Fixtures the lolesports API has published \u2014 later weeks may not be scheduled yet.</div>`;
+  bg.appendChild(box);
+  document.body.appendChild(bg);
+  document.body.style.overflow = 'hidden';
+  const host = box.querySelector('#schedAll');
+  let lastDay = '', lastBlock = '';
+  for (const ev of events) {
+    const blk = ev.blockName || '';
+    if (blk && blk !== lastBlock) { host.appendChild(el('div','eyebrow sched-blk', esc(blk))); lastBlock = blk; lastDay = ''; }
+    const {day} = fmtWhen(ev.startTime);
+    if (day !== lastDay) { host.appendChild(el('div','ag-day', esc(day))); lastDay = day; }
+    const row = matchRow(ev);
+    const meta = row.querySelector('.meta');
+    if (meta && ev.state === 'unstarted') {
+      meta.appendChild(document.createElement('br'));
+      meta.appendChild(el('span','cdn-mini', esc(fmtCountdown(ev.startTime))));
+    }
+    host.appendChild(row);
+  }
+  box.querySelector('.modal-close').addEventListener('click', closeModal);
+  bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
+  document.addEventListener('keydown', modalEsc);
+}
+
+/* -------- team detail modal: every fetched game this split -------- */
+function openTeamModal(slug, name) {
+  const R = REGIONS[slug];
+  if (!R || !name) return;
+  closeModal();
+  const events = splitEvents(slug).filter(ev =>
+    ev.match?.teams?.length===2 && ev.match.teams.some(t => nk(t.name)===nk(name)));
+  const played = events.filter(e => e.state==='completed')
+    .sort((a,b) => new Date(b.startTime) - new Date(a.startTime));
+  const live = events.filter(e => e.state==='inProgress');
+  const up = events.filter(e => e.state==='unstarted')
+    .sort((a,b) => new Date(a.startTime) - new Date(b.startTime));
+  let w=0, l=0;
+  for (const ev of played) {
+    const me = ev.match.teams.find(t => nk(t.name)===nk(name));
+    if (me?.result?.outcome==='win') w++; else l++;
+  }
+  const form = computeForm(splitEvents(slug))[nk(name)];
+  const rt = buildSimCtx(slug).rating(name);
+  const bg = el('div','modal-bg'); bg.id = 'tModal';
+  const box = el('div','modal');
+  box.innerHTML = `<button class="modal-close" aria-label="Close">\u2715</button>
+    <div class="eyebrow">${esc(R.name)} \u00B7 ${esc(R.splitLabel)}</div>
+    <h2>${logoHTML(name)} ${esc(name)}</h2>
+    <div class="m-meta">
+      <span>Record <b>${w}\u2013${l}</b>${(w+l) ? ' ('+Math.round(w/(w+l)*100)+'%)' : ''}</span>
+      ${form ? `<span>Form <b><span class="form-dots">${form.dots}</span></b></span><span>Streak <b><span class="${form.sw?'streak-w':'streak-l'}">${form.streak}</span></b></span>` : ''}
+      <span>Model rating <b>${Math.round(rt.r)}</b> <span style="color:var(--faint)">(${rt.gpr?'GPR':'est.'} ${Math.round(rt.base)}${rt.splitAdj?` ${rt.splitAdj>0?'+':''}${Math.round(rt.splitAdj)} split`:''}${rt.formAdj?` ${rt.formAdj>0?'+':''}${Math.round(rt.formAdj)} form`:''})</span></span>
+    </div>
+    ${live.length ? '<div class="m-section"><div class="eyebrow">Live now</div><div id="tmLive"></div></div>' : ''}
+    ${up.length ? '<div class="m-section"><div class="eyebrow">Upcoming</div><div id="tmUp"></div></div>' : ''}
+    <div class="m-section"><div class="eyebrow">Played this split</div><div id="tmPlayed">${played.length ? '' : '<div class="loading">No completed games in the fetched window yet.</div>'}</div></div>
+    <div class="m-links"><a class="btn small" href="${R.liqui}" target="_blank" rel="noopener">Full split on Liquipedia \u2197</a></div>
+    <div class="hint" style="margin-top:8px">Current split only (from ${standingsCache[slug]?.start ? esc(standingsCache[slug].start.slice(0,10)) : 'the fetched window'}) \u2014 the earliest weeks of a long split can fall outside the fetched schedule pages.</div>`;
+  bg.appendChild(box);
+  document.body.appendChild(bg);
+  document.body.style.overflow = 'hidden';
+  live.forEach(ev => box.querySelector('#tmLive').appendChild(matchRow(ev)));
+  up.forEach(ev => box.querySelector('#tmUp').appendChild(matchRow(ev)));
+  played.forEach(ev => {
+    const row = matchRow(ev);
+    // on losses: this team's score goes red, the opponent's green is dropped
+    // so the row reads as a defeat rather than celebrating the winner
+    const i = ev.match.teams.findIndex(t => nk(t.name)===nk(name));
+    if (i > -1 && ev.match.teams[i].result?.outcome !== 'win') {
+      const sp = row.querySelectorAll('.score span');
+      if (sp[i]) { sp[i].classList.remove('l'); sp[i].classList.add('lo'); }
+      if (sp[1-i]) sp[1-i].classList.remove('w');
+    }
+    box.querySelector('#tmPlayed').appendChild(row);
+  });
+  box.querySelector('.modal-close').addEventListener('click', closeModal);
+  bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
+  document.addEventListener('keydown', modalEsc);
+}
+
+async function loadEventResults(slug) {
+  const target = () => document.getElementById('modalResults');
+  const cacheKey = LS('evres_' + slug);
+  const render = (events) => {
+    const box = target(); if (!box) return;
+    const done = events.filter(e => e.state==='completed' && e.match?.teams?.length===2);
+    if (!done.length) { box.innerHTML = '<div class="loading">No completed series in the archive for this event yet — the Liquipedia link below has the full bracket.</div>'; return; }
+    harvestLogos(done);
+    box.innerHTML = '';
+    let lastBlock = null;
+    for (const ev of done) {
+      const blk = ev.blockName || 'Matches';
+      if (blk !== lastBlock) { box.appendChild(el('div','stage-label', esc(blk))); lastBlock = blk; }
+      box.appendChild(matchRow(ev));
+    }
+  };
+  try {
+    if (!allLeagues[slug]) await resolveLeagues();
+    const id = allLeagues[slug];
+    if (!id) throw new Error('no league');
+    const first = await api('/getSchedule', { leagueId: id });
+    let events = first.data.schedule.events || [];
+    let older = first.data.schedule.pages?.older;
+    for (let i = 0; i < 3 && older; i++) {
+      const prev = await api('/getSchedule', { leagueId: id, pageToken: older });
+      events = (prev.data.schedule.events||[]).concat(events);
+      older = prev.data.schedule.pages?.older;
+    }
+    localStorage.setItem(cacheKey, JSON.stringify(events));
+    render(events);
+  } catch (e) {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    if (cached) render(cached);
+    else { const box = target(); if (box) box.innerHTML = '<div class="loading">Couldn\'t reach the archive — key results above still stand, and Liquipedia has every series.</div>'; }
+  }
+}
+
+/* -------- stream logic -------- */
+function findLiveFor(slug) {
+  return liveEvents.find(ev => (ev.league?.slug||'').toLowerCase() === slug && ev.state==='inProgress');
+}
+
+function renderWatch(slug, liveEv) {
+  const R = REGIONS[slug];
+  const box = $('#watchLive-'+slug), links = $('#strLinks-'+slug), note = $('#strNote-'+slug), state = $('#strState-'+slug);
+  if (!box) return;
+  links.innerHTML = '';
+  const addLink = (label, href) => { const a = el('a','btn small', label); a.href = href; a.target='_blank'; a.rel='noopener'; links.appendChild(a); };
+  if (R.yt) addLink('YouTube live ↗', R.yt);
+  if (R.vods) addLink('Past matches on YouTube ↗', R.vods);
+  if (R.twitch) addLink('Twitch ↗', R.twitch);
+  if (R.bili) addLink('Bilibili (LPL 直播间 6) ↗', R.bili);
+
+  if (liveEv) {
+    state.innerHTML = '<span class="live-chip">LIVE</span>';
+    const yts = (liveEv.streams||[]).filter(v => (v.provider||'').toLowerCase()==='youtube' && v.parameter);
+    const yt = yts.find(v => ((v.locale || v.mediaLocale?.locale || '')+'').toLowerCase().startsWith('en')) || yts[0];
+    const ytUrl = liveWatchUrl(liveEv);
+    box.innerHTML = `<div class="watch-live"><span class="live-chip">LIVE</span>
+      <b>${esc(liveLabel(liveEv))}</b>
+      ${ytUrl ? `<a class="btn-watchlive" href="${ytUrl}" target="_blank" rel="noopener">Watch live now on YouTube</a>` : ''}</div>`
+      + (ytUrl && location.protocol !== 'file:'
+          ? `<div class="watch-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(yt.parameter)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Live broadcast"></iframe></div>` : '');
+    note.textContent = ytUrl ? '' : 'Live now — open the channel links above.';
+  } else {
+    state.textContent = 'offline';
+    box.innerHTML = '';
+    const next = nextEventFor(slug);
+    note.textContent = next
+      ? 'Next: ' + teamsLabel(next) + ' · ' + fmtWhen(next.startTime).day + ' ' + fmtWhen(next.startTime).time + '. A direct link appears here when the league goes live (checked every 60s).'
+      : 'A direct link appears here when the league goes live (checked every 60s).';
+  }
+}
+
+function teamsLabel(ev) {
+  const t = ev.match?.teams||[];
+  return `${t[0]?.name||'TBD'} vs ${t[1]?.name||'TBD'}`;
+}
+function liveWatchUrl(ev) {
+  // 1) the official ENGLISH broadcast video from the API — the exact stream, not a co-stream or pre-show
+  const yts = (ev.streams||[]).filter(v => (v.provider||'').toLowerCase()==='youtube' && v.parameter);
+  const en = yts.find(v => ((v.locale || v.mediaLocale?.locale || '')+'').toLowerCase().startsWith('en'));
+  if (en) return 'https://www.youtube.com/watch?v=' + encodeURIComponent(en.parameter);
+  // 2) the league's own channel /live
+  const slug = (ev.league?.slug||'').toLowerCase();
+  if (REGIONS[slug]?.yt) return REGIONS[slug].yt;
+  // 3) any YouTube stream at all
+  return yts[0] ? 'https://www.youtube.com/watch?v=' + encodeURIComponent(yts[0].parameter) : null;
+}
+function liveLabel(ev) {
+  const t = ev.match?.teams||[];
+  const a = t[0]?.name, b = t[1]?.name;
+  if ((!a || a==='TBD') && (!b || b==='TBD')) return (ev.league?.name || 'League') + ' — broadcast live';
+  return teamsLabel(ev);
+}
+function nextEventFor(slug) {
+  return (scheduleCache[slug]||[]).find(e => e.state==='unstarted');
+}
+
+/* -------- fill schedule/results/table -------- */
+function renderRegionData(slug) {
+  const events = scheduleCache[slug] || [];
+  const up = events.filter(e => e.state==='unstarted').slice(0,4);
+  const live = events.filter(e => e.state==='inProgress');
+  const done = events.filter(e => e.state==='completed').slice(-4).reverse();
+
+  const schedEl = $('#sched-'+slug);
+  schedEl.innerHTML = '';
+  live.forEach(e => schedEl.appendChild(matchRow(e)));
+  if (up.length) up.forEach(e => schedEl.appendChild(matchRow(e)));
+  else if (!live.length) schedEl.innerHTML = '<div class="loading">No upcoming games in the fetched window — check the Leaguepedia link above for the full calendar.</div>';
+
+  const resEl = $('#results-'+slug);
+  resEl.innerHTML = '';
+  if (done.length) done.forEach(e => resEl.appendChild(matchRow(e)));
+  else resEl.innerHTML = '<div class="loading">No completed games fetched yet.</div>';
+
+  const tbl = $('#table-'+slug);
+  const srcLbl = $('#tableSrc-'+slug);
+  const std = standingsCache[slug];
+  const spEvents = splitEvents(slug);
+  const form = computeForm(spEvents);
+  const R2 = REGIONS[slug];
+  const HEAD = '<table class="tbl-big"><tr><th></th><th>Team</th><th class="num">W</th><th class="num">L</th><th class="num">Win%</th><th>Form</th><th class="num">Strk</th><th class="num" title="Games left in the regular season">GL</th></tr>';
+
+  /* cut config for a group name, matched loosely against REGIONS[].groupCuts */
+  const cutsFor = gname => {
+    if (!R2.groupCuts) return R2.cuts || null;
+    const k = nk(gname||'');
+    if (!k) return null;
+    for (const [key, cuts] of Object.entries(R2.groupCuts)) if (k.includes(key)) return cuts;
+    return null;   // unrecognised group -> draw no line rather than a wrong one
+  };
+  const cutClass = (cuts, rank, total) => {
+    if (!cuts || rank >= total) return '';           // never mark the last row
+    const c = cuts.find(c => c.after === rank);
+    return c ? (c.kind === 'pi' ? ' cutline-pi' : ' cutline') : '';
+  };
+  const rowHTML = (name, rank, w, l, cls) => {
+    const g = w + l;
+    const gl = Math.max(0, (R2.defaultGames||0) - g);
+    return `<tr class="t-click${cls}" data-tname="${esc(name)}" title="All ${esc(name)} games this split">
+      <td class="rank-cell">${rank}</td>
+      <td>${logoHTML(name)}${esc(name)}</td>
+      <td class="num">${w}</td><td class="num">${l}</td>
+      <td class="num">${g?Math.round(w/g*100)+'%':'—'}</td>
+      ${formCells(form, name)}
+      <td class="num">${gl}</td></tr>`;
+  };
+
+  if (std && std.rows?.length) {
+    if (srcLbl) srcLbl.textContent = 'official standings · ' + (std.tourn || 'current split');
+    // group-stage splits (LCK Legend/Rise, LPL Ascend/Nirvana) get one table per
+    // group, because qualification is decided within the group, not on a merged rank
+    const groups = [...new Set(std.rows.map(r => r.group || ''))].filter(Boolean);
+    let html = '';
+    if (groups.length > 1) {
+      for (const gname of groups) {
+        const rows = std.rows.filter(r => r.group === gname)
+          .sort((a,b) => (a.gordinal||0) - (b.gordinal||0));
+        const cuts = cutsFor(gname);
+        html += `<div class="grp-head">${esc(gname)}</div>` + HEAD;
+        rows.forEach((r,i) => {
+          html += rowHTML(r.name, r.gordinal ?? i+1, r.wins, r.losses, cutClass(cuts, i+1, rows.length));
+        });
+        html += '</table>';
+      }
+    } else {
+      const cuts = cutsFor(groups[0] || '');
+      html = HEAD;
+      std.rows.forEach((r,i) => {
+        html += rowHTML(r.name, r.ordinal, r.wins, r.losses, cutClass(cuts, i+1, std.rows.length));
+      });
+      html += '</table>';
+    }
+    tbl.innerHTML = html;
+  } else {
+    // fallback: estimate from fetched results (no group data available here)
+    const recs = computeRecords(spEvents);
+    if (srcLbl) srcLbl.textContent = 'estimated from fetched games — official table on Leaguepedia';
+    if (recs && recs.length) {
+      const cuts = R2.groupCuts ? null : (R2.cuts || null);   // can't place group cuts without groups
+      let html = HEAD;
+      recs.forEach((r,i) => {
+        html += rowHTML(r.name, i+1, r.w, r.l, cutClass(cuts, i+1, recs.length));
+      });
+      tbl.innerHTML = html + '</table>';
+    } else {
+      tbl.innerHTML = '<div class="loading">Standings appear once the API responds.</div>';
+    }
+  }
+  tbl.querySelectorAll('tr.t-click').forEach(row =>
+    row.addEventListener('click', () => openTeamModal(slug, row.dataset.tname)));
+}
+
+/* =====================================================================
+   PLAYOFF SIMULATOR
+   Formats define matches with slot sources: seed:N, w:MatchId, l:MatchId.
+   col/row place them in the grid (row 1 = upper, 2 = lower, 0 = spans).
+===================================================================== */
+const FORMATS = {
+  de6: { name:'6-team double elim', seeds:6, cols:5, matches:[
+    {id:'M1', g:'Upper Bracket – Round 1', col:1,row:1, s:['seed:1','seed:4']},
+    {id:'M2', g:'Upper Bracket – Round 1', col:1,row:1, s:['seed:2','seed:3']},
+    {id:'M6', g:'Upper Bracket – Round 2', col:2,row:1, s:['w:M1','w:M2']},
+    {id:'M3', g:'Lower Bracket – Round 1', col:2,row:2, s:['l:M1','seed:5']},
+    {id:'M4', g:'Lower Bracket – Round 1', col:2,row:2, s:['l:M2','seed:6']},
+    {id:'M5', g:'Lower Bracket – Round 2', col:3,row:2, s:['w:M3','w:M4']},
+    {id:'M7', g:'Lower Bracket – Round 3', col:4,row:2, s:['l:M6','w:M5']},
+    {id:'M8', g:'Finals', col:5,row:0, s:['w:M6','w:M7']} ]},
+  de8: { name:'8-team double elim', seeds:8, cols:6, matches:[
+    {id:'M1', g:'Upper Quarterfinals', col:1,row:1, s:['seed:1','seed:8']},
+    {id:'M2', g:'Upper Quarterfinals', col:1,row:1, s:['seed:4','seed:5']},
+    {id:'M3', g:'Upper Quarterfinals', col:1,row:1, s:['seed:2','seed:7']},
+    {id:'M4', g:'Upper Quarterfinals', col:1,row:1, s:['seed:3','seed:6']},
+    {id:'M5', g:'Upper Semifinals', col:2,row:1, s:['w:M1','w:M2']},
+    {id:'M6', g:'Upper Semifinals', col:2,row:1, s:['w:M3','w:M4']},
+    {id:'M7', g:'Upper Final', col:3,row:1, s:['w:M5','w:M6']},
+    {id:'M8', g:'Lower Round 1', col:2,row:2, s:['l:M1','l:M2']},
+    {id:'M9', g:'Lower Round 1', col:2,row:2, s:['l:M3','l:M4']},
+    {id:'M10', g:'Lower Round 2', col:3,row:2, s:['w:M8','l:M6']},
+    {id:'M11', g:'Lower Round 2', col:3,row:2, s:['w:M9','l:M5']},
+    {id:'M12', g:'Lower Round 3', col:4,row:2, s:['w:M10','w:M11']},
+    {id:'M13', g:'Lower Final', col:5,row:2, s:['w:M12','l:M7']},
+    {id:'M14', g:'Grand Final', col:6,row:0, s:['w:M7','w:M13']} ]},
+  de6b: { name:'6-team double elim, top-2 byes (LCK/LCS)', seeds:6, cols:6, matches:[
+    {id:'M1', g:'Round 1', col:1,row:1, s:['seed:3','seed:6']},
+    {id:'M2', g:'Round 1', col:1,row:1, s:['seed:4','seed:5']},
+    {id:'M3', g:'Round 2', col:2,row:1, s:['seed:1','w:M1']},
+    {id:'M4', g:'Round 2', col:2,row:1, s:['seed:2','w:M2']},
+    {id:'M5', g:'Upper Bracket Final', col:3,row:1, s:['w:M3','w:M4']},
+    {id:'M6', g:'Lower Bracket – Round 1', col:2,row:2, s:['l:M1','l:M2']},
+    {id:'M7', g:'Lower Bracket – Round 2', col:3,row:2, s:['w:M6','l:M4']},
+    {id:'M8', g:'Lower Bracket – Round 3', col:4,row:2, s:['w:M7','l:M3']},
+    {id:'M9', g:'Lower Bracket Final', col:5,row:2, s:['w:M8','l:M5']},
+    {id:'M10', g:'Grand Final', col:6,row:0, s:['w:M5','w:M9']} ]},
+  de10: { name:'10-team double elim (LPL Split 3)', seeds:10, cols:7, matches:[
+    {id:'M1', g:'Upper Quarterfinals', col:1,row:1, s:['seed:3','seed:10']},
+    {id:'M2', g:'Upper Quarterfinals', col:1,row:1, s:['seed:4','seed:9']},
+    {id:'M3', g:'Upper Quarterfinals', col:1,row:1, s:['seed:5','seed:8']},
+    {id:'M4', g:'Upper Quarterfinals', col:1,row:1, s:['seed:6','seed:7']},
+    {id:'M5', g:'Upper Round 2', col:2,row:1, s:['w:M1','w:M2']},
+    {id:'M6', g:'Upper Round 2', col:2,row:1, s:['w:M3','w:M4']},
+    {id:'M7', g:'Upper Semifinals', col:3,row:1, s:['seed:1','w:M5']},
+    {id:'M8', g:'Upper Semifinals', col:3,row:1, s:['seed:2','w:M6']},
+    {id:'M9', g:'Upper Final', col:4,row:1, s:['w:M7','w:M8']},
+    {id:'M10', g:'Lower Round 1', col:2,row:2, s:['l:M1','l:M2']},
+    {id:'M11', g:'Lower Round 1', col:2,row:2, s:['l:M3','l:M4']},
+    {id:'M12', g:'Lower Round 2', col:3,row:2, s:['w:M10','l:M6']},
+    {id:'M13', g:'Lower Round 2', col:3,row:2, s:['w:M11','l:M5']},
+    {id:'M14', g:'Lower Round 3', col:4,row:2, s:['w:M12','l:M8']},
+    {id:'M15', g:'Lower Round 3', col:4,row:2, s:['w:M13','l:M7']},
+    {id:'M16', g:'Lower Round 4', col:5,row:2, s:['w:M14','w:M15']},
+    {id:'M17', g:'Lower Final', col:6,row:2, s:['w:M16','l:M9']},
+    {id:'M18', g:'Grand Final', col:7,row:0, s:['w:M9','w:M17']} ]},
+  se4: { name:'4-team single elim', seeds:4, cols:2, matches:[
+    {id:'M1', g:'Semifinals', col:1,row:1, s:['seed:1','seed:4']},
+    {id:'M2', g:'Semifinals', col:1,row:1, s:['seed:2','seed:3']},
+    {id:'M3', g:'Final', col:2,row:0, s:['w:M1','w:M2']} ]}
+};
+
+/* ---------- win probability model ----------
+   Rating = GPR points (or an estimate from split win% for teams outside the
+   baked-in top 10) + split-record adjustment + last-5 form adjustment.
+   Matchup prob = logistic on rating gap (+ small capped H2H nudge from this
+   split's cached results), amplified to a Bo5 series probability.        */
+const simProbCtx = {};
+function buildSimCtx(slug) {
+  const events = splitEvents(slug);
+  const recs = computeRecords(events) || [];
+  const form = computeForm(events);
+  const rec = {}; recs.forEach(r => rec[nk(r.name)] = r);
+  const h2h = {};
+  for (const ev of events) {
+    if (ev.state!=='completed' || ev.match?.teams?.length!==2) continue;
+    const [a,b] = ev.match.teams;
+    if (!a.name || !b.name || a.name==='TBD' || b.name==='TBD') continue;
+    const ka = nk(a.name), kb = nk(b.name);
+    const key = ka<kb ? ka+'|'+kb : kb+'|'+ka;
+    h2h[key] = h2h[key] || {};
+    const wk = a.result?.outcome==='win' ? ka : kb;
+    h2h[key][wk] = (h2h[key][wk]||0)+1;
+  }
+  const cache = {};
+  const rating = name => {
+    const k = nk(name);
+    if (cache[k]) return cache[k];
+    const pr = POWER_RANKINGS.find(x => nk(x.t)===k);
+    const r = rec[k];
+    const wp = r ? r.pct : null;
+    const base = pr ? pr.pts : (wp!=null ? 1140 + 260*wp : 1200);
+    const splitAdj = wp!=null ? (wp-0.5)*80 : 0;
+    const f = form[k];
+    const formAdj = f ? (f.w5 - f.n5/2) * 14 : 0;
+    return cache[k] = { r: base+splitAdj+formAdj, base, splitAdj, formAdj, gpr:!!pr, wp, streak: f?f.streak:'' };
+  };
+  return simProbCtx[slug] = { rating, h2h };
+}
+function bo5(p) { const q = 1-p; return p*p*p*(1 + 3*q + 6*q*q); }
+function matchProb(slug, a, b) {
+  const ctx = simProbCtx[slug] || buildSimCtx(slug);
+  const ra = ctx.rating(a), rb = ctx.rating(b);
+  const ka = nk(a), kb = nk(b);
+  const key = ka<kb ? ka+'|'+kb : kb+'|'+ka;
+  let h = 0, hStr = '';
+  const hh = ctx.h2h[key];
+  if (hh) {
+    const wa = hh[ka]||0, wb = hh[kb]||0;
+    h = Math.max(-20, Math.min(20, (wa-wb)*10));
+    hStr = `H2H this split ${wa}\u2013${wb}`;
+  }
+  const d = ra.r - rb.r + h;
+  const pGame = 1/(1+Math.pow(10, -d/400));
+  const p = Math.min(.99, Math.max(.01, bo5(pGame)));
+  return { p, ra, rb, hStr };
+}
+function probTitle(a, b, pr) {
+  const fmt = x => `${x.gpr?'GPR':'est.'} ${Math.round(x.base)}`
+    + (x.splitAdj ? ` ${x.splitAdj>0?'+':''}${Math.round(x.splitAdj)} split` : '')
+    + (x.formAdj ? ` ${x.formAdj>0?'+':''}${Math.round(x.formAdj)} form` : '')
+    + (x.streak ? ` (${x.streak})` : '');
+  return `Bo5 model \u2014 ${a}: ${fmt(pr.ra)}  |  ${b}: ${fmt(pr.rb)}${pr.hStr?'  |  '+pr.hStr:''}`;
+}
+/* auto-advance the model favourite through every unresolved match */
+function simFavourites(slug) {
+  const S = simLoad(slug);
+  buildSimCtx(slug);
+  for (let guard = 0; guard < 40; guard++) {
+    const resolved = simResolve(slug);
+    let changed = false;
+    for (const m of FORMATS[S.format].matches) {
+      const [a,b] = resolved[m.id];
+      if (a && b && !S.winners[m.id]) {
+        S.winners[m.id] = matchProb(slug, a, b).p >= 0.5 ? a : b;
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  simSave(slug); renderSim(slug);
+}
+/* Monte Carlo title odds from current seeds; user-picked winners stay fixed */
+function titleOdds(slug, F, S, iters) {
+  iters = iters || 4000;
+  for (let i = 1; i <= F.seeds; i++) if (!S.seeds[i]) return null;
+  const finalId = F.matches[F.matches.length-1].id;
+  const wins = {};
+  for (let it = 0; it < iters; it++) {
+    const res = {}, winners = {};
+    const get = src => {
+      const [kind, key] = src.split(':');
+      if (kind === 'seed') return S.seeds[key];
+      const pair = res[key], w = winners[key];
+      return kind === 'w' ? w : (pair[0] === w ? pair[1] : pair[0]);
+    };
+    for (const m of F.matches) {
+      const a = get(m.s[0]), b = get(m.s[1]);
+      res[m.id] = [a, b];
+      const fixed = S.winners[m.id];
+      if (fixed && (fixed === a || fixed === b)) winners[m.id] = fixed;
+      else winners[m.id] = Math.random() < matchProb(slug, a, b).p ? a : b;
+    }
+    const c = winners[finalId];
+    wins[c] = (wins[c]||0)+1;
+  }
+  return Object.entries(wins).map(([n,c]) => ({n, pct: c/iters})).sort((x,y) => y.pct - x.pct);
+}
+
+const simState = {};      // slug -> {format, seeds:{n:name}, winners:{mid:name}, pool:[names]}
+const simSelChip = {};    // slug -> selected chip name
+
+function simLoad(slug) {
+  if (!simState[slug]) {
+    simState[slug] = JSON.parse(localStorage.getItem(LS('sim_'+slug)) || 'null')
+      || { format: REGIONS[slug].defFormat, seeds:{}, winners:{}, pool:[] };
+    if (!FORMATS[simState[slug].format]) simState[slug].format = REGIONS[slug].defFormat;
+  }
+  return simState[slug];
+}
+function simSave(slug) { localStorage.setItem(LS('sim_'+slug), JSON.stringify(simState[slug])); }
+
+/* resolve who occupies each slot given seeds + winners; prune stale winners */
+function simResolve(slug) {
+  const S = simLoad(slug);
+  const F = FORMATS[S.format];
+  const resolved = {}; // matchId -> [nameA|null, nameB|null]
+  const get = src => {
+    const [kind, key] = src.split(':');
+    if (kind === 'seed') return S.seeds[key] || null;
+    const pair = resolved[key];
+    if (!pair) return null;
+    const win = S.winners[key];
+    if (!win || !pair.includes(win)) return null;
+    return kind === 'w' ? win : (pair[0] === win ? pair[1] : pair[0]);
+  };
+  for (const m of F.matches) {
+    resolved[m.id] = [get(m.s[0]), get(m.s[1])];
+    const w = S.winners[m.id];
+    if (w && !resolved[m.id].includes(w)) delete S.winners[m.id]; // stale after upstream change
+  }
+  return resolved;
+}
+
+function simTeamsAvailable(slug) {
+  const S = simLoad(slug);
+  const names = [];
+  const has = n => names.some(x => nk(x) === nk(n));
+  (standingsCache[slug]?.rows || []).forEach(r => names.push(r.name));
+  // standings sometimes cover only one group (e.g. LCK Rounds 3-4) —
+  // add every team seen in fetched games for this league too
+  (computeRecords(splitEvents(slug)) || []).forEach(r => { if (!has(r.name)) names.push(r.name); });
+  (S.pool||[]).forEach(n => { if (!has(n)) names.push(n); });
+  return names;
+}
+
+function initSim(slug) {
+  const S = simLoad(slug);
+  const fmtSel = $('#simFmt-'+slug);
+  fmtSel.value = S.format;
+  fmtSel.addEventListener('change', () => { S.format = fmtSel.value; S.winners = {}; simSave(slug); renderSim(slug); });
+  $('#simSeed-'+slug).addEventListener('click', () => {
+    const teams = simTeamsAvailable(slug);
+    const F = FORMATS[S.format];
+    S.seeds = {};
+    teams.slice(0, F.seeds).forEach((n,i) => S.seeds[i+1] = n);
+    S.winners = {};
+    simSave(slug); renderSim(slug);
+  });
+  $('#simFav-'+slug).addEventListener('click', () => simFavourites(slug));
+  const addInp = $('#simAdd-'+slug), addBtn = $('#simAddBtn-'+slug);
+  const doAdd = () => {
+    const n = (addInp.value||'').trim();
+    if (!n) return;
+    S.pool = S.pool || [];
+    if (!simTeamsAvailable(slug).some(x => nk(x) === nk(n))) { S.pool.push(n); simSave(slug); }
+    addInp.value = '';
+    renderSim(slug);
+  };
+  addBtn.addEventListener('click', doAdd);
+  addInp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+  $('#simClearW-'+slug).addEventListener('click', () => { S.winners = {}; simSave(slug); renderSim(slug); });
+  $('#simReset-'+slug).addEventListener('click', () => { S.seeds = {}; S.winners = {}; simSave(slug); renderSim(slug); });
+  renderSim(slug);
+}
+
+function renderSim(slug) {
+  const S = simLoad(slug);
+  const F = FORMATS[S.format];
+  buildSimCtx(slug);
+  const resolved = simResolve(slug);
+  const seededNames = Object.values(S.seeds);
+
+  /* pool chips */
+  const pool = $('#simPool-'+slug);
+  pool.innerHTML = '';
+  const teams = simTeamsAvailable(slug).filter(n => !seededNames.includes(n));
+  if (!teams.length && !seededNames.length) {
+    pool.appendChild(el('span','pool-hint','Team pool fills from the standings once loaded — or hit "Seed from standings" to auto-place the top ' + F.seeds + '.'));
+  } else if (!teams.length) {
+    pool.appendChild(el('span','pool-hint','All teams placed. Hit ✕ on a seeded team to return it here.'));
+  }
+  teams.forEach(name => {
+    const chip = el('span','chip' + (simSelChip[slug]===name?' sel':''), `${logoHTML(name)}<span>${esc(name)}</span>`);
+    chip.draggable = true;
+    chip.title = 'Click to select, then click a seed slot — or drag onto one';
+    chip.addEventListener('click', () => { simSelChip[slug] = simSelChip[slug]===name ? null : name; renderSim(slug); });
+    chip.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', name); simSelChip[slug] = name; });
+    if ((S.pool||[]).includes(name)) {
+      const x = el('button','chip-x','✕');
+      x.title = 'Remove manually-added team';
+      x.addEventListener('click', e => { e.stopPropagation(); S.pool = S.pool.filter(p => p !== name); simSave(slug); renderSim(slug); });
+      chip.appendChild(x);
+    }
+    pool.appendChild(chip);
+  });
+
+  /* bracket grid */
+  const br = $('#simBracket-'+slug);
+  br.innerHTML = '';
+  br.style.gridTemplateColumns = `repeat(${F.cols}, minmax(0, 1fr))`;
+  br.style.gridTemplateRows = 'auto auto';
+  const cells = {};
+  const labelDone = {};
+  for (const m of F.matches) {
+    const key = m.col + '-' + m.row;
+    if (!cells[key]) {
+      const c = el('div','bcell');
+      c.style.gridColumn = m.col;
+      c.style.gridRow = m.row === 0 ? '1 / 3' : String(m.row);
+      br.appendChild(c);
+      cells[key] = c;
+    }
+    if (!labelDone[m.g + key]) {
+      cells[key].appendChild(el('span','bgroup-label', esc(m.g)));
+      labelDone[m.g + key] = true;
+    }
+    cells[key].appendChild(simMatchEl(slug, m, resolved));
+  }
+
+  /* champion banner */
+  const finalM = F.matches[F.matches.length-1];
+  const champ = S.winners[finalM.id];
+  const cEl = $('#simChamp-'+slug);
+  let html = '';
+  const odds = titleOdds(slug, F, S);
+  if (odds) {
+    html += '<div class="odds-strip"><span class="odds-lbl">Title odds</span>' +
+      odds.slice(0,6).map(o => `<span class="odds-item">${logoHTML(o.n)}${esc(o.n)} <b>${Math.round(o.pct*100)}%</b></span>`).join('') +
+      '<span class="odds-note">4,000 sims \u00B7 your picked winners locked \u00B7 heuristic, not betting odds</span></div>';
+  }
+  if (champ) html += `<div class="sim-champ"><div class="lbl">Simulated Champion</div><div class="name">${logoHTML(champ)} ${esc(champ)}</div></div>`;
+  cEl.innerHTML = html;
+}
+
+function simMatchEl(slug, m, resolved) {
+  const S = simLoad(slug);
+  const box = el('div','bmatch');
+  const [pA, pB] = resolved[m.id];
+  let pr = null;
+  if (pA && pB && pA !== pB) {
+    pr = matchProb(slug, pA, pB);
+    box.title = probTitle(pA, pB, pr);
+  }
+  m.s.forEach((src, i) => {
+    const name = resolved[m.id][i];
+    const [kind, key] = src.split(':');
+    const isSeed = kind === 'seed';
+    const slot = el('div','bslot');
+    if (name) {
+      const win = S.winners[m.id];
+      const myP = pr ? (i===0 ? pr.p : 1-pr.p) : null;
+      slot.innerHTML = (isSeed?`<span class="seedno">#${key}</span>`:'') + logoHTML(name) + `<span class="tname">${esc(name)}</span>`
+        + (myP!=null?`<span class="prob${myP>=0.5?' fav':''}">${Math.round(myP*100)}%</span>`:'')
+        + (isSeed?`<button class="rm" title="Remove ${esc(name)} from bracket" aria-label="Remove ${esc(name)}">✕</button>`:'');
+      if (win === name) slot.classList.add('winner');
+      else if (win) slot.classList.add('eliminated');
+      slot.classList.add('clickable');
+      slot.title = 'Click to advance this team';
+      slot.addEventListener('click', () => {
+        if (!(resolved[m.id][0] && resolved[m.id][1])) return;
+        if (S.winners[m.id] === name) delete S.winners[m.id];
+        else S.winners[m.id] = name;
+        simSave(slug); renderSim(slug);
+      });
+      const rm = slot.querySelector('.rm');
+      if (rm) rm.addEventListener('click', e => {
+        e.stopPropagation();
+        delete S.seeds[key];
+        simSave(slug); renderSim(slug);
+      });
+    } else if (isSeed) {
+      slot.classList.add('seed-open','clickable');
+      slot.innerHTML = `<span class="seedno">#${key}</span><span class="tbd">TBD — drop a team here</span>`;
+      slot.addEventListener('click', () => {
+        if (simSelChip[slug]) { S.seeds[key] = simSelChip[slug]; simSelChip[slug] = null; simSave(slug); renderSim(slug); }
+      });
+      slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('dragover'); });
+      slot.addEventListener('dragleave', () => slot.classList.remove('dragover'));
+      slot.addEventListener('drop', e => {
+        e.preventDefault();
+        const n = e.dataTransfer.getData('text/plain');
+        if (n) { S.seeds[key] = n; simSelChip[slug] = null; simSave(slug); renderSim(slug); }
+      });
+    } else {
+      slot.innerHTML = `<span class="tbd">TBD</span>`;
+    }
+    box.appendChild(slot);
+  });
+  return box;
+}
+
+/* =====================================================================
+   HOME
+===================================================================== */
+function renderHome() {
+  renderAgenda();
+  // live now
+  const box = $('#homeLive');
+  const majors = liveEvents.filter(e => e.state==='inProgress' && e.match);
+  $('#liveCount').textContent = majors.length ? majors.length + ' broadcast' + (majors.length>1?'s':'') : '';
+  box.innerHTML = '';
+  if (majors.length) {
+    majors.forEach(e => {
+      const row = matchRow(e);
+      const meta = row.querySelector('.meta');
+      if (meta) meta.innerHTML = `<span style="color:var(--gold)">${esc(e.league?.name||'')}</span>`;
+      const url = liveWatchUrl(e);
+      if (url) {
+        const a = el('a','btn-watchlive sm','Watch live on YouTube');
+        a.href = url;
+        a.target = '_blank'; a.rel = 'noopener';
+        if (meta) { meta.appendChild(document.createElement('br')); meta.appendChild(a); }
+        else { const strip = row.children[1]; if (strip) strip.appendChild(a); }
+      }
+      box.appendChild(row);
+    });
+  } else {
+    box.innerHTML = `<div class="loading">${apiOk===false ? 'API unreachable — open lolesports.com to check live games.' : 'Nothing live right now across tracked leagues.'}</div>`;
+  }
+
+  // next up per region
+  const grid = $('#homeNext');
+  grid.innerHTML = '';
+  for (const slug of Object.keys(REGIONS)) {
+    const R = REGIONS[slug];
+    const nx = nextEventFor(slug);
+    const card = el('div','nextcard');
+    card.style.setProperty('--rg', R.color);
+    if (nx) {
+      const {day,time} = fmtWhen(nx.startTime);
+      const t = nx.match?.teams||[];
+      card.innerHTML = `<div class="lg">${R.name}</div>
+        <div class="vs">${logoHTML(t[0]?.name)} ${esc(t[0]?.name||'TBD')} <span class="code" style="color:var(--faint)">vs</span> ${logoHTML(t[1]?.name)} ${esc(t[1]?.name||'TBD')}</div>
+        <div class="when-big">${esc(day)} · <span class="t">${esc(time)}</span></div>
+        <div><span class="cd">${esc(fmtCountdown(nx.startTime))}</span>${bigMatch(nx)?' '+BIG_BADGE:''}</div>
+        <div class="tm">${esc(nx.blockName||'')}</div>`;
+    } else {
+      card.innerHTML = `<div class="lg">${R.name}</div>
+        <div class="vs" style="color:var(--dim)">No fetched fixtures</div>
+        <div class="tm"><a href="${R.wiki}" target="_blank" rel="noopener">Full calendar ↗</a></div>`;
+    }
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', () => switchTab(slug));
+    grid.appendChild(card);
+  }
+
+  // honours + storylines (static)
+  $('#honoursBoard').innerHTML = HONOURS.map(honourHTML).join('');
+  wireHonours($('#honoursBoard'));
+  $('#storylines').innerHTML = STORYLINES.map(s => `<div>${s}</div>`).join('');
+}
+
+/* ticker */
+function renderTicker() {
+  const track = $('#tickerTrack');
+  const items = [];
+  liveEvents.filter(e=>e.state==='inProgress' && e.match).forEach(e => {
+    items.push(`<span class="tick-item"><span class="live-chip">LIVE</span><span class="tick-lg" style="color:var(--gold)">${esc(e.league?.name||'')}</span><b>${esc(liveLabel(e))}</b></span>`);
+  });
+  for (const slug of Object.keys(REGIONS)) {
+    const nx = nextEventFor(slug);
+    if (nx) {
+      const {day,time} = fmtWhen(nx.startTime);
+      items.push(`<span class="tick-item"><span class="tick-lg" style="color:${REGIONS[slug].color}">${REGIONS[slug].name}</span> NEXT · <b>${esc(teamsLabel(nx))}</b> · ${day} ${time}</span>`);
+    }
+  }
+  items.push(`<span class="tick-item"><span class="tick-lg" style="color:var(--gold)">MSI</span> Hanwha Life Esports — champions of Daejeon</span>`);
+  items.push(`<span class="tick-item"><span class="tick-lg" style="color:var(--gold)">EWC</span> Dplus KIA — Paris 2026 winners</span>`);
+  items.push(`<span class="tick-item"><span class="tick-lg" style="color:var(--gold)">WORLDS</span> Final · Barclays Center NYC · 14 Nov</span>`);
+  if (!items.length) items.push('<span class="tick-item">LEAGUE ESPORTS TRACKER · Season 2026</span>');
+  track.innerHTML = items.join('') + items.join(''); // doubled for seamless loop
+}
+
+/* =====================================================================
+   POWER RANKINGS (editable, persisted)
+===================================================================== */
+function renderRanks() {
+  const list = $('#rankList');
+  list.innerHTML = '';
+  POWER_RANKINGS.forEach((r,i) => {
+    const mv = r.move > 0 ? `<span class="rk-move up">▲${r.move}</span>`
+             : r.move < 0 ? `<span class="rk-move down">▼${-r.move}</span>`
+             : `<span class="rk-move flat">–</span>`;
+    const row = el('div','rk-row');
+    row.innerHTML = `<div class="rk-num">${i+1}</div>${mv}${logoHTML(r.t)}
+      <div class="rk-name">${esc(r.t)}<span class="rk-wl">${esc(r.wl)}</span></div>
+      <span class="rk-pts">${r.pts} pts</span>
+      <span class="rk-region">${esc(r.r)}</span>`;
+    list.appendChild(row);
+  });
+  $('#rkNote').textContent = 'Mirrors the official lolesports Global Power Rankings · as of ' + POWER_RANKINGS_ASOF;
+}
+
+/* =====================================================================
+   TABS + REFRESH LOOP
+===================================================================== */
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id==='page-'+name));
+  localStorage.setItem(LS('tab'), name);
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+function setStatus(ok, msg) {
+  apiOk = ok;
+  const via = (!ok || transport === 0) ? '' : ' (via proxy)';
+  const el2 = $('#apiStatus');
+  el2.innerHTML = `<span class="dot ${ok?'ok':'err'}"></span>${msg}${via}${ok?'':' \u2139'}`;
+  el2.style.cursor = 'pointer';
+  el2.title = 'Tap for connection details';
+  el2.onclick = openApiHelp;
+}
+
+/* honest diagnosis of why the API isn't loading, with the actual error */
+function openApiHelp() {
+  closeModal();
+  const proto = location.protocol;
+  const local = proto === 'file:' || proto === 'content:';
+  const bg = el('div','modal-bg'); bg.id = 'tModal';
+  const box = el('div','modal');
+  box.innerHTML = `<button class="modal-close" aria-label="Close">\u2715</button>
+    <div class="eyebrow">Connection</div>
+    <h2>API Status</h2>
+    <div class="m-meta">
+      <span>State <b>${apiOk ? 'live' : 'not loading'}</b></span>
+      <span>Page served over <b>${esc(proto)}//</b></span>
+      <span>Transport <b>${transport === 0 ? 'direct' : 'proxy ' + transport}</b></span>
+      ${lastApiError ? `<span>Last error <b>${esc(lastApiError)}</b></span>` : ''}
+    </div>
+    <div class="m-section">
+      <div class="eyebrow">${local ? 'Why it fails here' : 'If it still fails'}</div>
+      <div class="hint" style="font-size:13px;line-height:1.6">
+        ${local
+          ? 'This page is open as a local file, so the browser treats it as having no origin and blocks the call to the lolesports API before it is sent. The proxy fallback works around this sometimes, but the reliable fix is to serve the file over https \u2014 GitHub Pages, Netlify Drop, or any static host \u2014 and open that URL instead.'
+          : 'The direct call and both proxy fallbacks failed. Most likely the network is blocking it (a VPN, a DNS ad-blocker, or a mobile carrier filter), or the lolesports API itself is down. Try switching off any VPN or blocker, or use mobile data instead of Wi-Fi, then refresh.'}
+      </div>
+    </div>
+    <div class="m-links"><button class="btn small" id="apiRetry">Retry now</button>
+      <button class="btn small" id="apiReset">Reset transport &amp; retry</button></div>`;
+  bg.appendChild(box);
+  document.body.appendChild(bg);
+  document.body.style.overflow = 'hidden';
+  box.querySelector('#apiRetry').addEventListener('click', () => { closeModal(); refreshAll(true); });
+  box.querySelector('#apiReset').addEventListener('click', () => {
+    transport = 0; localStorage.setItem(LS('transport'), '0'); closeModal(); refreshAll(true);
+  });
+  box.querySelector('.modal-close').addEventListener('click', closeModal);
+  bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
+  document.addEventListener('keydown', modalEsc);
+}
+
+async function refreshAll(deep=true) {
+  $('#lastRefresh').textContent = '…';
+  try {
+    await resolveLeagues();
+    if (deep) await Promise.all(Object.keys(REGIONS).map(fetchSchedule));
+    await fetchLive();
+    if (deep) await fetchAllTeams();
+    if (deep) await Promise.all(Object.keys(REGIONS).map(fetchStandings));
+    for (const evs of Object.values(scheduleCache)) harvestLogos(evs);
+    harvestLogos(liveEvents);
+    localStorage.setItem(LS('logos'), JSON.stringify(teamLogos));
+    setStatus(true, 'API: live');
+    localStorage.setItem(LS('schedCache'), JSON.stringify(scheduleCache));
+  } catch (e) {
+    setStatus(false, 'API: offline (cached data)');
+    scheduleCache = JSON.parse(localStorage.getItem(LS('schedCache')) || '{}');
+  }
+  for (const slug of Object.keys(REGIONS)) {
+    renderRegionData(slug);
+    renderWatch(slug, findLiveFor(slug));
+    renderSim(slug);
+  }
+  renderHome();
+  renderTicker();
+  renderRanks();
+  $('#lastRefresh').textContent = 'updated ' + new Date().toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+}
+$('#refreshBtn').addEventListener('click', () => refreshAll(true));
+
+/* boot */
+for (const slug of Object.keys(REGIONS)) buildRegionPage(slug);
+renderRanks();
+renderHome();
+renderTicker();
+switchTab(localStorage.getItem(LS('tab')) || 'home');
+refreshAll(true);
+setInterval(() => refreshAll(false), 60_000);      // live check every minute
+setInterval(() => refreshAll(true), 5*60_000);     // full schedule every 5 min
+</script>
+</body>
+</html>
