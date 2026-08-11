@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="LoL Tracker">
 <meta name="format-detection" content="telephone=no">
 <title>League Esports Tracker · Season 2026</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHBhdGggZD0iTTMyIDQgTDU2LjMgMTggTDU2LjMgNDYgTDMyIDYwIEw3LjcgNDYgTDcuNyAxOCBaIiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xNCAzMiBMMjIgMzIgTDI3IDEzIEwzNCA1MSBMMzkgMzIgTDUwIDMyIiBmaWxsPSJub25lIiBzdHJva2U9IiMwQkM2RTMiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHBhdGggZD0iTTMyIDQgTDU2LjMgMTggTDU2LjMgNDYgTDMyIDYwIEw3LjcgNDYgTDcuNyAxOCBaIiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xNCAzMiBMMjIgMzIgTDI3IDEzIEwzNCA1MSBMMzkgMzIgTDUwIDMyIiBmaWxsPSJub25lIiBzdHJva2U9IiMwQkM2RTMiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -35,7 +37,8 @@ button{font-family:inherit;cursor:pointer}
 /* ============ HEADER ============ */
 header{border-bottom:1px solid var(--line);background:#0C0C0C;position:sticky;top:0;z-index:50}
 .hdr-top{display:flex;align-items:center;gap:16px;padding:10px 20px;max-width:1900px;margin:0 auto}
-.logo{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.4px;text-transform:uppercase;white-space:nowrap}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.4px;text-transform:uppercase;white-space:nowrap}
+.logo-mark{flex:none;width:30px;height:30px}
 .logo .gold{color:var(--cyan)}
 .logo small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--faint);font-weight:400}
 .hdr-status{margin-left:auto;display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:11px;color:var(--dim)}
@@ -127,7 +130,7 @@ aside{display:flex;flex-direction:column;gap:20px;position:sticky;top:158px}
   .wrap{padding:0 12px}
   .panel{padding:14px 12px;border-radius:var(--radius)}
   .p-title{font-size:20px}
-  .logo{font-size:19px}.logo small{display:none}
+  .logo{font-size:19px}.logo small{display:none}.logo-mark{width:24px;height:24px}
   nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   nav::-webkit-scrollbar{display:none}
   .tab{font-size:12px;padding:10px 12px;letter-spacing:1px;flex:none}
@@ -269,6 +272,12 @@ a.btn-watchlive.sm{padding:5px 12px;font-size:10px;letter-spacing:1px;margin:6px
 .modal .m-blurb{font-size:14px;color:var(--dim);margin:8px 0 14px;max-width:75ch}
 .m-section{margin-top:18px}
 .m-section .eyebrow{font-size:16px;margin-bottom:10px}
+.hh-row{display:flex;align-items:center;gap:9px;padding:7px 4px;border-bottom:1px solid var(--line);font-size:13px}
+.hh-row:last-child{border-bottom:none}
+.hh-row .tlogo,.hh-row .tmono{width:20px;height:20px}
+.hh-name{flex:1;font-weight:600}
+.hh-rec{font-family:var(--mono);font-size:12px;color:var(--dim)}
+.hh-rec b{color:var(--text);font-weight:600}
 .podium{display:flex;gap:12px;flex-wrap:wrap}
 .podium .step{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:9px 14px;font-weight:600;font-size:15px}
 .podium .step .medal{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:1px}
@@ -379,7 +388,13 @@ footer{max-width:1900px;margin:0 auto;padding:10px 20px 30px;font-family:var(--m
 
 <header>
   <div class="hdr-top">
-    <div class="logo">LEAGUE ESPORTS <span class="gold">TRACKER</span><small>LEC · LCK · LPL · LCS · SEASON 2026</small></div>
+    <div class="logo">
+      <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <path d="M32 4 L56.3 18 L56.3 46 L32 60 L7.7 46 L7.7 18 Z" fill="#000000" stroke="#FFFFFF" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M14 32 L22 32 L27 13 L34 51 L39 32 L50 32" fill="none" stroke="#0BC6E3" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>LEAGUE ESPORTS <span class="gold">TRACKER</span><small>LEC · LCK · LPL · LCS · SEASON 2026</small></div>
+    </div>
     <div class="hdr-status">
       <span id="apiStatus"><span class="dot"></span>API: connecting…</span>
       <span id="lastRefresh"></span>
@@ -1413,10 +1428,17 @@ function openTeamModal(slug, name) {
   const up = events.filter(e => e.state==='unstarted')
     .sort((a,b) => new Date(a.startTime) - new Date(b.startTime));
   let w=0, l=0;
+  const h2hMap = {};
   for (const ev of played) {
-    const me = ev.match.teams.find(t => nk(t.name)===nk(name));
+    const i = ev.match.teams.findIndex(t => nk(t.name)===nk(name));
+    const me = ev.match.teams[i];
     if (me?.result?.outcome==='win') w++; else l++;
+    const opp = ev.match.teams[1-i];
+    if (!opp?.name) continue;
+    const rec = h2hMap[nk(opp.name)] = h2hMap[nk(opp.name)] || { name: opp.name, w:0, l:0 };
+    if (me?.result?.outcome==='win') rec.w++; else rec.l++;
   }
+  const h2hList = Object.values(h2hMap).sort((a,b) => (b.w+b.l)-(a.w+a.l) || a.name.localeCompare(b.name));
   const form = computeForm(splitEvents(slug))[nk(name)];
   const rt = buildSimCtx(slug).rating(name);
   const bg = el('div','modal-bg'); bg.id = 'tModal';
@@ -1431,6 +1453,7 @@ function openTeamModal(slug, name) {
     </div>
     ${live.length ? '<div class="m-section"><div class="eyebrow">Live now</div><div id="tmLive"></div></div>' : ''}
     ${up.length ? '<div class="m-section"><div class="eyebrow">Upcoming</div><div id="tmUp"></div></div>' : ''}
+    ${h2hList.length ? '<div class="m-section"><div class="eyebrow">Head-to-head this split</div><div id="tmH2h"></div></div>' : ''}
     <div class="m-section"><div class="eyebrow">Played this split</div><div id="tmPlayed">${played.length ? '' : '<div class="loading">No completed games in the fetched window yet.</div>'}</div></div>
     <div class="m-links"><a class="btn small" href="${R.liqui}" target="_blank" rel="noopener">Full split on Liquipedia \u2197</a></div>
     <div class="hint" style="margin-top:8px">Current split only (from ${standingsCache[slug]?.start ? esc(standingsCache[slug].start.slice(0,10)) : 'the fetched window'}) \u2014 the earliest weeks of a long split can fall outside the fetched schedule pages.</div>`;
@@ -1439,6 +1462,11 @@ function openTeamModal(slug, name) {
   document.body.style.overflow = 'hidden';
   live.forEach(ev => box.querySelector('#tmLive').appendChild(matchRow(ev)));
   up.forEach(ev => box.querySelector('#tmUp').appendChild(matchRow(ev)));
+  h2hList.forEach(o => {
+    const row = el('div','hh-row');
+    row.innerHTML = `${logoHTML(o.name)}<span class="hh-name">${esc(o.name)}</span><span class="hh-rec"><b>${o.w}–${o.l}</b></span>`;
+    box.querySelector('#tmH2h').appendChild(row);
+  });
   played.forEach(ev => {
     const row = matchRow(ev);
     // on losses: this team's score goes red, the opponent's green is dropped
