@@ -14,8 +14,7 @@ Riot Games or any league.
   a broadcast is on), recent results, the current standings table with playoff/relegation cut
   lines, the upcoming schedule, and a "so far this season" honours summary.
 - **Team profiles** — click any team to see its record, current form/streak, a model-estimated
-  power rating, its head-to-head record against every opponent faced this split, and every game
-  it's played, live, or has coming up.
+  power rating, and every game it's played, live, or has coming up.
 - **Playoff Simulator** — an interactive bracket predictor per region: set win probabilities (or
   let the model estimate them) and simulate the playoffs to see title odds.
 
