@@ -502,6 +502,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 /* ---- next up rows: one dense divided list. The matchup lives in its own
        centred block so wide screens don't stretch it into empty space ---- */
 .nxt-list{display:flex;flex-direction:column}
+/* an expanded list scrolls inside the panel instead of stretching the page */
+.nxt-list.long{max-height:72vh;overflow-y:auto;scrollbar-width:thin}
 .nxt{display:grid;grid-template-columns:112px 190px minmax(0,1fr) 150px;align-items:center;gap:14px;
   border-bottom:1px solid var(--line);padding:10px 8px;cursor:pointer;transition:background .12s ease}
 .nxt:last-child{border-bottom:none}
@@ -1743,16 +1745,19 @@ function renderLiveCards() {
 /* -------- next up -------- */
 function renderAgenda() {
   const box = $('#homeAgenda'); if (!box) return;
-  const now = Date.now(), horizon = now + 48*3600e3, lids = liveMatchIds();
+  const lids = liveMatchIds();
+  // every fixture still to play, not just the next 48 hours \u2014 the API hands us
+  // the whole remaining split, so "full schedule" should mean exactly that
   const all = allFixtures()
     .filter(x => x.ev.match?.teams?.length === 2 && evPhase(x.ev, lids) === 'up')
     .filter(x => !boardRegion || x.slug === boardRegion)
     .sort((a,b) => new Date(a.ev.startTime) - new Date(b.ev.startTime));
   const where = boardRegion ? REGIONS[boardRegion].name : 'all regions';
-  let list = all.filter(x => { const t = +new Date(x.ev.startTime); return t >= now - 3600e3 && t <= horizon; });
-  let sub = `next 48 hours \u00B7 ${where} \u00B7 local time`;
-  if (!list.length) { list = all.slice(0, BOARD_ROWS); sub = `nothing in 48h \u00B7 ${where} \u2014 next fixtures shown`; }
-  const total = list.length;
+  const total = all.length;
+  const list = nextExpanded ? all : all.slice(0, BOARD_ROWS);
+  const sub = nextExpanded
+    ? `full schedule \u00B7 ${total} fixture${total===1?'':'s'} \u00B7 ${where} \u00B7 local time`
+    : `next fixtures \u00B7 ${where} \u00B7 local time`;
   const more = $('#nextMore');
   if (more) {
     more.disabled = total <= BOARD_ROWS;
@@ -1760,7 +1765,7 @@ function renderAgenda() {
     more.textContent = nextExpanded ? '\u2039 Show fewer'
       : (more.disabled ? `All ${total} fixture${total===1?'':'s'} shown` : `View full schedule (${total}) \u203A`);
   }
-  if (!nextExpanded) list = list.slice(0, BOARD_ROWS);
+  box.classList.toggle('long', nextExpanded);
   const subEl = $('#agendaSub'); if (subEl) subEl.textContent = sub;
   box.innerHTML = '';
   if (!list.length) {
@@ -1807,15 +1812,19 @@ function renderRecent() {
     .filter(x => !boardRegion || x.slug === boardRegion)
     .sort((a,b) => new Date(b.ev.startTime) - new Date(a.ev.startTime));
   const total = done.length;
-  done = done.slice(0, recentExpanded ? 24 : BOARD_ROWS);
+  done = done.slice(0, recentExpanded ? 50 : BOARD_ROWS);
+  const where = boardRegion ? REGIONS[boardRegion].name : 'all regions';
   const sub = $('#recentSub');
-  if (sub) sub.textContent = (boardRegion ? REGIONS[boardRegion].name : 'all regions') + ' \u00B7 latest results';
+  if (sub) sub.textContent = recentExpanded
+    ? `${where} \u00B7 showing ${done.length} of ${total} fetched`
+    : `${where} \u00B7 latest results`;
   const more = $('#recentMore');
   if (more) {
     more.disabled = total <= BOARD_ROWS;
     more.textContent = recentExpanded ? '\u2039 Show fewer'
-      : (more.disabled ? `All ${total} result${total===1?'':'s'} shown` : `View all results (${total}) \u203A`);
+      : (more.disabled ? `All ${total} result${total===1?'':'s'} shown` : `View more results \u203A`);
   }
+  strip.classList.toggle('long', recentExpanded);
   strip.innerHTML = '';
   if (!done.length) { padRows(strip, 0, false, 'No completed matches in the fetched window.'); return; }
   for (const {slug, ev} of done) {
