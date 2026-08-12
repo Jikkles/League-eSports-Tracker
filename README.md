@@ -8,11 +8,14 @@ Riot Games or any league.
 
 ## What it does
 
-- **Home** — live matches happening right now, a 48-hour agenda across every region, a global
-  power rankings sidebar, the season honours board, and a rundown of current storylines.
+- **Home** — a one-page board: today's live/upcoming/completed counts with a per-region
+  breakdown, a live panel naming whatever is on air right now (or counting down to the next
+  match when nothing is), Next Up and Recent Games side by side with per-region filters, the
+  global power rankings, the season honours board, and a rundown of current storylines.
 - **Per-region tabs (LEC / LCK / LPL / LCS)** — where to watch (with an embedded live player when
-  a broadcast is on), recent results, the current standings table with playoff/relegation cut
-  lines, the upcoming schedule, and a "so far this season" honours summary.
+  a broadcast is on), recent results with per-game VOD links, the current standings table with
+  playoff and play-in cut lines, the upcoming schedule, and a "so far this season" honours
+  summary.
 - **Team profiles** — click any team to see its record, current form/streak, a model-estimated
   power rating, and every game it's played, live, or has coming up.
 - **Playoff Simulator** — an interactive bracket predictor per region: set win probabilities (or
