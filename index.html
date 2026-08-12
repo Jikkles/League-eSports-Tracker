@@ -1394,11 +1394,16 @@ function matchRow(ev) {
   const {day,time} = fmtWhen(ev.startTime);
   const strat = ev.match?.strategy?.count ? 'Bo'+ev.match.strategy.count : '';
   let score;
+  const settled = a.result?.outcome === 'win' || b.result?.outcome === 'win';
   if (done || live) {
     const aw = a.result?.gameWins ?? 0, bw = b.result?.gameWins ?? 0;
     const aWin = a.result?.outcome === 'win';
     const bWin = b.result?.outcome === 'win';
-    score = `<span class="${aWin?'w':(done?'l':'')}">${aw}</span> – <span class="${bWin?'w':(done?'l':'')}">${bw}</span>`;
+    // marked complete with no winner = the result simply isn't out yet, and the
+    // 0-0 the API carries would read as a scoreline that never happened
+    score = (done && !settled)
+      ? '<span class="l" title="Result not published yet">–</span>'
+      : `<span class="${aWin?'w':(done?'l':'')}">${aw}</span> – <span class="${bWin?'w':(done?'l':'')}">${bw}</span>`;
   } else {
     score = time;
   }
@@ -1416,7 +1421,7 @@ function matchRow(ev) {
     <div><span class="score">${score}</span></div>
     <div class="t2">${logoHTML(b.name)}<span class="nm" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</span>${b.result?.outcome==='win'?'<span class="winner-tag">◆</span>':''}</div>
     <div class="meta">${(!done && !live && bigMatch(ev))?BIG_BADGE+'<br>':''}${esc(ev.blockName||'')}${strat?' · '+strat:''}</div>`;
-  if (done && ev.match?.id) {
+  if (done && settled && ev.match?.id) {     // nothing to watch back until it's actually over
     const meta = row.querySelector('.meta');
     const btn = el('button','vod-btn','▶ VOD');
     btn.addEventListener('click', () => loadVods(btn, ev.match.id));
@@ -1676,14 +1681,7 @@ function liveCard(ev, cols, opts) {
   // the API's own stream first, then the league's own channels as alternates —
   // several leagues also broadcast where the live feed never lists it (the LPL
   // on Bilibili, the LCK on YouTube)
-  const s = bestStream(ev);
-  const alts = [];   // the English cast first, then the league's other channels
-  if (R?.twitch && s?.provider !== 'twitch')   alts.push(['Twitch', R.twitch]);
-  if (R?.yt     && s?.provider !== 'youtube')  alts.push(['YouTube', R.yt]);
-  if (R?.bili   && s?.provider !== 'bilibili') alts.push(['Bilibili', R.bili]);
-  // with no stream in the feed at all, the best channel becomes the main button
-  let lead = s ? { url: s.url, name: s.name } : null;
-  if (!lead && alts.length) { const [name, url] = alts.shift(); lead = { url, name }; }
+  const { lead, alts } = watchLinks(ev, slug);
   let acts = '';
   if (lead) acts += `<a class="btn-watchlive sm" href="${lead.url}" target="_blank" rel="noopener">Watch on ${esc(lead.name)}</a>`;
   acts += alts.slice(0, cols >= 4 ? 1 : 2).map(([label, href]) =>   // narrow cards keep one alternate
@@ -2254,11 +2252,27 @@ async function loadEventResults(slug) {
 }
 
 /* -------- stream logic -------- */
+/* the same view of "on air" the home board uses, so a region page can't say
+   offline while the board shows that league live */
 function findLiveFor(slug) {
-  return liveEvents.find(ev => (ev.league?.slug||'').toLowerCase() === slug && ev.state==='inProgress');
+  return liveNowList().find(x => x.slug === slug) || null;
 }
 
-function renderWatch(slug, liveEv) {
+/* primary + alternate places to watch, shared by the live cards and the
+   region pages: the feed's own stream first, otherwise the league's channels */
+function watchLinks(ev, slug) {
+  const R = REGIONS[slug] || REGIONS[(ev.league?.slug||'').toLowerCase()];
+  const s = bestStream(ev);
+  const alts = [];
+  if (R?.twitch && s?.provider !== 'twitch')   alts.push(['Twitch', R.twitch]);
+  if (R?.yt     && s?.provider !== 'youtube')  alts.push(['YouTube', R.yt]);
+  if (R?.bili   && s?.provider !== 'bilibili') alts.push(['Bilibili', R.bili]);
+  let lead = s ? { url: s.url, name: s.name } : null;
+  if (!lead && alts.length) { const [name, url] = alts.shift(); lead = { url, name }; }
+  return { lead, alts, embed: (s && s.provider === 'youtube') ? s.param : null };
+}
+
+function renderWatch(slug, live) {
   const R = REGIONS[slug];
   const box = $('#watchLive-'+slug), links = $('#strLinks-'+slug), note = $('#strNote-'+slug), state = $('#strState-'+slug);
   if (!box) return;
@@ -2269,17 +2283,19 @@ function renderWatch(slug, liveEv) {
   if (R.twitch) addLink('Twitch ↗', R.twitch);
   if (R.bili) addLink('Bilibili ↗', R.bili);
 
-  if (liveEv) {
+  if (live) {
+    const liveEv = live.ev || live;          // tolerate a bare event too
     state.innerHTML = '<span class="live-chip">LIVE</span>';
-    const s = bestStream(liveEv);
-    const url = liveWatchUrl(liveEv);
+    const w = watchLinks(liveEv, slug);
     box.innerHTML = `<div class="watch-live"><span class="live-chip">LIVE</span>
       <b>${esc(liveLabel(liveEv))}</b>
-      ${url ? `<a class="btn-watchlive" href="${url}" target="_blank" rel="noopener">Watch live now${s ? ' on ' + esc(s.name) : ''}</a>` : ''}</div>`
+      ${w.lead ? `<a class="btn-watchlive" href="${w.lead.url}" target="_blank" rel="noopener">Watch live now on ${esc(w.lead.name)}</a>` : ''}</div>`
       // only YouTube streams are embeddable, and only with a real video id
-      + (s && s.provider === 'youtube' && location.protocol !== 'file:'
-          ? `<div class="watch-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(s.param)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Live broadcast"></iframe></div>` : '');
-    note.textContent = url ? '' : 'Live now — open the channel links above.';
+      + (w.embed && location.protocol !== 'file:'
+          ? `<div class="watch-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(w.embed)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Live broadcast"></iframe></div>` : '');
+    note.textContent = live.assumed
+      ? 'This broadcast isn’t carried by the lolesports live feed, so no live score is published — the channel links above are the way in.'
+      : (w.lead ? '' : 'Live now — open the channel links above.');
   } else {
     state.textContent = 'offline';
     box.innerHTML = '';
@@ -2341,9 +2357,15 @@ function nextEventFor(slug) {
 /* -------- fill schedule/results/table -------- */
 function renderRegionData(slug) {
   const events = scheduleCache[slug] || [];
-  const up = events.filter(e => e.state==='unstarted').slice(0,4);
-  const live = events.filter(e => e.state==='inProgress');
-  const done = events.filter(e => e.state==='completed').slice(-4).reverse();
+  // bucket by the same phases the home board uses, so a match that is on air
+  // without the feed saying so shows at the top rather than as a 0-0 result
+  const lids = liveMatchIds();
+  const phase = {};
+  events.forEach(e => { phase[(e.match?.id||'') + e.startTime] = evPhase(e, lids); });
+  const ph = e => phase[(e.match?.id||'') + e.startTime];
+  const up = events.filter(e => ph(e) === 'up').slice(0,4);
+  const live = events.filter(e => ph(e) === 'live' || ph(e) === 'onair');
+  const done = events.filter(e => ph(e) === 'done' || ph(e) === 'pending').slice(-4).reverse();
 
   const schedEl = $('#sched-'+slug);
   schedEl.innerHTML = '';
