@@ -451,7 +451,24 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .live-panel .p-title{display:flex;align-items:center;gap:10px}
 .dot-live{width:10px;height:10px;border-radius:50%;background:var(--live);box-shadow:0 0 10px var(--live);
   animation:pulse 1.4s ease infinite;flex:none}
-.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,560px));gap:14px}
+.live-grid{display:grid;grid-template-columns:1fr;gap:14px}
+/* cards always fill the panel — the more that are live, the smaller each gets */
+.live-grid[data-n="1"] .lc-logo{width:118px;height:118px}
+.live-grid[data-n="1"] .lc-score{font-size:64px}
+.live-grid[data-n="1"] .lc-code{font-size:27px}
+.live-grid[data-n="1"] .lc-body{margin:20px 0 4px}
+.live-grid[data-n="2"] .lc-logo{width:98px;height:98px}
+.live-grid[data-n="2"] .lc-score{font-size:56px}
+.live-grid[data-n="3"] .lc-logo{width:76px;height:76px}
+.live-grid[data-n="3"] .lc-score{font-size:46px}
+.live-grid[data-n="3"] .lc-code{font-size:20px}
+.live-grid[data-n="4"] .lc-logo{width:62px;height:62px}
+.live-grid[data-n="4"] .lc-score{font-size:38px}
+.live-grid[data-n="4"] .lc-code{font-size:18px}
+.live-grid[data-n="4"] .lc-top{font-size:10px}
+.live-grid[data-n="3"] .lc-act,.live-grid[data-n="4"] .lc-act{flex-wrap:wrap;gap:6px}
+.live-grid[data-n="4"] .lc-act a.btn-watchlive.sm{padding:5px 11px;font-size:9px;letter-spacing:.9px}
+.live-grid[data-n="4"] .lc-alt{padding:4px 9px;font-size:9px}
 .lcard{position:relative;overflow:hidden;background:#0D0D0D;border:1px solid rgba(232,57,74,.38);border-radius:var(--radius);padding:12px 16px 14px}
 .lcard::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(95% 130% at 50% 0%,rgba(232,57,74,.13),transparent 70%)}
@@ -508,6 +525,26 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 #homeAgenda .ag-day{padding:13px 6px 6px;font-size:15px}
 #homeAgenda .ag-day:first-child{padding-top:2px}
 
+/* ---- next up + recent games, half the board each ---- */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.duo .nxt{grid-template-columns:86px 66px minmax(0,1fr) 78px;gap:10px;padding:9px 4px}
+.duo .nxt .n-when{padding-left:4px}
+.duo .nxt .n-time,.duo .nxt .n-date{font-size:21px;letter-spacing:-.5px}
+.duo .nxt .n-rg{flex-direction:column;gap:4px;padding:3px 6px;text-align:center}
+.duo .nxt .n-rg .lgw{width:30px;height:30px}
+.duo .nxt .n-rg .nm{font-size:11.5px;letter-spacing:.4px;line-height:1}
+.duo .nxt .n-rg .sp{display:none}
+.duo .nxt .n-mid{grid-template-columns:1fr 46px 1fr;gap:10px;max-width:none}
+.duo .nxt .n-a,.duo .nxt .n-b{gap:11px}
+.duo .nxt .n-lg{width:48px;height:48px}
+.duo .nxt .n-code{font-size:23px}
+.n-date{font-family:var(--disp);font-weight:800;line-height:1}
+.n-sc{font-family:var(--disp);font-weight:800;font-size:23px;letter-spacing:-.5px;text-align:center;white-space:nowrap}
+.n-sc .w{color:var(--win)} .n-sc .l{color:var(--faint)}
+.n-sc.tbc{color:var(--faint)}
+.nxt .n-a.lost .n-code,.nxt .n-b.lost .n-code{color:var(--faint)}
+.nxt .n-a.lost .n-lg,.nxt .n-b.lost .n-lg{opacity:.6}
+
 /* ---- three-column band ---- */
 .tri{display:grid;grid-template-columns:1.15fr 1fr 1.2fr;gap:14px;align-items:start}
 .tri .panel{margin-bottom:14px}
@@ -557,29 +594,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .hn .lg{width:52px;height:52px;display:flex;align-items:center;justify-content:center;justify-self:end;overflow:hidden}
 .hn .lg img{max-width:100%;max-height:100%;object-fit:contain}
 
-/* ---- recently completed carousel ---- */
-.rc-wrap{display:grid;grid-template-columns:34px 1fr 34px;gap:10px;align-items:stretch}
-.rc-arrow{background:#161616;border:1px solid var(--line);color:var(--dim);border-radius:var(--radius);font-size:18px;
-  font-family:var(--body);transition:background .12s ease,color .12s ease}
-.rc-arrow:hover{background:#242424;color:#FFFFFF}
-.rc-strip{display:flex;gap:12px;overflow-x:auto;scroll-behavior:smooth;padding:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.rc-strip::-webkit-scrollbar{display:none}
-.rc{flex:none;width:244px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;cursor:pointer;
-  transition:background .12s ease,border-color .12s ease}
-.rc:hover{background:#1F1F1F;border-color:var(--line2)}
-.rc .top{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:1.2px;color:var(--faint);text-transform:uppercase}
-.rc .top .lgw{width:21px;height:21px}
-.rc .top .rgn{color:var(--rg,var(--dim));font-family:var(--body);font-weight:800;font-size:12px;letter-spacing:.6px}
-.rc .top .d{margin-left:auto}
-.rc .mid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-top:9px}
-.rc .side{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
-.rc .side .lg{width:54px;height:54px;display:flex;align-items:center;justify-content:center}
-.rc .side .lg img{max-width:100%;max-height:100%;object-fit:contain}
-.rc .side .cd{font-family:var(--mono);font-size:11px;letter-spacing:.8px;color:var(--faint);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rc .side.won .cd{color:#FFFFFF;font-weight:600}
-.rc .sc{font-family:var(--disp);font-weight:800;font-size:29px;letter-spacing:-.8px;text-align:center;white-space:nowrap}
-.rc .sc .w{color:var(--win)} .rc .sc .l{color:var(--faint)}
-.rc .bo{font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--faint);text-align:center;margin-top:9px}
+
 
 /* ---- footer ---- */
 .f-grid{max-width:1900px;margin:0 auto;padding:26px 24px 18px;display:grid;grid-template-columns:1.4fr 1fr 1fr 1.1fr;gap:26px}
@@ -604,6 +619,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 }
 @media (max-width:1100px){
   .ov-row{grid-template-columns:1fr}
+  .duo{grid-template-columns:1fr}
   /* two tiers: when + who it is, then the matchup itself */
   .nxt{grid-template-columns:auto 1fr auto;grid-template-areas:"time rg meta" "mid mid mid";row-gap:10px;gap:12px}
   .nxt .n-when{grid-area:time}
@@ -640,8 +656,6 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .nxt .n-rg .lgw{width:26px;height:26px}
   .f-grid{grid-template-columns:1fr;padding:22px 14px 14px}
   .f-legal{padding:0 14px 22px}
-  .rc-wrap{grid-template-columns:1fr}
-  .rc-arrow{display:none}
 }
 </style>
 </head>
@@ -710,11 +724,20 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
       <div class="live-grid" id="homeLive"><div class="loading">Checking for live broadcasts…</div></div>
     </div>
 
-    <div class="panel" id="nextPanel">
-      <div class="p-head"><div class="p-title">Next Up</div>
-        <span class="p-sub" id="agendaSub">all regions · local time</span>
-        <div class="right"><button class="mini" id="nextMore">View full schedule ›</button></div></div>
-      <div class="nxt-list" id="homeAgenda"><div class="loading">Loading schedules…</div></div>
+    <div class="duo">
+      <div class="panel" id="nextPanel">
+        <div class="p-head"><div class="p-title">Next Up</div>
+          <span class="p-sub" id="agendaSub">all regions · local time</span>
+          <div class="right"><button class="mini" id="nextMore">View full schedule ›</button></div></div>
+        <div class="nxt-list" id="homeAgenda"><div class="loading">Loading schedules…</div></div>
+      </div>
+
+      <div class="panel" id="recentPanel">
+        <div class="p-head"><div class="p-title">Recent Games</div>
+          <span class="p-sub" id="recentSub">all regions</span>
+          <div class="right"><button class="mini" id="recentMore">View all results ›</button></div></div>
+        <div class="nxt-list" id="recentStrip"><div class="loading">Loading results…</div></div>
+      </div>
     </div>
 
     <div class="tri">
@@ -739,15 +762,6 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
       </div>
     </div>
 
-    <div class="panel" id="recentPanel">
-      <div class="p-head"><div class="p-title">Recently Completed</div>
-        <span class="p-sub" id="recentSub">all regions</span></div>
-      <div class="rc-wrap">
-        <button class="rc-arrow" id="rcPrev" aria-label="Scroll results left">‹</button>
-        <div class="rc-strip" id="recentStrip"></div>
-        <button class="rc-arrow" id="rcNext" aria-label="Scroll results right">›</button>
-      </div>
-    </div>
   </section>
 
   <!-- region pages injected -->
@@ -821,7 +835,9 @@ const REGIONS = {
         // Legend: 1-2 -> playoffs, 3-5 -> play-in. Rise: 1 -> playoffs, 2-4 -> play-in, 5 out
         groupCuts:{ legend:[{after:2, kind:'po'}], rise:[{after:1, kind:'po'},{after:4, kind:'pi'}] } },
   lpl:{ name:'LPL', full:'League of Legends Pro League', color:'var(--lpl)', slug:'lpl',
-        bili:'https://live.bilibili.com/6', yt:'https://www.youtube.com/@LPL/live', vods:'https://www.youtube.com/@LPL/videos',
+        bili:'https://live.bilibili.com/lol', yt:'https://www.youtube.com/@LPL/live', vods:'https://www.youtube.com/@LPL/videos',
+        twitch:'https://www.twitch.tv/lplenglish',   // the LPL's own English cast
+
         wiki:'https://lol.fandom.com/wiki/LPL/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026',
         splitLabel:'Split 3 2026', defaultGames:14, defFormat:'de10',
         // Ascend: 1-6 -> playoffs, 7-8 -> Knights Rivals play-in. Nirvana: 1-2 -> play-in, rest out
@@ -1486,7 +1502,7 @@ function formCells(form, name) {
    All / Live / Today / Tomorrow chips decide which of those show.
 ===================================================================== */
 let homeFilter = 'all';        // all | live | today | tomorrow
-let nextExpanded = false, ranksExpanded = true, storiesExpanded = true;   // the band reads fuller expanded
+let nextExpanded = false, ranksExpanded = true, storiesExpanded = true, recentExpanded = false;
 
 const dayKey = d => { const x = new Date(d); return x.getFullYear()+'-'+x.getMonth()+'-'+x.getDate(); };
 
@@ -1513,8 +1529,11 @@ function allFixtures() {
 const hasWinner = ev => (ev.match?.teams||[]).some(t => t.result?.outcome === 'win');
 function evPhase(ev, lids) {
   if (ev.state === 'inProgress' || (ev.match?.id && lids.has(ev.match.id))) return 'live';
-  if (ev.state === 'completed') return hasWinner(ev) ? 'done' : 'up';
-  return 'up';
+  if (ev.state === 'completed' && !hasWinner(ev))
+    // flagged done with no winner: still ahead of its start time = simply upcoming,
+    // already past it = played but the result hasn't been published yet
+    return Date.parse(ev.startTime) > Date.now() ? 'up' : 'pending';
+  return ev.state === 'completed' ? 'done' : 'up';
 }
 
 /* -------- today overview + per-region cards -------- */
@@ -1522,13 +1541,14 @@ function renderOverview(lids) {
   const today = dayKey(Date.now());
   const per = {};
   for (const slug of Object.keys(REGIONS)) per[slug] = { total:0, done:0, live:0 };
-  let up = 0, done = 0;
+  let up = 0, done = 0, pending = 0;
   for (const {slug, ev} of allFixtures()) {
     if (dayKey(ev.startTime) !== today) continue;
     const ph = evPhase(ev, lids);
     per[slug].total++;
     if (ph === 'done') { done++; per[slug].done++; }
     else if (ph === 'live') per[slug].live++;
+    else if (ph === 'pending') { pending++; per[slug].done++; }
     else up++;
   }
   const liveNow = liveEvents.filter(e => e.state==='inProgress' && e.match).length;
@@ -1536,7 +1556,8 @@ function renderOverview(lids) {
   $('#ovUp').textContent = up;
   $('#ovDone').textContent = done;
   $('#ovFoot').textContent = 'Across 4 regions \u00B7 ' +
-    new Date().toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long'});
+    new Date().toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long'}) +
+    (pending ? ` \u00B7 ${pending} awaiting result` : '');
 
   const pill = $('#hdrLive');
   if (pill) { pill.textContent = liveNow ? 'LIVE' : 'OFF AIR'; pill.className = 'live-pill' + (liveNow ? '' : ' idle'); }
@@ -1562,7 +1583,7 @@ function renderOverview(lids) {
 }
 
 /* -------- live cards -------- */
-function liveCard(ev) {
+function liveCard(ev, cols) {
   const slug = (ev.league?.slug||'').toLowerCase();
   const R = REGIONS[slug];
   const t = ev.match?.teams || [];
@@ -1572,15 +1593,17 @@ function liveCard(ev) {
   const games = ev.match?.games || [];
   const played = games.length ? games.filter(g => g.state === 'completed').length : (aw + bw);
   const gameNo = Math.min(bo || 99, played + 1);
-  // the API's own stream first, then the league channel as a second option —
-  // some leagues also run a YouTube stream the live feed never lists
+  // the API's own stream first, then the league's own channels as alternates —
+  // several leagues also broadcast where the live feed never lists it (the LPL
+  // on Bilibili, the LCK on YouTube)
   const s = bestStream(ev);
-  let acts = '';
-  if (s) acts += `<a class="btn-watchlive sm" href="${s.url}" target="_blank" rel="noopener">Watch on ${esc(s.name)}</a>`;
-  if (R?.yt && (!s || s.provider !== 'youtube'))
-    acts += `<a class="lc-alt" href="${R.yt}" target="_blank" rel="noopener">YouTube ↗</a>`;
-  if (R?.twitch && (!s || s.provider !== 'twitch') && !acts.includes('btn-watchlive'))
-    acts += `<a class="lc-alt" href="${R.twitch}" target="_blank" rel="noopener">Twitch ↗</a>`;
+  const alts = [];   // English-friendly channels first
+  if (R?.yt     && s?.provider !== 'youtube')  alts.push(['YouTube ↗', R.yt]);
+  if (R?.twitch && s?.provider !== 'twitch')   alts.push(['Twitch ↗', R.twitch]);
+  if (R?.bili   && s?.provider !== 'bilibili') alts.push(['Bilibili ↗', R.bili]);
+  let acts = s ? `<a class="btn-watchlive sm" href="${s.url}" target="_blank" rel="noopener">Watch on ${esc(s.name)}</a>` : '';
+  acts += alts.slice(0, cols >= 4 ? 1 : 2).map(([label, href]) =>   // narrow cards keep one alternate
+    `<a class="lc-alt" href="${href}" target="_blank" rel="noopener">${label}</a>`).join('');
   const watch = acts ? `<div class="lc-act">${acts}</div>` : '';
   const chip = `<span class="lg"${R ? ` style="--rg:${R.color}"` : ''}>${R ? `<span class="lgw">${leagueLogoHTML(slug)}</span>` : ''}${esc(R ? R.name : (ev.league?.name || 'LIVE'))}</span>`;
   const clock = `<span class="lc-clock" data-since="${esc(ev.startTime)}" title="Time since this broadcast went live">--:--</span>`;
@@ -1607,12 +1630,19 @@ function renderLiveCards() {
   $('#liveCount').textContent = majors.length ? majors.length + ' broadcast' + (majors.length>1?'s':'') : '';
   box.innerHTML = '';
   if (!majors.length) {
+    box.dataset.n = '0';
+    box.style.gridTemplateColumns = '1fr';
     box.innerHTML = `<div class="lc-note">${apiOk===false
       ? 'API unreachable \u2014 open lolesports.com to check live games.'
       : 'Nothing live right now across tracked leagues.'}</div>`;
     return;
   }
-  majors.forEach(ev => box.appendChild(liveCard(ev)));
+  // the cards always fill the panel: one live game gets the whole width, two
+  // split it, three or four share it \u2014 beyond that they wrap in rows of four
+  const cols = Math.min(majors.length, 4);
+  box.dataset.n = String(cols);
+  box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  majors.forEach(ev => box.appendChild(liveCard(ev, cols)));
 }
 
 /* -------- next up -------- */
@@ -1673,37 +1703,48 @@ function renderAgenda() {
   }
 }
 
-/* -------- recently completed carousel -------- */
+/* -------- recent games \u2014 same row rhythm as Next Up, score instead of VS -------- */
 function renderRecent() {
   const strip = $('#recentStrip'); if (!strip) return;
   const lids = liveMatchIds();
   let done = allFixtures()
-    .filter(x => x.ev.match?.teams?.length === 2 && evPhase(x.ev, lids) === 'done')
+    .filter(x => x.ev.match?.teams?.length === 2 && ['done','pending'].includes(evPhase(x.ev, lids)))
     .sort((a,b) => new Date(b.ev.startTime) - new Date(a.ev.startTime));
   if (homeFilter === 'today') done = done.filter(x => dayKey(x.ev.startTime) === dayKey(Date.now()));
   const total = done.length;
-  done = done.slice(0,16);
+  const cap = recentExpanded ? 24 : 8;
+  done = done.slice(0, cap);
   const sub = $('#recentSub');
-  if (sub) sub.textContent = (homeFilter === 'today' ? 'today' : 'all regions')
-    + ' \u00B7 showing ' + done.length + ' of ' + total + ' fetched';
+  if (sub) sub.textContent = (homeFilter === 'today' ? 'today' : 'all regions') + ' \u00B7 latest results';
+  const more = $('#recentMore');
+  if (more) {
+    more.style.display = total > 8 ? '' : 'none';
+    more.textContent = recentExpanded ? '\u2039 Show fewer' : `View all results (${total}) \u203A`;
+  }
   strip.innerHTML = '';
   if (!done.length) { strip.innerHTML = '<div class="loading">No completed matches in the fetched window.</div>'; return; }
   for (const {slug, ev} of done) {
     const R = REGIONS[slug], t = ev.match.teams, a = t[0]||{}, b = t[1]||{};
     const aw = a.result?.gameWins ?? 0, bw = b.result?.gameWins ?? 0;
     const aWin = a.result?.outcome === 'win', bWin = b.result?.outcome === 'win';
+    const tbc = !aWin && !bWin;      // played, but no result published yet
     const d = new Date(ev.startTime).toLocaleDateString(undefined,{day:'numeric', month:'short'});
-    const card = el('div','rc');
-    card.style.setProperty('--rg', R.color);
-    card.innerHTML = `<div class="top"><span class="lgw">${leagueLogoHTML(slug)}</span><span class="rgn">${R.name}</span><span class="d">${esc(d)}</span></div>
-      <div class="mid">
-        <div class="side${aWin?' won':''}">${crestHTML(a.name,'lg')}<span class="cd" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</span></div>
-        <div class="sc"><span class="${aWin?'w':'l'}">${aw}</span> - <span class="${bWin?'w':'l'}">${bw}</span></div>
-        <div class="side${bWin?' won':''}">${crestHTML(b.name,'lg')}<span class="cd" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</span></div>
+    const bo = ev.match?.strategy?.count ? 'Bo' + ev.match.strategy.count : '';
+    const row = el('div','nxt');
+    row.style.setProperty('--rg', R.color);
+    row.innerHTML = `
+      <div class="n-when"><div class="n-date">${esc(d)}</div><span class="n-cd">${esc(fmtWhen(ev.startTime).day.split(' ')[0])}</span></div>
+      <div class="n-rg"><span class="lgw">${leagueLogoHTML(slug)}</span>
+        <div><span class="nm">${R.name}</span><span class="sp">${esc(R.splitLabel)}</span></div></div>
+      <div class="n-mid">
+        <div class="n-a${aWin||tbc?'':' lost'}"><span class="n-code" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</span>${crestHTML(a.name,'n-lg')}</div>
+        ${tbc ? '<div class="n-sc tbc" title="Result not published yet">\u2013</div>'
+              : `<div class="n-sc"><span class="${aWin?'w':'l'}">${aw}</span>\u2013<span class="${bWin?'w':'l'}">${bw}</span></div>`}
+        <div class="n-b${bWin||tbc?'':' lost'}">${crestHTML(b.name,'n-lg')}<span class="n-code" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</span></div>
       </div>
-      <div class="bo">${ev.match?.strategy?.count ? 'BO'+ev.match.strategy.count : esc(ev.blockName||'')}</div>`;
-    card.addEventListener('click', () => switchTab(slug));
-    strip.appendChild(card);
+      <div class="n-meta">${tbc ? 'Result pending' : esc(bo)}${ev.blockName?'<br>'+esc(ev.blockName):''}</div>`;
+    row.addEventListener('click', () => switchTab(slug));
+    strip.appendChild(row);
   }
 }
 
@@ -2143,7 +2184,7 @@ function renderWatch(slug, liveEv) {
   if (R.yt) addLink('YouTube live ↗', R.yt);
   if (R.vods) addLink('Past matches on YouTube ↗', R.vods);
   if (R.twitch) addLink('Twitch ↗', R.twitch);
-  if (R.bili) addLink('Bilibili (LPL 直播间 6) ↗', R.bili);
+  if (R.bili) addLink('Bilibili ↗', R.bili);
 
   if (liveEv) {
     state.innerHTML = '<span class="live-chip">LIVE</span>';
@@ -2778,9 +2819,7 @@ $('#liveAll').addEventListener('click', () => setFilter('live'));
 $('#nextMore').addEventListener('click', () => { nextExpanded = !nextExpanded; renderAgenda(); });
 $('#ranksMore').addEventListener('click', () => { ranksExpanded = !ranksExpanded; renderRanks(); });
 $('#storiesMore').addEventListener('click', () => { storiesExpanded = !storiesExpanded; renderStorylines(); });
-const rcScroll = dx => { const s = $('#recentStrip'); if (s) s.scrollBy({left:dx, behavior:'smooth'}); };
-$('#rcPrev').addEventListener('click', () => rcScroll(-500));
-$('#rcNext').addEventListener('click', () => rcScroll(500));
+$('#recentMore').addEventListener('click', () => { recentExpanded = !recentExpanded; renderRecent(); });
 
 function setStatus(ok, msg) {
   apiOk = ok;
