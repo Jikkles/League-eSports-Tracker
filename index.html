@@ -106,18 +106,19 @@ main{min-width:0}
 .match{display:grid;grid-template-columns:120px 1fr auto 1fr 140px;gap:10px;align-items:center;padding:14px 12px;margin-bottom:8px;background:var(--panel2);border:1px solid transparent;border-radius:var(--radius);font-size:16px}
 .match:last-child{margin-bottom:0}
 .match:hover{background:#1F1F1F;border-color:var(--line2)}
-.match .when{font-family:var(--mono);font-size:15px;color:var(--text)}
-.match .when .d{color:var(--dim);font-size:12px;display:block}
+.match .when{font-family:var(--mono);font-size:18px;color:var(--text);font-weight:500}
+.match .when .d{color:var(--dim);font-size:13.5px;display:block;margin-top:2px}
 .match .t1,.match .t2{display:flex;align-items:center;gap:6px;min-width:0;font-weight:600}
 .match .t1{justify-content:flex-end}
 .match .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-family:var(--mono);font-weight:600;font-size:24px;letter-spacing:1px;line-height:1.1}
 .match .tlogo,.match .tmono{width:26px;height:26px}
 .match .twrap,.match .winner-tag{flex:none}
 .match .code{color:var(--faint);font-family:var(--mono);font-size:10px;margin:0 4px}
-.match .score{font-family:var(--mono);font-weight:600;font-size:17px;padding:3px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;white-space:nowrap}
+.match .score{font-family:var(--mono);font-weight:600;font-size:19px;padding:3px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;white-space:nowrap}
 .match .score .w{color:var(--win)} .match .score .l{color:var(--faint)}
+.match .score .vs{color:var(--faint);font-size:14px;letter-spacing:1.5px}
 .match .score .lo{color:var(--loss);font-weight:700}
-.match .meta{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right}
+.match .meta{font-family:var(--mono);font-size:12.5px;color:var(--dim);text-align:right;line-height:1.6}
 .match.is-live{background:rgba(232,57,74,.07);box-shadow:inset 3px 0 0 var(--live)}
 .match.is-live .score{border-color:rgba(232,57,74,.55)}
 .winner-tag{color:var(--win)}
@@ -281,7 +282,7 @@ a.btn-watchlive.sm{padding:5px 12px;font-size:10px;letter-spacing:1px;margin:6px
 .team-chips .chip{cursor:default}
 .kr-row{display:grid;grid-template-columns:170px 1fr auto 1fr;gap:10px;align-items:center;padding:9px 8px;border-bottom:1px solid var(--line);font-size:15px}
 .kr-row:last-child{border-bottom:none}
-.kr-row .rd{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.5px;text-transform:uppercase}
+.kr-row .rd{font-family:var(--mono);font-size:12.5px;color:var(--dim);letter-spacing:.5px;text-transform:uppercase}
 .kr-row .a{text-align:right;font-weight:600}.kr-row .b{font-weight:600}
 .kr-row .sc{font-family:var(--mono);font-weight:600;font-size:16px;padding:2px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:4px}
 .kr-row .sc .w{color:var(--win)}.kr-row .sc .l{color:var(--faint)}
@@ -540,8 +541,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .duo .nxt .n-rg .lgw{width:30px;height:30px}
 .duo .nxt .n-rg .nm{font-size:11.5px;letter-spacing:.4px;line-height:1}
 .duo .nxt .n-rg .sp{display:none}
-.duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);gap:10px;max-width:none}
-.duo .nxt .n-a,.duo .nxt .n-b{gap:11px}
+.duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);gap:16px;max-width:none}
+.duo .nxt .n-a,.duo .nxt .n-b{gap:13px}
 .duo .nxt .n-lg{width:48px;height:48px}
 .duo .nxt .n-code{font-size:23px}
 .n-date{font-family:var(--disp);font-weight:800;line-height:1}
@@ -607,18 +608,20 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .sl .stat small{font-family:var(--body);font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-left:7px}
 .sl .sub{font-size:12.5px;color:var(--dim);margin-top:6px;line-height:1.55}
 
-/* honours rows */
-.hn{display:grid;grid-template-columns:1fr 54px;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line)}
+/* honours rows: event on the left, champion crest + name on the right */
+.hn{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--line)}
 .hn:last-of-type{border-bottom:none}
 .hn.linked{cursor:pointer;border-radius:4px}
 .hn.linked:hover{background:var(--hover)}
-.hn .dt{display:block;font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--faint);text-transform:uppercase;margin-bottom:2px}
+.hn .dt{display:block;font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--faint);text-transform:uppercase;margin-bottom:3px}
 .hn .ev{font-family:var(--body);font-weight:800;font-size:15px;letter-spacing:.3px;line-height:1.2}
-.hn .ch{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;color:var(--faint);text-transform:uppercase;margin-top:3px}
-.hn .ch b{color:var(--cyan);font-weight:600}
-.hn.pending{opacity:.72}
-.hn.pending .ch b{color:var(--dim)}
-.hn .lg{width:52px;height:52px;display:flex;align-items:center;justify-content:center;justify-self:end;overflow:hidden}
+.hn .ch{display:flex;align-items:center;gap:11px;justify-content:flex-end;min-width:0}
+.hn .ch .tn{font-family:var(--body);font-weight:700;font-size:14px;letter-spacing:.2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.hn .ch .tn.pend{font-family:var(--mono);font-size:11px;font-weight:400;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--faint)}
+.hn.pending{opacity:.75}
+.hn .lg{width:40px;height:40px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}
 .hn .lg img{max-width:100%;max-height:100%;object-fit:contain}
 
 
@@ -788,7 +791,6 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
         <div class="p-head"><div class="p-title" style="font-size:19px">🏆 Global Power Rankings</div>
           <div class="right"><a class="mini" href="https://lolesports.com/en-GB/power-rankings" target="_blank" rel="noopener">lolesports ↗</a></div></div>
         <div id="rankList"></div>
-        <button class="pnl-btn" id="ranksMore">View full rankings</button>
         <div class="rk-note" id="rkNote"></div>
       </div>
 
@@ -1413,7 +1415,7 @@ function matchRow(ev) {
       ? '<span class="l" title="Result not published yet">–</span>'
       : `<span class="${aWin?'w':(done?'l':'')}">${aw}</span> – <span class="${bWin?'w':(done?'l':'')}">${bw}</span>`;
   } else {
-    score = time;
+    score = '<span class="vs">vs</span>';   // the kickoff time already sits in the left column
   }
   const row = el('div','match'+(live?' is-live':''));
   const bothTBD = (!a.name || a.name==='TBD') && (!b.name || b.name==='TBD');
@@ -1550,7 +1552,7 @@ function formCells(form, name) {
    All / Live / Today / Tomorrow chips decide which of those show.
 ===================================================================== */
 /* the board always shows everything; the nav's All chip is the way back to it */
-let nextExpanded = false, ranksExpanded = true, storiesExpanded = true, recentExpanded = false;
+let nextExpanded = false, storiesExpanded = true, recentExpanded = false;
 let boardRegion = '';          // '' = every region, else a REGIONS slug
 const BOARD_ROWS = 4;          // fixtures / results shown before expanding
 
@@ -1615,7 +1617,9 @@ function liveNowList() {
   const out = [], seen = new Set();
   for (const ev of liveEvents) {
     if (ev.state !== 'inProgress' || !ev.match) continue;
-    out.push({ ev, slug: (ev.league?.slug||'').toLowerCase(), assumed: false });
+    const slug = (ev.league?.slug||'').toLowerCase();
+    if (!REGIONS[slug]) continue;              // this board tracks LEC/LCK/LPL/LCS only
+    out.push({ ev, slug, assumed: false });
     if (ev.match.id) seen.add(ev.match.id);
   }
   for (const {slug, ev} of allFixtures()) {
@@ -1872,12 +1876,13 @@ function renderStorylines() {
 function honourRowHTML(h) {
   const idx = HONOURS.indexOf(h);
   const isTeam = h.done && h.champ && h.champ !== 'In progress';
-  const crest = isTeam ? crestHTML(h.champ, 'lg')
-    : `<span class="lg"><span class="ini" style="display:flex">${esc(String(h.date).slice(0,3).toUpperCase())}</span></span>`;
+  // crest and champion sit together on the right, so the row has no dead middle
+  const champ = isTeam
+    ? `${crestHTML(h.champ, 'lg')}<span class="tn">${esc(h.champ)}</span>`
+    : `<span class="tn pend">${esc(h.champ)}</span>`;
   return `<div class="hn${h.done?'':' pending'}${h.d?' linked':''}" data-hidx="${idx}"${h.d?' role="button" tabindex="0" title="Open tournament details"':''}>
-    <div><div class="ev"><span class="dt">${esc(h.date)}</span>${esc(h.ev)}</div>
-      <div class="ch">${isTeam ? 'Champion <b>'+esc(h.champ)+'</b>' : '<b>'+esc(h.champ)+'</b>'}</div></div>
-    ${crest}</div>`;
+    <div class="ev"><span class="dt">${esc(h.date)}</span>${esc(h.ev)}</div>
+    <div class="ch">${champ}</div></div>`;
 }
 /* the whole board, in date order \u2014 every event of the season is a row */
 function renderHonoursPanel() {
@@ -2869,7 +2874,7 @@ function renderHome() {
 function renderTicker() {
   const track = $('#tickerTrack');
   const items = [];
-  liveEvents.filter(e=>e.state==='inProgress' && e.match).forEach(e => {
+  liveEvents.filter(e => e.state==='inProgress' && e.match && REGIONS[(e.league?.slug||'').toLowerCase()]).forEach(e => {
     items.push(`<span class="tick-item"><span class="live-chip">LIVE</span><span class="tick-lg" style="color:var(--gold)">${esc(e.league?.name||'')}</span><b>${esc(liveLabel(e))}</b></span>`);
   });
   for (const slug of Object.keys(REGIONS)) {
@@ -2895,7 +2900,7 @@ function renderRanks() {
   list.innerHTML = '';
   const pts = POWER_RANKINGS.map(r => r.pts);
   const hi = Math.max(...pts), lo = Math.min(...pts);
-  const rows = ranksExpanded ? POWER_RANKINGS : POWER_RANKINGS.slice(0,5);
+  const rows = POWER_RANKINGS;
   rows.forEach((r,i) => {
     // 8-segment meter scaled across the spread of the current top 10
     const share = hi === lo ? 1 : (r.pts - lo + 60) / (hi - lo + 60);
@@ -2913,8 +2918,6 @@ function renderRanks() {
       <div class="pts">${r.pts}</div>${mv}`;
     list.appendChild(row);
   });
-  const btn = $('#ranksMore');
-  if (btn) btn.textContent = ranksExpanded ? 'Show top 5' : 'View full rankings';
   $('#rkNote').textContent = 'Mirrors the official lolesports Global Power Rankings · as of ' + POWER_RANKINGS_ASOF;
 }
 
@@ -2937,7 +2940,6 @@ document.querySelectorAll('.fchip').forEach(c => c.addEventListener('click', () 
   renderHome();
 }));
 $('#nextMore').addEventListener('click', () => { nextExpanded = !nextExpanded; renderAgenda(); });
-$('#ranksMore').addEventListener('click', () => { ranksExpanded = !ranksExpanded; renderRanks(); });
 $('#storiesMore').addEventListener('click', () => { storiesExpanded = !storiesExpanded; renderStorylines(); });
 $('#recentMore').addEventListener('click', () => { recentExpanded = !recentExpanded; renderRecent(); });
 
