@@ -418,25 +418,27 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .fchip.active{color:#FFFFFF}
 .fchip.active::after{background:var(--cyan)}
 .tab{display:inline-flex;align-items:center;gap:9px}
-.tab .lgw{width:21px;height:21px}
+.tab .lgw{width:26px;height:26px}
 
 /* ---- today overview strip ---- */
-.ov-row{display:grid;grid-template-columns:minmax(250px,1fr) 2.5fr;gap:16px;margin-bottom:20px}
-.ov-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;display:flex;flex-direction:column}
+#page-home{max-width:1420px;margin:0 auto}   /* keep the board dense on wide screens */
+#page-home .panel{padding:16px 18px;margin-bottom:16px}
+.ov-row{display:grid;grid-template-columns:minmax(240px,1fr) 2.6fr;gap:14px;margin-bottom:16px}
+.ov-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px 18px;display:flex;flex-direction:column}
 .ov-h{display:flex;align-items:center;gap:9px;font-family:var(--body);font-weight:700;font-size:12px;letter-spacing:1.7px;
-  text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+  text-transform:uppercase;color:var(--dim);margin-bottom:12px}
 .ov-nums{display:flex;gap:26px}
-.ov-n b{display:block;font-family:var(--disp);font-weight:800;font-size:36px;line-height:1;letter-spacing:-1px}
+.ov-n b{display:block;font-family:var(--disp);font-weight:800;font-size:40px;line-height:1;letter-spacing:-1.5px}
 .ov-n span{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;color:var(--dim)}
 .ov-n.live b{color:var(--live)} .ov-n.up b{color:var(--cyan)} .ov-n.done b{color:var(--win)}
-.ov-foot{margin-top:auto;padding-top:12px;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.4px}
-.ov-regions{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.ov-foot{margin-top:auto;padding-top:10px;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.4px}
+.ov-regions{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .ov-rg{background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--rg,var(--line2));border-radius:var(--radius);
-  padding:14px 16px;cursor:pointer;transition:background .12s ease,border-color .12s ease}
+  padding:13px 16px;cursor:pointer;transition:background .12s ease,border-color .12s ease}
 .ov-rg:hover{background:var(--panel2);border-color:var(--line2);border-top-color:var(--rg)}
-.ov-rg .top{display:flex;align-items:center;gap:10px;font-family:var(--body);font-weight:800;font-size:17px;letter-spacing:.5px}
-.ov-rg .top .lgw{width:24px;height:24px}
-.ov-rg .n{font-family:var(--disp);font-weight:800;font-size:31px;line-height:1.15;margin-top:10px;letter-spacing:-1px}
+.ov-rg .top{display:flex;align-items:center;gap:11px;font-family:var(--body);font-weight:800;font-size:21px;letter-spacing:.5px}
+.ov-rg .top .lgw{width:36px;height:36px}
+.ov-rg .n{font-family:var(--disp);font-weight:800;font-size:34px;line-height:1.1;margin-top:8px;letter-spacing:-1.2px}
 .ov-rg .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;color:var(--dim)}
 .pips{display:flex;gap:4px;margin-top:11px}
 .pip{height:4px;flex:1;border-radius:2px;background:#222222}
@@ -449,8 +451,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .live-panel .p-title{display:flex;align-items:center;gap:10px}
 .dot-live{width:10px;height:10px;border-radius:50%;background:var(--live);box-shadow:0 0 10px var(--live);
   animation:pulse 1.4s ease infinite;flex:none}
-.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px}
-.lcard{position:relative;overflow:hidden;background:#0D0D0D;border:1px solid rgba(232,57,74,.38);border-radius:var(--radius);padding:13px 16px 16px}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,560px));gap:14px}
+.lcard{position:relative;overflow:hidden;background:#0D0D0D;border:1px solid rgba(232,57,74,.38);border-radius:var(--radius);padding:12px 16px 14px}
 .lcard::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(95% 130% at 50% 0%,rgba(232,57,74,.13),transparent 70%)}
 .lcard>*{position:relative}
@@ -458,47 +460,57 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   color:var(--dim);text-transform:uppercase}
 .lc-top .lg{display:inline-flex;align-items:center;gap:7px;background:#161616;border:1px solid var(--line);
   border-radius:4px;padding:3px 8px;color:var(--rg,var(--text));font-family:var(--body);font-weight:800;font-size:11px;letter-spacing:.8px}
-.lc-top .lg .lgw{width:16px;height:16px}
+.lc-top .lg .lgw{width:20px;height:20px}
 .lc-game{margin:0 auto;color:var(--text);font-weight:500}
 .lc-clock{color:var(--live);font-weight:600}
-.lc-body{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:16px 0 2px}
+.lc-body{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:14px 0 2px}
 .lc-side{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0}
-.lc-logo{width:76px;height:76px;display:flex;align-items:center;justify-content:center;flex:none}
+.lc-logo{width:96px;height:96px;display:flex;align-items:center;justify-content:center;flex:none}
 .lc-logo img{max-width:100%;max-height:100%;object-fit:contain}
-.lc-logo .ini{font-size:17px}
-.lc-code{font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:.7px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lc-score{font-family:var(--disp);font-weight:800;font-size:46px;line-height:1;letter-spacing:-1.5px;text-align:center;white-space:nowrap}
-.lc-score .sep{color:var(--faint);font-size:34px;vertical-align:4px;margin:0 4px}
+.lc-logo .ini{font-size:20px}
+.lc-code{font-family:var(--disp);font-weight:800;font-size:23px;letter-spacing:.7px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-score{font-family:var(--disp);font-weight:800;font-size:54px;line-height:1;letter-spacing:-2px;text-align:center;white-space:nowrap}
+.lc-score .sep{color:var(--faint);font-size:38px;vertical-align:5px;margin:0 5px}
 .lc-score .hi{color:var(--live)}
-.lc-bo{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-align:center;text-transform:uppercase;margin-top:8px}
-.lc-act{display:flex;justify-content:center;margin-top:13px}
+.lc-bo{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-align:center;text-transform:uppercase;margin-top:6px}
+.lc-act{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:11px}
 .lc-act a.btn-watchlive.sm{margin:0}
+.lc-alt{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--dim);border:1px solid var(--line2);
+  border-radius:var(--pill);padding:5px 11px;text-transform:uppercase}
+.lc-alt:hover{border-color:var(--cyan);color:var(--cyan);text-decoration:none}
 .lc-note{grid-column:1/-1;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim);padding:8px 0}
 
-/* ---- next up rows ---- */
-.nxt-list{display:flex;flex-direction:column;gap:8px}
-.nxt{display:grid;grid-template-columns:104px 170px 1fr 44px 1fr 160px;align-items:center;gap:10px;
-  background:var(--panel2);border:1px solid transparent;border-radius:var(--radius);padding:12px 14px;cursor:pointer;
-  transition:background .12s ease,border-color .12s ease}
-.nxt:hover{background:#1F1F1F;border-color:var(--line2)}
-.nxt .n-time{font-family:var(--disp);font-weight:800;font-size:23px;line-height:1.05;letter-spacing:-.5px}
-.nxt .n-cd{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.4px}
-.nxt .n-rg{display:flex;align-items:center;gap:10px;border-left:1px solid var(--line);padding-left:14px;min-width:0}
-.nxt .n-rg .lgw{width:26px;height:26px}
-.nxt .n-rg .nm{font-family:var(--body);font-weight:800;font-size:14.5px;letter-spacing:.6px;color:var(--rg,var(--cyan))}
+/* ---- next up rows: one dense divided list. The matchup lives in its own
+       centred block so wide screens don't stretch it into empty space ---- */
+.nxt-list{display:flex;flex-direction:column}
+.nxt{display:grid;grid-template-columns:112px 190px minmax(0,1fr) 150px;align-items:center;gap:14px;
+  border-bottom:1px solid var(--line);padding:10px 8px;cursor:pointer;transition:background .12s ease}
+.nxt:last-child{border-bottom:none}
+.nxt:hover{background:var(--hover)}
+.nxt .n-when{padding-left:6px}
+.nxt .n-time{font-family:var(--disp);font-weight:800;font-size:26px;line-height:1;letter-spacing:-.8px}
+.nxt .n-cd{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.4px;margin-top:3px}
+.nxt .n-rg{display:flex;align-items:center;gap:11px;border-left:1px solid var(--line);border-right:1px solid var(--line);
+  padding:3px 14px;min-width:0;height:100%}
+.nxt .n-rg .lgw{width:32px;height:32px}
+.nxt .n-rg .nm{font-family:var(--body);font-weight:800;font-size:16px;letter-spacing:.6px;color:var(--rg,var(--cyan));line-height:1.15}
 .nxt .n-rg .sp{display:block;font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--faint);text-transform:uppercase}
-.nxt .n-a,.nxt .n-b{display:flex;align-items:center;gap:11px;min-width:0}
+.nxt .n-mid{display:grid;grid-template-columns:1fr 44px 1fr;align-items:center;gap:14px;max-width:640px;margin:0 auto;width:100%}
+.nxt .n-a,.nxt .n-b{display:flex;align-items:center;gap:14px;min-width:0}
 .nxt .n-a{justify-content:flex-end}
-.nxt .n-code{font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:.5px;white-space:nowrap}
-.nxt .n-lg{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex:none}
+.nxt .n-code{font-family:var(--disp);font-weight:800;font-size:27px;letter-spacing:.4px;white-space:nowrap}
+.nxt .n-lg{width:58px;height:58px;display:flex;align-items:center;justify-content:center;flex:none}
 .nxt .n-lg img{max-width:100%;max-height:100%;object-fit:contain}
+.nxt .n-lg .ini{font-size:13px}
 .nxt .n-vs{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:1.2px;text-align:center}
 .nxt .n-meta{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;color:var(--faint);text-align:right;text-transform:uppercase;line-height:1.5}
 .nxt.is-live{background:rgba(232,57,74,.08);box-shadow:inset 3px 0 0 var(--live)}
+#homeAgenda .ag-day{padding:13px 6px 6px;font-size:15px}
+#homeAgenda .ag-day:first-child{padding-top:2px}
 
 /* ---- three-column band ---- */
-.tri{display:grid;grid-template-columns:1.15fr 1fr 1.2fr;gap:20px;align-items:start}
-.tri .panel{margin-bottom:20px}
+.tri{display:grid;grid-template-columns:1.15fr 1fr 1.2fr;gap:14px;align-items:start}
+.tri .panel{margin-bottom:14px}
 .pnl-btn{width:100%;margin-top:12px;background:#161616;border:1px solid var(--line);color:var(--dim);
   font-family:var(--body);font-weight:700;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:9px;border-radius:var(--radius);
   transition:background .12s ease,color .12s ease,border-color .12s ease}
@@ -508,16 +520,16 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .p-head .right .mini:hover{color:var(--cyan);text-decoration:none}
 
 /* rankings */
-.rk2{display:grid;grid-template-columns:18px 26px 1fr 80px 42px 24px;align-items:center;gap:9px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.rk2{display:grid;grid-template-columns:20px 34px 1fr 76px 42px 24px;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line)}
 .rk2:last-child{border-bottom:none}
-.rk2 .p{font-family:var(--disp);font-weight:800;font-size:19px;color:#FFFFFF;text-align:right}
+.rk2 .p{font-family:var(--disp);font-weight:800;font-size:21px;color:#FFFFFF;text-align:right}
 .rk2:nth-child(n+6) .p{color:var(--faint)}
-.rk2 .lgw{width:26px;height:26px}
-.rk2 .nm{font-weight:600;font-size:13.5px;line-height:1.2;min-width:0}
+.rk2 .lgw{width:34px;height:34px}
+.rk2 .nm{font-weight:600;font-size:15px;line-height:1.2;min-width:0}
 .rk2 .nm .sub{display:block;font-family:var(--mono);font-size:9.5px;color:var(--faint);font-weight:400;letter-spacing:.4px}
 .rk2 .pts{font-family:var(--disp);font-weight:800;font-size:15px;text-align:right;letter-spacing:-.3px}
 .meter{display:flex;gap:3px}
-.meter i{height:8px;flex:1;background:#242424;border-radius:1px}
+.meter i{height:10px;flex:1;background:#242424;border-radius:1px}
 .meter i.on{background:var(--cyan)}
 .rk2 .mv{font-family:var(--mono);font-size:10px;text-align:center}
 .rk2 .mv.up{color:var(--win)} .rk2 .mv.down{color:var(--loss)} .rk2 .mv.flat{color:var(--faint)}
@@ -532,15 +544,17 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .sl .sub{font-size:12.5px;color:var(--dim);margin-top:6px;line-height:1.55}
 
 /* honours rows */
-.hn{display:grid;grid-template-columns:1fr 46px;gap:10px;align-items:center;padding:11px 2px;border-bottom:1px solid var(--line)}
+.hn{display:grid;grid-template-columns:1fr 54px;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--line)}
 .hn:last-of-type{border-bottom:none}
 .hn.linked{cursor:pointer;border-radius:4px}
 .hn.linked:hover{background:var(--hover)}
-.hn .ev{font-family:var(--body);font-weight:800;font-size:14px;letter-spacing:.4px}
-.hn .ch{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;color:var(--faint);text-transform:uppercase;margin-top:4px}
+.hn .dt{display:block;font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--faint);text-transform:uppercase;margin-bottom:2px}
+.hn .ev{font-family:var(--body);font-weight:800;font-size:15px;letter-spacing:.3px;line-height:1.2}
+.hn .ch{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;color:var(--faint);text-transform:uppercase;margin-top:3px}
 .hn .ch b{color:var(--cyan);font-weight:600}
+.hn.pending{opacity:.72}
 .hn.pending .ch b{color:var(--dim)}
-.hn .lg{width:44px;height:44px;display:flex;align-items:center;justify-content:center;justify-self:end;overflow:hidden}
+.hn .lg{width:52px;height:52px;display:flex;align-items:center;justify-content:center;justify-self:end;overflow:hidden}
 .hn .lg img{max-width:100%;max-height:100%;object-fit:contain}
 
 /* ---- recently completed carousel ---- */
@@ -550,20 +564,20 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .rc-arrow:hover{background:#242424;color:#FFFFFF}
 .rc-strip{display:flex;gap:12px;overflow-x:auto;scroll-behavior:smooth;padding:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .rc-strip::-webkit-scrollbar{display:none}
-.rc{flex:none;width:238px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 13px;cursor:pointer;
+.rc{flex:none;width:244px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;cursor:pointer;
   transition:background .12s ease,border-color .12s ease}
 .rc:hover{background:#1F1F1F;border-color:var(--line2)}
 .rc .top{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:1.2px;color:var(--faint);text-transform:uppercase}
-.rc .top .lgw{width:17px;height:17px}
-.rc .top .rgn{color:var(--rg,var(--dim));font-family:var(--body);font-weight:800;font-size:11px;letter-spacing:.6px}
+.rc .top .lgw{width:21px;height:21px}
+.rc .top .rgn{color:var(--rg,var(--dim));font-family:var(--body);font-weight:800;font-size:12px;letter-spacing:.6px}
 .rc .top .d{margin-left:auto}
-.rc .mid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-top:11px}
+.rc .mid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-top:9px}
 .rc .side{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
-.rc .side .lg{width:40px;height:40px;display:flex;align-items:center;justify-content:center}
+.rc .side .lg{width:54px;height:54px;display:flex;align-items:center;justify-content:center}
 .rc .side .lg img{max-width:100%;max-height:100%;object-fit:contain}
-.rc .side .cd{font-family:var(--mono);font-size:10.5px;letter-spacing:.8px;color:var(--faint);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc .side .cd{font-family:var(--mono);font-size:11px;letter-spacing:.8px;color:var(--faint);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rc .side.won .cd{color:#FFFFFF;font-weight:600}
-.rc .sc{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.5px;text-align:center;white-space:nowrap}
+.rc .sc{font-family:var(--disp);font-weight:800;font-size:29px;letter-spacing:-.8px;text-align:center;white-space:nowrap}
 .rc .sc .w{color:var(--win)} .rc .sc .l{color:var(--faint)}
 .rc .bo{font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--faint);text-align:center;margin-top:9px}
 
@@ -591,13 +605,11 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 @media (max-width:1100px){
   .ov-row{grid-template-columns:1fr}
   /* two tiers: when + who it is, then the matchup itself */
-  .nxt{grid-template-columns:auto 1fr auto;grid-template-areas:"time rg meta" "a vs b";row-gap:12px}
-  .nxt>:first-child{grid-area:time}
-  .nxt .n-rg{grid-area:rg;padding-left:12px}
+  .nxt{grid-template-columns:auto 1fr auto;grid-template-areas:"time rg meta" "mid mid mid";row-gap:10px;gap:12px}
+  .nxt .n-when{grid-area:time}
+  .nxt .n-rg{grid-area:rg;border-right:none;padding:0 0 0 12px}
   .nxt .n-meta{grid-area:meta}
-  .nxt .n-a{grid-area:a}
-  .nxt .n-vs{grid-area:vs}
-  .nxt .n-b{grid-area:b}
+  .nxt .n-mid{grid-area:mid;max-width:none}
 }
 @media (max-width:900px){
   .tri{grid-template-columns:1fr}
@@ -616,12 +628,16 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .ov-nums{gap:16px}
   .ov-n b{font-size:29px}
   .live-grid{grid-template-columns:1fr}
-  .lc-logo{width:58px;height:58px}
-  .lc-score{font-size:36px}
-  .nxt{padding:11px 12px}
-  .nxt .n-time{font-size:19px}
-  .nxt .n-code{font-size:16px}
-  .nxt .n-lg{width:28px;height:28px}
+  .lc-logo{width:70px;height:70px}
+  .lc-score{font-size:40px}
+  .nxt{padding:10px 4px;gap:10px}
+  .nxt .n-when{padding-left:2px}
+  .nxt .n-time{font-size:21px}
+  .nxt .n-code{font-size:19px}
+  .nxt .n-lg{width:40px;height:40px}
+  .nxt .n-mid{grid-template-columns:1fr 34px 1fr;gap:8px}
+  .nxt .n-a,.nxt .n-b{gap:9px}
+  .nxt .n-rg .lgw{width:26px;height:26px}
   .f-grid{grid-template-columns:1fr;padding:22px 14px 14px}
   .f-legal{padding:0 14px 22px}
   .rc-wrap{grid-template-columns:1fr}
@@ -718,7 +734,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 
       <div class="panel">
         <div class="p-head"><div class="p-title" style="font-size:19px">🏅 2026 Honours</div>
-          <div class="right"><button class="mini" id="honoursMore">View all honours ›</button></div></div>
+          <span class="p-sub">chronological</span></div>
         <div id="honoursBoard"></div>
       </div>
     </div>
@@ -853,24 +869,6 @@ const HONOURS = [
          {g:'Lower Final', col:4,row:2, a:'LYON',sa:3, b:'Sentinels',sb:1},
          {g:'Grand Final', col:5,row:0, a:'LYON',sa:3, b:'Cloud9 KIA',sb:1}]}],
        wiki:'https://lol.fandom.com/wiki/LCS/2026_Season/Lock-In', liqui:'https://liquipedia.net/leagueoflegends/LCS/2026/Lock-In' }},
-  {date:'22 Mar', ev:'First Stand', champ:'Bilibili Gaming', detail:'def. G2 Esports 3\u20131 \u00b7 S\u00e3o Paulo \u00b7 FMVP: Bin \u00b7 LPL earns 2nd MSI bracket seed', done:true,
-   d:{ dates:'16\u201322 Mar 2026', host:'Riot Games Arena, S\u00e3o Paulo, Brazil', slug:'first_stand',
-       fmt:'Eight teams \u2014 two each from the LCK and LPL, one each from the LEC, LCP, LCS and CBLOL. Two GSL-style double-elim groups (all Bo5 Fearless Draft) send their top two into a single-elimination knockout. The winning region earned a second bye into the MSI bracket stage.',
-       podium:[['Bilibili Gaming','Champions \u00b7 FMVP: Bin \u00b7 first international title'],['G2 Esports','Runners-up \u2014 first LEC international final in 6+ years'],['','']],
-       teams:['Bilibili Gaming','JD Gaming','Gen.G','BNK FearX','G2 Esports','Secret Whales'], teamsNote:'plus the LCS and CBLOL representatives \u2014 full field on Liquipedia',
-       results:[],
-       brackets:[
-        {title:'Group A \u2014 GSL double elimination', note:'Group B (Gen.G, JD Gaming + LCS/CBLOL reps) on Liquipedia', cols:3, matches:[
-         {g:'Opening Matches', col:1,row:1, a:'Bilibili Gaming',sa:3, b:'BNK FearX',sb:2},
-         {g:'Opening Matches', col:1,row:1, a:'G2 Esports',sa:3, b:'Secret Whales',sb:0},
-         {g:'Winners Match', col:2,row:1, a:'Bilibili Gaming',sa:3, b:'G2 Esports',sb:0},
-         {g:'Elimination Match', col:2,row:2, a:'BNK FearX',sa:3, b:'Secret Whales',sb:0},
-         {g:'Decider Match', col:3,row:2, a:'G2 Esports',sa:3, b:'BNK FearX',sb:0}]},
-        {title:'Knockout Stage \u2014 single elimination', cols:2, matches:[
-         {g:'Semifinals', col:1,row:1, a:'Bilibili Gaming',sa:3, b:'JD Gaming',sb:0},
-         {g:'Semifinals', col:1,row:1, a:'G2 Esports',sa:3, b:'Gen.G',sb:0},
-         {g:'Grand Final', col:2,row:0, a:'Bilibili Gaming',sa:3, b:'G2 Esports',sb:1}]}],
-       wiki:'https://lol.fandom.com/wiki/2026_First_Stand', liqui:'https://liquipedia.net/leagueoflegends/First_Stand_Tournament/2026' }},
   {date:'Spring', ev:'LEC Versus', champ:'G2 Esports', detail:'def. Karmine Corp 3–2 in the final · MVP: Caps', done:true,
    d:{ dates:'17 Jan – 1 Mar 2026', host:'Riot Games Arena, Berlin · Finals: Olimpic Arena, Badalona',
        fmt:'12 teams: the 10 LEC partners plus ERL invitees Karmine Corp Blue and Los Ratones. Bo1 single round robin, top 8 into a double-elim playoff (Bo3 early rounds, Bo5 from the semis). Champion qualified for First Stand. G2 entered the bracket as the 7 seed and won the whole thing.',
@@ -893,21 +891,6 @@ const HONOURS = [
          {g:'Lower Final · Badalona', col:5,row:2, a:'Movistar KOI',sa:2, b:'Karmine Corp',sb:3},
          {g:'Grand Final · Badalona', col:6,row:0, a:'G2 Esports',sa:3, b:'Karmine Corp',sb:2}]}],
        wiki:'https://lol.fandom.com/wiki/LEC/2026_Season/Versus_Season', liqui:'https://liquipedia.net/leagueoflegends/LEC/2026/Versus' }},
-  {date:'Spring', ev:'LEC Spring', champ:'G2 Esports', detail:'def. Karmine Corp 3–2 · FMVP: SkewMond · both finalists → MSI', done:true,
-   d:{ dates:'28 Mar – 7 Jun 2026 · Playoffs 23 May – 7 Jun', host:'Riot Games Arena, Berlin + Madrid & Paris roadshows',
-       fmt:'10 teams · Bo3 single round robin · top 6 into a double-elim playoff, seeds 1–4 upper, 5–6 lower, all Bo5. Winner went to the MSI bracket stage, runner-up to the MSI play-in. G2 already held an EWC spot, so that seed passed down to 3rd-place Movistar KOI.',
-       podium:[['G2 Esports','Champions · Finals MVP: SkewMond · MSI bracket seed'],['Karmine Corp','Runners-up — MSI play-in seed'],['Movistar KOI','3rd — inherited the EWC seed']],
-       teams:[], results:[],
-       brackets:[{title:'Playoffs — full 6-team double elimination', cols:5, matches:[
-         {g:'Upper Semifinals', col:1,row:1, a:'Team Vitality',sa:0, b:'Movistar KOI',sb:3},
-         {g:'Upper Semifinals', col:1,row:1, a:'Karmine Corp',sa:1, b:'G2 Esports',sb:3},
-         {g:'Upper Final', col:2,row:1, a:'Movistar KOI',sa:2, b:'G2 Esports',sb:3},
-         {g:'Lower Quarterfinals', col:2,row:2, a:'Natus Vincere',sa:1, b:'Karmine Corp',sb:3},
-         {g:'Lower Quarterfinals', col:2,row:2, a:'GIANTX',sa:3, b:'Team Vitality',sb:0},
-         {g:'Lower Semifinal', col:3,row:2, a:'Karmine Corp',sa:3, b:'GIANTX',sb:0},
-         {g:'Lower Final', col:4,row:2, a:'Movistar KOI',sa:0, b:'Karmine Corp',sb:3},
-         {g:'Grand Final', col:5,row:0, a:'G2 Esports',sa:3, b:'Karmine Corp',sb:2}]}],
-       wiki:'https://lol.fandom.com/wiki/LEC/2026_Season/Spring_Season', liqui:'https://liquipedia.net/leagueoflegends/LEC/2026/Spring' }},
   {date:'8 Mar', ev:'LPL Split 1', champ:'Bilibili Gaming', detail:'def. Ninjas in Pyjamas 3–0 · finalists → First Stand', done:true,
    d:{ dates:'14 Jan – 8 Mar 2026 · Winter split', host:'Club arenas across China (roadshow format)',
        fmt:'14 teams in three groups (Ascend / Perseverance / Nirvana), Knights Rivals play-in, then an 8-team double-elim playoff — all Bo5 Fearless Draft. Both finalists qualified for First Stand. NIP were swept 0–3 by BLG in the opening round, then ran the entire lower bracket back to the final.',
@@ -924,6 +907,39 @@ const HONOURS = [
          {g:'Upper Final', col:3,row:1, a:'Bilibili Gaming',sa:null, b:'JD Gaming',sb:null, w:0},
          {g:'Grand Final', col:4,row:0, a:'Bilibili Gaming',sa:3, b:'Ninjas in Pyjamas',sb:0}]}],
        wiki:'https://lol.fandom.com/wiki/LPL/2026_Season/Split_1', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026/Split_1' }},
+  {date:'22 Mar', ev:'First Stand', champ:'Bilibili Gaming', detail:'def. G2 Esports 3\u20131 \u00b7 S\u00e3o Paulo \u00b7 FMVP: Bin \u00b7 LPL earns 2nd MSI bracket seed', done:true,
+   d:{ dates:'16\u201322 Mar 2026', host:'Riot Games Arena, S\u00e3o Paulo, Brazil', slug:'first_stand',
+       fmt:'Eight teams \u2014 two each from the LCK and LPL, one each from the LEC, LCP, LCS and CBLOL. Two GSL-style double-elim groups (all Bo5 Fearless Draft) send their top two into a single-elimination knockout. The winning region earned a second bye into the MSI bracket stage.',
+       podium:[['Bilibili Gaming','Champions \u00b7 FMVP: Bin \u00b7 first international title'],['G2 Esports','Runners-up \u2014 first LEC international final in 6+ years'],['','']],
+       teams:['Bilibili Gaming','JD Gaming','Gen.G','BNK FearX','G2 Esports','Secret Whales'], teamsNote:'plus the LCS and CBLOL representatives \u2014 full field on Liquipedia',
+       results:[],
+       brackets:[
+        {title:'Group A \u2014 GSL double elimination', note:'Group B (Gen.G, JD Gaming + LCS/CBLOL reps) on Liquipedia', cols:3, matches:[
+         {g:'Opening Matches', col:1,row:1, a:'Bilibili Gaming',sa:3, b:'BNK FearX',sb:2},
+         {g:'Opening Matches', col:1,row:1, a:'G2 Esports',sa:3, b:'Secret Whales',sb:0},
+         {g:'Winners Match', col:2,row:1, a:'Bilibili Gaming',sa:3, b:'G2 Esports',sb:0},
+         {g:'Elimination Match', col:2,row:2, a:'BNK FearX',sa:3, b:'Secret Whales',sb:0},
+         {g:'Decider Match', col:3,row:2, a:'G2 Esports',sa:3, b:'BNK FearX',sb:0}]},
+        {title:'Knockout Stage \u2014 single elimination', cols:2, matches:[
+         {g:'Semifinals', col:1,row:1, a:'Bilibili Gaming',sa:3, b:'JD Gaming',sb:0},
+         {g:'Semifinals', col:1,row:1, a:'G2 Esports',sa:3, b:'Gen.G',sb:0},
+         {g:'Grand Final', col:2,row:0, a:'Bilibili Gaming',sa:3, b:'G2 Esports',sb:1}]}],
+       wiki:'https://lol.fandom.com/wiki/2026_First_Stand', liqui:'https://liquipedia.net/leagueoflegends/First_Stand_Tournament/2026' }},
+  {date:'Spring', ev:'LEC Spring', champ:'G2 Esports', detail:'def. Karmine Corp 3–2 · FMVP: SkewMond · both finalists → MSI', done:true,
+   d:{ dates:'28 Mar – 7 Jun 2026 · Playoffs 23 May – 7 Jun', host:'Riot Games Arena, Berlin + Madrid & Paris roadshows',
+       fmt:'10 teams · Bo3 single round robin · top 6 into a double-elim playoff, seeds 1–4 upper, 5–6 lower, all Bo5. Winner went to the MSI bracket stage, runner-up to the MSI play-in. G2 already held an EWC spot, so that seed passed down to 3rd-place Movistar KOI.',
+       podium:[['G2 Esports','Champions · Finals MVP: SkewMond · MSI bracket seed'],['Karmine Corp','Runners-up — MSI play-in seed'],['Movistar KOI','3rd — inherited the EWC seed']],
+       teams:[], results:[],
+       brackets:[{title:'Playoffs — full 6-team double elimination', cols:5, matches:[
+         {g:'Upper Semifinals', col:1,row:1, a:'Team Vitality',sa:0, b:'Movistar KOI',sb:3},
+         {g:'Upper Semifinals', col:1,row:1, a:'Karmine Corp',sa:1, b:'G2 Esports',sb:3},
+         {g:'Upper Final', col:2,row:1, a:'Movistar KOI',sa:2, b:'G2 Esports',sb:3},
+         {g:'Lower Quarterfinals', col:2,row:2, a:'Natus Vincere',sa:1, b:'Karmine Corp',sb:3},
+         {g:'Lower Quarterfinals', col:2,row:2, a:'GIANTX',sa:3, b:'Team Vitality',sb:0},
+         {g:'Lower Semifinal', col:3,row:2, a:'Karmine Corp',sa:3, b:'GIANTX',sb:0},
+         {g:'Lower Final', col:4,row:2, a:'Movistar KOI',sa:0, b:'Karmine Corp',sb:3},
+         {g:'Grand Final', col:5,row:0, a:'G2 Esports',sa:3, b:'Karmine Corp',sb:2}]}],
+       wiki:'https://lol.fandom.com/wiki/LEC/2026_Season/Spring_Season', liqui:'https://liquipedia.net/leagueoflegends/LEC/2026/Spring' }},
   {date:'14 Jun', ev:'LPL Split 2', champ:'Bilibili Gaming', detail:'def. Top Esports 3–0 in Wuhan · FMVP: Knight · finalists → MSI with bracket byes', done:true,
    d:{ dates:'Apr – 14 Jun 2026 · Spring split', host:'Club arenas across China · Finals: Wuhan',
        fmt:'Same 14 teams in Ascend/Nirvana with the Knights Rivals play-in into an 8-team double-elim playoff, all Bo5 Fearless. Both finalists went to MSI — with bracket-stage byes after BLG won First Stand. Team WE upset BLG 3–1 in the opening round; BLG answered by winning four straight lower-bracket series and sweeping the final.',
@@ -1470,7 +1486,7 @@ function formCells(form, name) {
    All / Live / Today / Tomorrow chips decide which of those show.
 ===================================================================== */
 let homeFilter = 'all';        // all | live | today | tomorrow
-let nextExpanded = false, ranksExpanded = false, storiesExpanded = false, honoursExpanded = false;
+let nextExpanded = false, ranksExpanded = true, storiesExpanded = true;   // the band reads fuller expanded
 
 const dayKey = d => { const x = new Date(d); return x.getFullYear()+'-'+x.getMonth()+'-'+x.getDate(); };
 
@@ -1556,8 +1572,16 @@ function liveCard(ev) {
   const games = ev.match?.games || [];
   const played = games.length ? games.filter(g => g.state === 'completed').length : (aw + bw);
   const gameNo = Math.min(bo || 99, played + 1);
-  const url = liveWatchUrl(ev);
-  const watch = url ? `<div class="lc-act"><a class="btn-watchlive sm" href="${url}" target="_blank" rel="noopener">Watch live</a></div>` : '';
+  // the API's own stream first, then the league channel as a second option —
+  // some leagues also run a YouTube stream the live feed never lists
+  const s = bestStream(ev);
+  let acts = '';
+  if (s) acts += `<a class="btn-watchlive sm" href="${s.url}" target="_blank" rel="noopener">Watch on ${esc(s.name)}</a>`;
+  if (R?.yt && (!s || s.provider !== 'youtube'))
+    acts += `<a class="lc-alt" href="${R.yt}" target="_blank" rel="noopener">YouTube ↗</a>`;
+  if (R?.twitch && (!s || s.provider !== 'twitch') && !acts.includes('btn-watchlive'))
+    acts += `<a class="lc-alt" href="${R.twitch}" target="_blank" rel="noopener">Twitch ↗</a>`;
+  const watch = acts ? `<div class="lc-act">${acts}</div>` : '';
   const chip = `<span class="lg"${R ? ` style="--rg:${R.color}"` : ''}>${R ? `<span class="lgw">${leagueLogoHTML(slug)}</span>` : ''}${esc(R ? R.name : (ev.league?.name || 'LIVE'))}</span>`;
   const clock = `<span class="lc-clock" data-since="${esc(ev.startTime)}" title="Time since this broadcast went live">--:--</span>`;
   const card = el('div','lcard');
@@ -1635,12 +1659,14 @@ function renderAgenda() {
     const row = el('div','nxt');
     row.style.setProperty('--rg', R.color);
     row.innerHTML = `
-      <div><div class="n-time">${esc(time)}</div><span class="n-cd">${esc(fmtCountdown(ev.startTime))}</span></div>
+      <div class="n-when"><div class="n-time">${esc(time)}</div><span class="n-cd">${esc(fmtCountdown(ev.startTime))}</span></div>
       <div class="n-rg"><span class="lgw">${leagueLogoHTML(slug)}</span>
         <div><span class="nm">${R.name}</span><span class="sp">${esc(R.splitLabel)}</span></div></div>
-      <div class="n-a"><span class="n-code" title="${esc(t[0]?.name||'TBD')}">${esc(teamAbbr(t[0]))}</span>${crestHTML(t[0]?.name,'n-lg')}</div>
-      <div class="n-vs">VS</div>
-      <div class="n-b">${crestHTML(t[1]?.name,'n-lg')}<span class="n-code" title="${esc(t[1]?.name||'TBD')}">${esc(teamAbbr(t[1]))}</span></div>
+      <div class="n-mid">
+        <div class="n-a"><span class="n-code" title="${esc(t[0]?.name||'TBD')}">${esc(teamAbbr(t[0]))}</span>${crestHTML(t[0]?.name,'n-lg')}</div>
+        <div class="n-vs">VS</div>
+        <div class="n-b">${crestHTML(t[1]?.name,'n-lg')}<span class="n-code" title="${esc(t[1]?.name||'TBD')}">${esc(teamAbbr(t[1]))}</span></div>
+      </div>
       <div class="n-meta">${esc(bo)}${ev.blockName?'<br>'+esc(ev.blockName):''}${bigMatch(ev)?'<br>'+BIG_BADGE:''}</div>`;
     row.addEventListener('click', () => switchTab(slug));
     box.appendChild(row);
@@ -1703,17 +1729,15 @@ function honourRowHTML(h) {
   const crest = isTeam ? crestHTML(h.champ, 'lg')
     : `<span class="lg"><span class="ini" style="display:flex">${esc(String(h.date).slice(0,3).toUpperCase())}</span></span>`;
   return `<div class="hn${h.done?'':' pending'}${h.d?' linked':''}" data-hidx="${idx}"${h.d?' role="button" tabindex="0" title="Open tournament details"':''}>
-    <div><div class="ev">${esc(h.ev)}</div>
-      <div class="ch">${isTeam ? 'Champion <b>'+esc(h.champ)+'</b>' : '<b>'+esc(h.champ)+'</b> \u00B7 '+esc(h.date)}</div></div>
+    <div><div class="ev"><span class="dt">${esc(h.date)}</span>${esc(h.ev)}</div>
+      <div class="ch">${isTeam ? 'Champion <b>'+esc(h.champ)+'</b>' : '<b>'+esc(h.champ)+'</b>'}</div></div>
     ${crest}</div>`;
 }
+/* the whole board, in date order \u2014 every event of the season is a row */
 function renderHonoursPanel() {
   const box = $('#honoursBoard'); if (!box) return;
-  const list = honoursExpanded ? HONOURS : HONOURS.slice(-5);
-  box.innerHTML = list.map(honourRowHTML).join('');
+  box.innerHTML = HONOURS.map(honourRowHTML).join('');
   wireHonours(box);
-  const btn = $('#honoursMore');
-  if (btn) btn.textContent = honoursExpanded ? '\u2039 Show recent only' : 'View all honours \u203A';
 }
 
 /* -------- header clock + live elapsed timers -------- */
@@ -2123,17 +2147,15 @@ function renderWatch(slug, liveEv) {
 
   if (liveEv) {
     state.innerHTML = '<span class="live-chip">LIVE</span>';
-    const yts = (liveEv.streams||[]).filter(v => (v.provider||'').toLowerCase()==='youtube' && v.parameter);
-    const yt = yts.find(v => ((v.locale || v.mediaLocale?.locale || '')+'').toLowerCase().startsWith('en')) || yts[0];
-    const ytUrl = liveWatchUrl(liveEv);
+    const s = bestStream(liveEv);
+    const url = liveWatchUrl(liveEv);
     box.innerHTML = `<div class="watch-live"><span class="live-chip">LIVE</span>
       <b>${esc(liveLabel(liveEv))}</b>
-      ${ytUrl ? `<a class="btn-watchlive" href="${ytUrl}" target="_blank" rel="noopener">Watch live now on YouTube</a>` : ''}</div>`
-      // embed only when the API gave us an actual video id — ytUrl can be the
-      // channel /live fallback, which has no embeddable parameter
-      + (yt && ytUrl && location.protocol !== 'file:'
-          ? `<div class="watch-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(yt.parameter)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Live broadcast"></iframe></div>` : '');
-    note.textContent = ytUrl ? '' : 'Live now — open the channel links above.';
+      ${url ? `<a class="btn-watchlive" href="${url}" target="_blank" rel="noopener">Watch live now${s ? ' on ' + esc(s.name) : ''}</a>` : ''}</div>`
+      // only YouTube streams are embeddable, and only with a real video id
+      + (s && s.provider === 'youtube' && location.protocol !== 'file:'
+          ? `<div class="watch-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(s.param)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Live broadcast"></iframe></div>` : '');
+    note.textContent = url ? '' : 'Live now — open the channel links above.';
   } else {
     state.textContent = 'offline';
     box.innerHTML = '';
@@ -2148,16 +2170,39 @@ function teamsLabel(ev) {
   const t = ev.match?.teams||[];
   return `${t[0]?.name||'TBD'} vs ${t[1]?.name||'TBD'}`;
 }
+/* Not every league broadcasts to YouTube — the LCK, for one, publishes only
+   Twitch + AfreecaTV entries — so resolve whatever provider the API offers. */
+const STREAM_URL = {
+  youtube:   p => 'https://www.youtube.com/watch?v=' + encodeURIComponent(p),
+  twitch:    p => 'https://www.twitch.tv/' + encodeURIComponent(p),
+  afreecatv: p => 'https://play.afreecatv.com/' + encodeURIComponent(p),
+  chzzk:     p => 'https://chzzk.naver.com/live/' + encodeURIComponent(p),
+  bilibili:  p => 'https://live.bilibili.com/' + encodeURIComponent(p),
+  huya:      p => 'https://www.huya.com/' + encodeURIComponent(p),
+  douyu:     p => 'https://www.douyu.com/' + encodeURIComponent(p),
+  trovo:     p => 'https://trovo.live/s/' + encodeURIComponent(p)
+};
+const PROVIDER_NAME = { youtube:'YouTube', twitch:'Twitch', afreecatv:'AfreecaTV', chzzk:'CHZZK',
+                        bilibili:'Bilibili', huya:'Huya', douyu:'Douyu', trovo:'Trovo' };
+
+/* the stream the API says an English-language viewer should watch, preferring
+   YouTube when it exists but never inventing one that doesn't */
+function bestStream(ev) {
+  const usable = (ev.streams||[]).filter(s => s.parameter && STREAM_URL[(s.provider||'').toLowerCase()]);
+  if (!usable.length) return null;
+  const loc = s => ((s.locale || s.mediaLocale?.locale || '') + '').toLowerCase();
+  const isYT = s => (s.provider||'').toLowerCase() === 'youtube';
+  const en = usable.filter(s => loc(s).startsWith('en'));
+  const pick = en.find(isYT) || en[0] || usable.find(isYT) || usable[0];
+  const prov = (pick.provider||'').toLowerCase();
+  return { url: STREAM_URL[prov](pick.parameter), provider: prov,
+           name: PROVIDER_NAME[prov] || prov, param: pick.parameter };
+}
 function liveWatchUrl(ev) {
-  // 1) the official ENGLISH broadcast video from the API — the exact stream, not a co-stream or pre-show
-  const yts = (ev.streams||[]).filter(v => (v.provider||'').toLowerCase()==='youtube' && v.parameter);
-  const en = yts.find(v => ((v.locale || v.mediaLocale?.locale || '')+'').toLowerCase().startsWith('en'));
-  if (en) return 'https://www.youtube.com/watch?v=' + encodeURIComponent(en.parameter);
-  // 2) the league's own channel /live
-  const slug = (ev.league?.slug||'').toLowerCase();
-  if (REGIONS[slug]?.yt) return REGIONS[slug].yt;
-  // 3) any YouTube stream at all
-  return yts[0] ? 'https://www.youtube.com/watch?v=' + encodeURIComponent(yts[0].parameter) : null;
+  const s = bestStream(ev);
+  if (s) return s.url;
+  const slug = (ev.league?.slug||'').toLowerCase();   // last resort: the league channel
+  return REGIONS[slug]?.yt || null;
 }
 function liveLabel(ev) {
   const t = ev.match?.teams||[];
@@ -2733,7 +2778,6 @@ $('#liveAll').addEventListener('click', () => setFilter('live'));
 $('#nextMore').addEventListener('click', () => { nextExpanded = !nextExpanded; renderAgenda(); });
 $('#ranksMore').addEventListener('click', () => { ranksExpanded = !ranksExpanded; renderRanks(); });
 $('#storiesMore').addEventListener('click', () => { storiesExpanded = !storiesExpanded; renderStorylines(); });
-$('#honoursMore').addEventListener('click', () => { honoursExpanded = !honoursExpanded; renderHonoursPanel(); });
 const rcScroll = dx => { const s = $('#recentStrip'); if (s) s.scrollBy({left:dx, behavior:'smooth'}); };
 $('#rcPrev').addEventListener('click', () => rcScroll(-500));
 $('#rcNext').addEventListener('click', () => rcScroll(500));
