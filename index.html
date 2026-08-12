@@ -500,6 +500,16 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .lc-alt:hover{border-color:var(--cyan);color:var(--cyan);text-decoration:none}
 .lc-note{grid-column:1/-1;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim);padding:8px 0}
 
+/* nothing on air — the panel calms down and reads like a region's watch box */
+.live-panel.off{border-color:var(--line);background:var(--panel)}
+.live-panel.off .dot-live{background:var(--faint);box-shadow:none;animation:none}
+.live-panel.off .p-title{color:var(--dim)}
+.lc-off{display:flex;align-items:flex-start;gap:13px;padding:4px 2px 2px}
+.off-dot{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none;margin-top:5px}
+.off-h{font-family:var(--body);font-weight:800;font-size:15px;letter-spacing:.3px;color:var(--dim)}
+.off-sub{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:5px;line-height:1.65}
+.off-sub b{color:var(--text);font-weight:600}
+
 /* ---- next up rows: one dense divided list. The matchup lives in its own
        centred block so wide screens don't stretch it into empty space ---- */
 .nxt-list{display:flex;flex-direction:column}
@@ -750,7 +760,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
     </div>
 
     <div class="panel live-panel" id="livePanel">
-      <div class="p-head"><div class="p-title"><span class="dot-live"></span>Live Now</div>
+      <div class="p-head"><div class="p-title"><span class="dot-live"></span><span id="liveTitle">Live Now</span></div>
         <span class="p-sub" id="liveCount"></span>
         </div>
       <div class="live-grid" id="homeLive"><div class="loading">Checking for live broadcasts…</div></div>
@@ -1730,14 +1740,29 @@ function renderLiveCards() {
     ? majors.length + ' broadcast' + (majors.length>1?'s':'') + (inferred ? ` · ${inferred} unreported` : '')
     : '';
   box.innerHTML = '';
+  const panel = $('#livePanel'), title = $('#liveTitle');
   if (!majors.length) {
+    // nothing on air: drop the live styling and read like a region's watch panel
+    if (panel) panel.classList.add('off');
+    if (title) title.textContent = 'Streams Offline';
+    $('#liveCount').textContent = 'checked every 60s';
     box.dataset.n = '0';
     box.style.gridTemplateColumns = '1fr';
-    box.innerHTML = `<div class="lc-note">${apiOk===false
-      ? 'API unreachable \u2014 open lolesports.com to check live games.'
-      : 'Nothing live right now across tracked leagues.'}</div>`;
+    const next = allFixtures()
+      .filter(x => x.ev.match?.teams?.length === 2 && evPhase(x.ev, liveMatchIds()) === 'up')
+      .sort((a,b) => new Date(a.ev.startTime) - new Date(b.ev.startTime))[0];
+    const w = next ? fmtWhen(next.ev.startTime) : null;
+    box.innerHTML = `<div class="lc-off"><span class="off-dot"></span><div>
+      <div class="off-h">${apiOk===false ? 'Can\u2019t reach the API' : 'No broadcast on air'}</div>
+      <div class="off-sub">${apiOk===false
+        ? 'Showing cached data \u2014 open lolesports.com to check live games.'
+        : (next
+            ? `Nothing live across LEC \u00b7 LCK \u00b7 LPL \u00b7 LCS. Next up <b>${esc(teamsLabel(next.ev))}</b> (${REGIONS[next.slug].name}) \u2014 ${esc(w.day)} ${esc(w.time)}, ${esc(fmtCountdown(next.ev.startTime))}.`
+            : 'Nothing live across LEC \u00b7 LCK \u00b7 LPL \u00b7 LCS.')}</div></div></div>`;
     return;
   }
+  if (panel) panel.classList.remove('off');
+  if (title) title.textContent = 'Live Now';
   // the cards always fill the panel: one live game gets the whole width, two
   // split it, three or four share it \u2014 beyond that they wrap in rows of four
   const cols = Math.min(majors.length, 4);
