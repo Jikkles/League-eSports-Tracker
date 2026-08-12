@@ -514,10 +514,11 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .nxt .n-rg .lgw{width:32px;height:32px}
 .nxt .n-rg .nm{font-family:var(--body);font-weight:800;font-size:16px;letter-spacing:.6px;color:var(--rg,var(--cyan));line-height:1.15}
 .nxt .n-rg .sp{display:block;font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--faint);text-transform:uppercase}
-.nxt .n-mid{display:grid;grid-template-columns:1fr 44px 1fr;align-items:center;gap:14px;max-width:640px;margin:0 auto;width:100%}
+.nxt .n-mid{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;gap:14px;max-width:640px;margin:0 auto;width:100%}
 .nxt .n-a,.nxt .n-b{display:flex;align-items:center;gap:14px;min-width:0}
 .nxt .n-a{justify-content:flex-end}
-.nxt .n-code{font-family:var(--disp);font-weight:800;font-size:27px;letter-spacing:.4px;white-space:nowrap}
+.nxt .n-code{font-family:var(--disp);font-weight:800;font-size:27px;letter-spacing:.4px;white-space:nowrap;
+  min-width:0;overflow:hidden;text-overflow:ellipsis}
 .nxt .n-lg{width:58px;height:58px;display:flex;align-items:center;justify-content:center;flex:none}
 .nxt .n-lg img{max-width:100%;max-height:100%;object-fit:contain}
 .nxt .n-lg .ini{font-size:13px}
@@ -537,7 +538,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .duo .nxt .n-rg .lgw{width:30px;height:30px}
 .duo .nxt .n-rg .nm{font-size:11.5px;letter-spacing:.4px;line-height:1}
 .duo .nxt .n-rg .sp{display:none}
-.duo .nxt .n-mid{grid-template-columns:1fr 46px 1fr;gap:10px;max-width:none}
+.duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);gap:10px;max-width:none}
 .duo .nxt .n-a,.duo .nxt .n-b{gap:11px}
 .duo .nxt .n-lg{width:48px;height:48px}
 .duo .nxt .n-code{font-size:23px}
@@ -670,14 +671,19 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .live-grid{grid-template-columns:1fr}
   .lc-logo{width:70px;height:70px}
   .lc-score{font-size:40px}
-  .nxt{padding:10px 4px;gap:10px}
-  .nxt .n-when{padding-left:2px}
-  .nxt .n-time{font-size:21px}
-  .nxt .n-code{font-size:19px}
-  .nxt .n-lg{width:40px;height:40px}
-  .nxt .n-mid{grid-template-columns:1fr 34px 1fr;gap:8px}
-  .nxt .n-a,.nxt .n-b{gap:9px}
-  .nxt .n-rg .lgw{width:26px;height:26px}
+  .duo .nxt{padding:10px 2px;gap:9px}
+  .duo .nxt .n-when{padding-left:2px}
+  .duo .nxt .n-time,.duo .nxt .n-date{font-size:19px}
+  .duo .nxt .n-code{font-size:18px}
+  .duo .nxt .n-lg{width:36px;height:36px}
+  .duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);gap:7px}
+  .duo .nxt .n-a,.duo .nxt .n-b{gap:8px}
+  .duo .nxt .n-rg{padding:3px 4px}
+  .duo .nxt .n-rg .lgw{width:24px;height:24px}
+  .duo .nxt .n-rg .nm{font-size:10.5px}
+  .duo .nxt .n-meta{font-size:8.5px;letter-spacing:.3px}   /* "BEST OF 3" on one line */
+  .n-sc{font-size:19px}
+  .n-sc i{margin:0 5px}
   .f-grid{grid-template-columns:1fr;padding:22px 14px 14px}
   .f-legal{padding:0 14px 22px}
 }
@@ -1750,7 +1756,9 @@ function renderAgenda() {
   const more = $('#nextMore');
   if (more) {
     more.disabled = total <= BOARD_ROWS;
-    more.textContent = nextExpanded ? '\u2039 Show fewer' : `View full schedule (${total}) \u203A`;
+    // a greyed-out "View full schedule (4)" reads as broken; say it plainly
+    more.textContent = nextExpanded ? '\u2039 Show fewer'
+      : (more.disabled ? `All ${total} fixture${total===1?'':'s'} shown` : `View full schedule (${total}) \u203A`);
   }
   if (!nextExpanded) list = list.slice(0, BOARD_ROWS);
   const subEl = $('#agendaSub'); if (subEl) subEl.textContent = sub;
@@ -1805,7 +1813,8 @@ function renderRecent() {
   const more = $('#recentMore');
   if (more) {
     more.disabled = total <= BOARD_ROWS;
-    more.textContent = recentExpanded ? '\u2039 Show fewer' : `View all results (${total}) \u203A`;
+    more.textContent = recentExpanded ? '\u2039 Show fewer'
+      : (more.disabled ? `All ${total} result${total===1?'':'s'} shown` : `View all results (${total}) \u203A`);
   }
   strip.innerHTML = '';
   if (!done.length) { padRows(strip, 0, false, 'No completed matches in the fetched window.'); return; }
