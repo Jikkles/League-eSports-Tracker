@@ -83,10 +83,8 @@ nav{max-width:1900px;margin:0 auto;display:flex;gap:4px;padding:0 20px}
 .tab[data-tab=lck]{--tabclr:var(--lck)} .tab[data-tab=lpl]{--tabclr:var(--lpl)} .tab[data-tab=lcs]{--tabclr:var(--lcs)}
 
 /* ============ LAYOUT ============ */
-.wrap{max-width:1900px;margin:0 auto;padding:20px 24px;display:grid;grid-template-columns:1fr 370px;gap:22px;align-items:start}
+.wrap{max-width:1900px;margin:0 auto;padding:20px 24px}
 main{min-width:0}
-aside{display:flex;flex-direction:column;gap:20px;position:sticky;top:158px}
-@media (max-width:1050px){.wrap{grid-template-columns:1fr}aside{position:static}}
 .page{display:none}
 .page.active{display:block;animation:fade .25s ease}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -375,7 +373,260 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .err-msg{font-family:var(--mono);font-size:11px;color:var(--loss);padding:10px;border:1px dashed rgba(224,82,96,.4);margin:6px 0}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 @media (max-width:900px){.two-col{grid-template-columns:1fr}}
-footer{max-width:1900px;margin:0 auto;padding:10px 20px 30px;font-family:var(--mono);font-size:10px;color:var(--faint);border-top:1px solid var(--line)}
+footer{border-top:1px solid var(--line);background:#080808;margin-top:24px}
+
+/* =====================================================================
+   HOME BOARD — the visual one-page layout (lolesports-style):
+   overview strip -> live cards -> next-up rows -> three-column band
+   -> results carousel. Region + team crests carry the identity.
+===================================================================== */
+
+/* shared logo box: <img> with an initials placeholder behind it */
+.ini{font-family:var(--mono);font-size:10px;color:var(--dim);align-items:center;justify-content:center;
+  width:100%;height:100%;border:1px solid var(--line2);border-radius:4px;letter-spacing:.5px}
+.lgw{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex:none}
+.lgw img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+
+/* ---- header ---- */
+.hdr-top{padding:13px 24px;gap:18px}
+.logo-mark{width:34px;height:34px}
+.logo small{letter-spacing:1.5px;font-size:9.5px;color:var(--dim);margin-top:1px}
+.hdr-status{gap:18px}
+.hdr-clock{text-align:right;line-height:1.1}
+.hdr-date{font-family:var(--mono);font-size:10px;letter-spacing:1.7px;color:var(--dim);text-transform:uppercase}
+.hdr-time{font-family:var(--disp);font-weight:800;font-size:27px;letter-spacing:-.6px;color:#FFFFFF}
+.hdr-time .tz{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--faint);letter-spacing:1px;vertical-align:4px;margin-left:5px}
+.hdr-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.live-pill{display:inline-flex;align-items:center;gap:7px;font-family:var(--body);font-weight:800;font-size:14px;letter-spacing:2.2px;color:var(--live)}
+.live-pill::before{content:'';width:9px;height:9px;border-radius:50%;background:var(--live);box-shadow:0 0 9px var(--live);animation:pulse 1.4s ease infinite}
+.live-pill.idle{color:var(--faint)}
+.live-pill.idle::before{background:var(--faint);box-shadow:none;animation:none}
+@media (prefers-reduced-motion:reduce){.live-pill::before,.dot-live,.pip.live{animation:none}}
+#apiStatus{font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap}
+#lastRefresh{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.btn.icon{padding:7px 11px;font-size:13px;line-height:1}
+
+/* ---- nav: view filters + region tabs ---- */
+nav{align-items:center;flex-wrap:wrap;gap:2px}
+.nav-div{width:1px;height:26px;background:var(--line);margin:0 14px}
+.fchip{position:relative;font-family:var(--body);font-weight:700;font-size:13.5px;letter-spacing:1.7px;text-transform:uppercase;
+  color:var(--dim);background:transparent;border:none;padding:11px 15px;margin:4px 0 12px;border-radius:var(--radius);
+  transition:color .12s ease,background .12s ease}
+.fchip::after{content:'';position:absolute;left:0;right:0;bottom:-7px;height:3px;border-radius:2px;background:transparent;transition:background .12s ease}
+.fchip:hover{color:#FFFFFF;background:#1E1E1E}
+.fchip:hover::after{background:var(--cyan)}
+.fchip.active{color:#FFFFFF}
+.fchip.active::after{background:var(--cyan)}
+.tab{display:inline-flex;align-items:center;gap:9px}
+.tab .lgw{width:21px;height:21px}
+
+/* ---- today overview strip ---- */
+.ov-row{display:grid;grid-template-columns:minmax(250px,1fr) 2.5fr;gap:16px;margin-bottom:20px}
+.ov-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;display:flex;flex-direction:column}
+.ov-h{display:flex;align-items:center;gap:9px;font-family:var(--body);font-weight:700;font-size:12px;letter-spacing:1.7px;
+  text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+.ov-nums{display:flex;gap:26px}
+.ov-n b{display:block;font-family:var(--disp);font-weight:800;font-size:36px;line-height:1;letter-spacing:-1px}
+.ov-n span{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;color:var(--dim)}
+.ov-n.live b{color:var(--live)} .ov-n.up b{color:var(--cyan)} .ov-n.done b{color:var(--win)}
+.ov-foot{margin-top:auto;padding-top:12px;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.4px}
+.ov-regions{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.ov-rg{background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--rg,var(--line2));border-radius:var(--radius);
+  padding:14px 16px;cursor:pointer;transition:background .12s ease,border-color .12s ease}
+.ov-rg:hover{background:var(--panel2);border-color:var(--line2);border-top-color:var(--rg)}
+.ov-rg .top{display:flex;align-items:center;gap:10px;font-family:var(--body);font-weight:800;font-size:17px;letter-spacing:.5px}
+.ov-rg .top .lgw{width:24px;height:24px}
+.ov-rg .n{font-family:var(--disp);font-weight:800;font-size:31px;line-height:1.15;margin-top:10px;letter-spacing:-1px}
+.ov-rg .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;color:var(--dim)}
+.pips{display:flex;gap:4px;margin-top:11px}
+.pip{height:4px;flex:1;border-radius:2px;background:#222222}
+.pip.on{background:var(--rg)}
+.pip.live{background:var(--live);animation:pulse 1.4s ease infinite}
+
+/* ---- live now ---- */
+.live-panel{border-color:rgba(232,57,74,.5);
+  background:radial-gradient(130% 150% at 50% -30%,rgba(232,57,74,.17),transparent 62%),var(--panel)}
+.live-panel .p-title{display:flex;align-items:center;gap:10px}
+.dot-live{width:10px;height:10px;border-radius:50%;background:var(--live);box-shadow:0 0 10px var(--live);
+  animation:pulse 1.4s ease infinite;flex:none}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px}
+.lcard{position:relative;overflow:hidden;background:#0D0D0D;border:1px solid rgba(232,57,74,.38);border-radius:var(--radius);padding:13px 16px 16px}
+.lcard::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(95% 130% at 50% 0%,rgba(232,57,74,.13),transparent 70%)}
+.lcard>*{position:relative}
+.lc-top{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:1.3px;
+  color:var(--dim);text-transform:uppercase}
+.lc-top .lg{display:inline-flex;align-items:center;gap:7px;background:#161616;border:1px solid var(--line);
+  border-radius:4px;padding:3px 8px;color:var(--rg,var(--text));font-family:var(--body);font-weight:800;font-size:11px;letter-spacing:.8px}
+.lc-top .lg .lgw{width:16px;height:16px}
+.lc-game{margin:0 auto;color:var(--text);font-weight:500}
+.lc-clock{color:var(--live);font-weight:600}
+.lc-body{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:16px 0 2px}
+.lc-side{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0}
+.lc-logo{width:76px;height:76px;display:flex;align-items:center;justify-content:center;flex:none}
+.lc-logo img{max-width:100%;max-height:100%;object-fit:contain}
+.lc-logo .ini{font-size:17px}
+.lc-code{font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:.7px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-score{font-family:var(--disp);font-weight:800;font-size:46px;line-height:1;letter-spacing:-1.5px;text-align:center;white-space:nowrap}
+.lc-score .sep{color:var(--faint);font-size:34px;vertical-align:4px;margin:0 4px}
+.lc-score .hi{color:var(--live)}
+.lc-bo{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-align:center;text-transform:uppercase;margin-top:8px}
+.lc-act{display:flex;justify-content:center;margin-top:13px}
+.lc-act a.btn-watchlive.sm{margin:0}
+.lc-note{grid-column:1/-1;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim);padding:8px 0}
+
+/* ---- next up rows ---- */
+.nxt-list{display:flex;flex-direction:column;gap:8px}
+.nxt{display:grid;grid-template-columns:104px 170px 1fr 44px 1fr 160px;align-items:center;gap:10px;
+  background:var(--panel2);border:1px solid transparent;border-radius:var(--radius);padding:12px 14px;cursor:pointer;
+  transition:background .12s ease,border-color .12s ease}
+.nxt:hover{background:#1F1F1F;border-color:var(--line2)}
+.nxt .n-time{font-family:var(--disp);font-weight:800;font-size:23px;line-height:1.05;letter-spacing:-.5px}
+.nxt .n-cd{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.4px}
+.nxt .n-rg{display:flex;align-items:center;gap:10px;border-left:1px solid var(--line);padding-left:14px;min-width:0}
+.nxt .n-rg .lgw{width:26px;height:26px}
+.nxt .n-rg .nm{font-family:var(--body);font-weight:800;font-size:14.5px;letter-spacing:.6px;color:var(--rg,var(--cyan))}
+.nxt .n-rg .sp{display:block;font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--faint);text-transform:uppercase}
+.nxt .n-a,.nxt .n-b{display:flex;align-items:center;gap:11px;min-width:0}
+.nxt .n-a{justify-content:flex-end}
+.nxt .n-code{font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:.5px;white-space:nowrap}
+.nxt .n-lg{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex:none}
+.nxt .n-lg img{max-width:100%;max-height:100%;object-fit:contain}
+.nxt .n-vs{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:1.2px;text-align:center}
+.nxt .n-meta{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;color:var(--faint);text-align:right;text-transform:uppercase;line-height:1.5}
+.nxt.is-live{background:rgba(232,57,74,.08);box-shadow:inset 3px 0 0 var(--live)}
+
+/* ---- three-column band ---- */
+.tri{display:grid;grid-template-columns:1.15fr 1fr 1.2fr;gap:20px;align-items:start}
+.tri .panel{margin-bottom:20px}
+.pnl-btn{width:100%;margin-top:12px;background:#161616;border:1px solid var(--line);color:var(--dim);
+  font-family:var(--body);font-weight:700;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:9px;border-radius:var(--radius);
+  transition:background .12s ease,color .12s ease,border-color .12s ease}
+.pnl-btn:hover{background:#242424;border-color:var(--line2);color:#FFFFFF}
+.p-head .right a.mini,.p-head .right button.mini{background:none;border:none;font-family:var(--body);font-weight:600;font-size:11.5px;
+  color:var(--dim);padding:2px 0;letter-spacing:.3px}
+.p-head .right .mini:hover{color:var(--cyan);text-decoration:none}
+
+/* rankings */
+.rk2{display:grid;grid-template-columns:18px 26px 1fr 80px 42px 24px;align-items:center;gap:9px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.rk2:last-child{border-bottom:none}
+.rk2 .p{font-family:var(--disp);font-weight:800;font-size:19px;color:#FFFFFF;text-align:right}
+.rk2:nth-child(n+6) .p{color:var(--faint)}
+.rk2 .lgw{width:26px;height:26px}
+.rk2 .nm{font-weight:600;font-size:13.5px;line-height:1.2;min-width:0}
+.rk2 .nm .sub{display:block;font-family:var(--mono);font-size:9.5px;color:var(--faint);font-weight:400;letter-spacing:.4px}
+.rk2 .pts{font-family:var(--disp);font-weight:800;font-size:15px;text-align:right;letter-spacing:-.3px}
+.meter{display:flex;gap:3px}
+.meter i{height:8px;flex:1;background:#242424;border-radius:1px}
+.meter i.on{background:var(--cyan)}
+.rk2 .mv{font-family:var(--mono);font-size:10px;text-align:center}
+.rk2 .mv.up{color:var(--win)} .rk2 .mv.down{color:var(--loss)} .rk2 .mv.flat{color:var(--faint)}
+
+/* storyline cards */
+.sl{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;margin-bottom:10px}
+.sl:last-of-type{margin-bottom:0}
+.sl .h{display:flex;align-items:center;gap:9px;font-family:var(--body);font-weight:800;font-size:13px;letter-spacing:.9px;text-transform:uppercase}
+.sl .h .ic{font-size:15px;line-height:1}
+.sl .stat{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.5px;color:var(--cyan);margin-top:7px;line-height:1}
+.sl .stat small{font-family:var(--body);font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-left:7px}
+.sl .sub{font-size:12.5px;color:var(--dim);margin-top:6px;line-height:1.55}
+
+/* honours rows */
+.hn{display:grid;grid-template-columns:1fr 46px;gap:10px;align-items:center;padding:11px 2px;border-bottom:1px solid var(--line)}
+.hn:last-of-type{border-bottom:none}
+.hn.linked{cursor:pointer;border-radius:4px}
+.hn.linked:hover{background:var(--hover)}
+.hn .ev{font-family:var(--body);font-weight:800;font-size:14px;letter-spacing:.4px}
+.hn .ch{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;color:var(--faint);text-transform:uppercase;margin-top:4px}
+.hn .ch b{color:var(--cyan);font-weight:600}
+.hn.pending .ch b{color:var(--dim)}
+.hn .lg{width:44px;height:44px;display:flex;align-items:center;justify-content:center;justify-self:end;overflow:hidden}
+.hn .lg img{max-width:100%;max-height:100%;object-fit:contain}
+
+/* ---- recently completed carousel ---- */
+.rc-wrap{display:grid;grid-template-columns:34px 1fr 34px;gap:10px;align-items:stretch}
+.rc-arrow{background:#161616;border:1px solid var(--line);color:var(--dim);border-radius:var(--radius);font-size:18px;
+  font-family:var(--body);transition:background .12s ease,color .12s ease}
+.rc-arrow:hover{background:#242424;color:#FFFFFF}
+.rc-strip{display:flex;gap:12px;overflow-x:auto;scroll-behavior:smooth;padding:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.rc-strip::-webkit-scrollbar{display:none}
+.rc{flex:none;width:238px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 13px;cursor:pointer;
+  transition:background .12s ease,border-color .12s ease}
+.rc:hover{background:#1F1F1F;border-color:var(--line2)}
+.rc .top{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:1.2px;color:var(--faint);text-transform:uppercase}
+.rc .top .lgw{width:17px;height:17px}
+.rc .top .rgn{color:var(--rg,var(--dim));font-family:var(--body);font-weight:800;font-size:11px;letter-spacing:.6px}
+.rc .top .d{margin-left:auto}
+.rc .mid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-top:11px}
+.rc .side{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.rc .side .lg{width:40px;height:40px;display:flex;align-items:center;justify-content:center}
+.rc .side .lg img{max-width:100%;max-height:100%;object-fit:contain}
+.rc .side .cd{font-family:var(--mono);font-size:10.5px;letter-spacing:.8px;color:var(--faint);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc .side.won .cd{color:#FFFFFF;font-weight:600}
+.rc .sc{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.5px;text-align:center;white-space:nowrap}
+.rc .sc .w{color:var(--win)} .rc .sc .l{color:var(--faint)}
+.rc .bo{font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--faint);text-align:center;margin-top:9px}
+
+/* ---- footer ---- */
+.f-grid{max-width:1900px;margin:0 auto;padding:26px 24px 18px;display:grid;grid-template-columns:1.4fr 1fr 1fr 1.1fr;gap:26px}
+.f-h{font-family:var(--body);font-weight:800;font-size:12px;letter-spacing:1.7px;text-transform:uppercase;color:#FFFFFF;margin-bottom:11px}
+.f-txt{font-family:var(--body);font-size:12.5px;color:var(--dim);line-height:1.65}
+.f-rgs{display:flex;gap:16px;flex-wrap:wrap}
+.f-rg{display:flex;align-items:center;gap:8px;font-family:var(--body);font-weight:700;font-size:12.5px;color:var(--dim);
+  background:none;border:none;padding:0;transition:color .12s ease}
+.f-rg:hover{color:#FFFFFF}
+.f-rg .lgw{width:20px;height:20px}
+.f-links{display:flex;gap:9px;margin-top:10px}
+.f-links a{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);
+  border-radius:var(--radius);color:var(--dim);font-size:14px}
+.f-links a:hover{border-color:var(--cyan);color:var(--cyan);text-decoration:none}
+.f-legal{max-width:1900px;margin:0 auto;padding:0 24px 28px;font-family:var(--mono);font-size:10px;color:var(--faint);line-height:1.8}
+.f-heart{color:var(--live)}
+
+/* ---- responsive ---- */
+@media (max-width:1400px){
+  .tri{grid-template-columns:1fr 1fr}
+  .tri>.panel:last-child{grid-column:1/-1}
+}
+@media (max-width:1100px){
+  .ov-row{grid-template-columns:1fr}
+  /* two tiers: when + who it is, then the matchup itself */
+  .nxt{grid-template-columns:auto 1fr auto;grid-template-areas:"time rg meta" "a vs b";row-gap:12px}
+  .nxt>:first-child{grid-area:time}
+  .nxt .n-rg{grid-area:rg;padding-left:12px}
+  .nxt .n-meta{grid-area:meta}
+  .nxt .n-a{grid-area:a}
+  .nxt .n-vs{grid-area:vs}
+  .nxt .n-b{grid-area:b}
+}
+@media (max-width:900px){
+  .tri{grid-template-columns:1fr}
+  .tri>.panel:last-child{grid-column:auto}
+  .f-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:640px){
+  .hdr-top{flex-wrap:wrap;gap:10px;padding:11px 14px}
+  .hdr-status{width:100%;margin-left:0;justify-content:space-between;gap:10px}
+  .hdr-clock{text-align:left}
+  .hdr-time{font-size:22px}
+  nav{flex-wrap:nowrap}                       /* one scrolling strip, not three rows */
+  .fchip{font-size:12px;padding:10px 11px;letter-spacing:1.2px;flex:none}
+  .nav-div{margin:0 8px}
+  .ov-regions{grid-template-columns:1fr 1fr}
+  .ov-nums{gap:16px}
+  .ov-n b{font-size:29px}
+  .live-grid{grid-template-columns:1fr}
+  .lc-logo{width:58px;height:58px}
+  .lc-score{font-size:36px}
+  .nxt{padding:11px 12px}
+  .nxt .n-time{font-size:19px}
+  .nxt .n-code{font-size:16px}
+  .nxt .n-lg{width:28px;height:28px}
+  .f-grid{grid-template-columns:1fr;padding:22px 14px 14px}
+  .f-legal{padding:0 14px 22px}
+  .rc-wrap{grid-template-columns:1fr}
+  .rc-arrow{display:none}
+}
 </style>
 </head>
 <body>
@@ -387,20 +638,31 @@ footer{max-width:1900px;margin:0 auto;padding:10px 20px 30px;font-family:var(--m
         <path d="M32 4 L56.3 18 L56.3 46 L32 60 L7.7 46 L7.7 18 Z" fill="#000000" stroke="#FFFFFF" stroke-width="3.5" stroke-linejoin="round"/>
         <path d="M14 32 L22 32 L27 13 L34 51 L39 32 L50 32" fill="none" stroke="#0BC6E3" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <div>LEAGUE ESPORTS <span class="gold">TRACKER</span><small>LEC · LCK · LPL · LCS · SEASON 2026</small></div>
+      <div>LEAGUE ESPORTS <span class="gold">TRACKER</span><small>YOUR HOME FOR GLOBAL LEAGUE ESPORTS</small></div>
     </div>
     <div class="hdr-status">
-      <span id="apiStatus"><span class="dot"></span>API: connecting…</span>
-      <span id="lastRefresh"></span>
-      <button class="btn" id="refreshBtn">⟳ Refresh</button>
+      <div class="hdr-clock">
+        <div class="hdr-date" id="hdrDate"></div>
+        <div class="hdr-time"><span id="hdrClock">--:--</span><span class="tz" id="hdrTz"></span></div>
+      </div>
+      <div class="hdr-meta">
+        <span class="live-pill idle" id="hdrLive">OFFLINE</span>
+        <span id="apiStatus"><span class="dot"></span>connecting…</span>
+        <span id="lastRefresh"></span>
+      </div>
+      <button class="btn icon" id="refreshBtn" title="Refresh now" aria-label="Refresh now">⟳</button>
     </div>
   </div>
   <nav>
-    <button class="tab active" data-tab="home">Home</button>
-    <button class="tab" data-tab="lec">LEC</button>
-    <button class="tab" data-tab="lck">LCK</button>
-    <button class="tab" data-tab="lpl">LPL</button>
-    <button class="tab" data-tab="lcs">LCS</button>
+    <button class="fchip active" data-f="all">All</button>
+    <button class="fchip" data-f="live">Live</button>
+    <button class="fchip" data-f="today">Today</button>
+    <button class="fchip" data-f="tomorrow">Tomorrow</button>
+    <span class="nav-div"></span>
+    <button class="tab" data-tab="lec"><span class="lgw" data-lg="lec"></span>LEC</button>
+    <button class="tab" data-tab="lck"><span class="lgw" data-lg="lck"></span>LCK</button>
+    <button class="tab" data-tab="lpl"><span class="lgw" data-lg="lpl"></span>LPL</button>
+    <button class="tab" data-tab="lcs"><span class="lgw" data-lg="lcs"></span>LCS</button>
   </nav>
   <div class="ticker"><div class="ticker-track" id="tickerTrack"></div></div>
 </header>
@@ -410,29 +672,64 @@ footer{max-width:1900px;margin:0 auto;padding:10px 20px 30px;font-family:var(--m
 
   <!-- ============ HOME ============ -->
   <section class="page active" id="page-home">
-    <div class="panel">
-      <div class="p-head"><div class="p-title">Live Now</div><span class="p-sub" id="liveCount"></span></div>
-      <div id="homeLive"><div class="loading">Checking for live broadcasts…</div></div>
+
+    <!-- today overview + per-region strip -->
+    <div class="ov-row">
+      <div class="ov-card">
+        <div class="ov-h">▣ Today Overview</div>
+        <div class="ov-nums">
+          <div class="ov-n live"><b id="ovLive">0</b><span>LIVE</span></div>
+          <div class="ov-n up"><b id="ovUp">0</b><span>UPCOMING</span></div>
+          <div class="ov-n done"><b id="ovDone">0</b><span>COMPLETED</span></div>
+        </div>
+        <div class="ov-foot" id="ovFoot">Across 4 regions</div>
+      </div>
+      <div class="ov-regions" id="homeNext"></div>
     </div>
 
-    <div class="panel">
-      <div class="p-head"><div class="p-title">Next 48 Hours</div><span class="p-sub" id="agendaSub">all regions · local time</span></div>
-      <div id="homeAgenda"><div class="loading">Loading schedules…</div></div>
+    <div class="panel live-panel" id="livePanel">
+      <div class="p-head"><div class="p-title"><span class="dot-live"></span>Live Now</div>
+        <span class="p-sub" id="liveCount"></span>
+        <div class="right"><button class="mini" id="liveAll">View all live matches ›</button></div></div>
+      <div class="live-grid" id="homeLive"><div class="loading">Checking for live broadcasts…</div></div>
     </div>
 
-    <div class="panel">
-      <div class="p-head"><div class="p-title">Next Up · By Region</div><span class="p-sub">local time</span></div>
-      <div class="cardgrid" id="homeNext"><div class="loading">Loading schedules…</div></div>
+    <div class="panel" id="nextPanel">
+      <div class="p-head"><div class="p-title">Next Up</div>
+        <span class="p-sub" id="agendaSub">all regions · local time</span>
+        <div class="right"><button class="mini" id="nextMore">View full schedule ›</button></div></div>
+      <div class="nxt-list" id="homeAgenda"><div class="loading">Loading schedules…</div></div>
     </div>
 
-    <div class="two-col">
+    <div class="tri">
       <div class="panel">
-        <div class="p-head"><div class="p-title">2026 Honours Board</div><span class="p-sub">internationals &amp; majors</span></div>
+        <div class="p-head"><div class="p-title" style="font-size:19px">🏆 Global Power Rankings</div>
+          <div class="right"><a class="mini" href="https://lolesports.com/en-GB/power-rankings" target="_blank" rel="noopener">lolesports ↗</a></div></div>
+        <div id="rankList"></div>
+        <button class="pnl-btn" id="ranksMore">View full rankings</button>
+        <div class="rk-note" id="rkNote"></div>
+      </div>
+
+      <div class="panel">
+        <div class="p-head"><div class="p-title" style="font-size:19px">🔥 Season Storylines</div></div>
+        <div id="storylines"></div>
+        <button class="pnl-btn" id="storiesMore">View all storylines</button>
+      </div>
+
+      <div class="panel">
+        <div class="p-head"><div class="p-title" style="font-size:19px">🏅 2026 Honours</div>
+          <div class="right"><button class="mini" id="honoursMore">View all honours ›</button></div></div>
         <div id="honoursBoard"></div>
       </div>
-      <div class="panel">
-        <div class="p-head"><div class="p-title">Season Storylines</div></div>
-        <div id="storylines" style="font-size:15.5px;line-height:1.75;color:var(--dim);display:flex;flex-direction:column;gap:16px"></div>
+    </div>
+
+    <div class="panel" id="recentPanel">
+      <div class="p-head"><div class="p-title">Recently Completed</div>
+        <span class="p-sub" id="recentSub">all regions</span></div>
+      <div class="rc-wrap">
+        <button class="rc-arrow" id="rcPrev" aria-label="Scroll results left">‹</button>
+        <div class="rc-strip" id="recentStrip"></div>
+        <button class="rc-arrow" id="rcNext" aria-label="Scroll results right">›</button>
       </div>
     </div>
   </section>
@@ -444,20 +741,40 @@ footer{max-width:1900px;margin:0 auto;padding:10px 20px 30px;font-family:var(--m
   <section class="page" id="page-lcs"></section>
 
 </main>
-
-<aside>
-  <div class="panel">
-    <div class="p-head"><div class="p-title" style="font-size:18px">Global Power Rankings</div>
-      <div class="right"><a class="btn small" href="https://lolesports.com/en-GB/power-rankings" target="_blank" rel="noopener">lolesports ↗</a></div></div>
-    <div id="rankList"></div>
-    <div class="rk-note" id="rkNote"></div>
-  </div>
-
-  </aside>
 </div>
 
 <footer>
-  LEAGUE ESPORTS TRACKER · unofficial fan tool · live data via the lolesports.com public API · deep stats: Leaguepedia (lol.fandom.com) &amp; Liquipedia (liquipedia.net) · state saved in localStorage
+  <div class="f-grid">
+    <div>
+      <div class="f-h">About</div>
+      <div class="f-txt">Real-time League of Legends esports scores, schedules, standings, rankings and playoff simulation from around the world.</div>
+    </div>
+    <div>
+      <div class="f-h">Regions</div>
+      <div class="f-rgs">
+        <button class="f-rg" data-tab="lec"><span class="lgw" data-lg="lec"></span>LEC</button>
+        <button class="f-rg" data-tab="lck"><span class="lgw" data-lg="lck"></span>LCK</button>
+        <button class="f-rg" data-tab="lpl"><span class="lgw" data-lg="lpl"></span>LPL</button>
+        <button class="f-rg" data-tab="lcs"><span class="lgw" data-lg="lcs"></span>LCS</button>
+      </div>
+    </div>
+    <div>
+      <div class="f-h">Stay Updated</div>
+      <div class="f-txt">Never miss a moment.</div>
+      <div class="f-links">
+        <a href="https://lolesports.com/en-GB/schedule" target="_blank" rel="noopener" title="lolesports schedule">◷</a>
+        <a href="https://www.youtube.com/@lolesports" target="_blank" rel="noopener" title="lolesports on YouTube">▶</a>
+        <a href="https://lol.fandom.com/wiki/Leaguepedia" target="_blank" rel="noopener" title="Leaguepedia">📖</a>
+      </div>
+    </div>
+    <div>
+      <div class="f-h">Built by Jikkles</div>
+      <div class="f-txt">Made with <span class="f-heart">♥</span> for the LoL esports community.<br>© 2026 Jikkles</div>
+    </div>
+  </div>
+  <div class="f-legal">
+    Unofficial fan tool · live data via the lolesports.com public API · deep stats: Leaguepedia (lol.fandom.com) &amp; Liquipedia (liquipedia.net) · state saved in localStorage
+  </div>
 </footer>
 
 <script>
@@ -715,12 +1032,19 @@ const HONOURS = [
        wiki:'https://lol.fandom.com/wiki/2026_Season_World_Championship', liqui:'https://liquipedia.net/leagueoflegends/World_Championship/2026' }}
 ];
 
+/* headline · big number · supporting line — same verified facts as before,
+   restructured so the home board can show them as stat cards */
 const STORYLINES = [
-  '<b style="color:var(--text)">The Golden Road that wasn\'t.</b> BLG won First Stand, both LPL splits and ran the MSI upper bracket — then HLE beat them twice in a week, closing the 3–2 final off a Kanavi Baron steal.',
-  '<b style="color:var(--text)">HLE\'s rebuild paid off instantly.</b> Last in the LCK Cup, then restructured around Zeus, Gumayusi, Kanavi and Zeka — first international title in org history. Zeus is now the second player ever (after Faker) with both Worlds and MSI Finals MVP.',
-  '<b style="color:var(--text)">Europe is back in finals.</b> G2 made the First Stand final (beating Gen.G en route) and Karmine Corp made the EWC final. Neither closed, but the LEC has two international finalists in one year.',
-  '<b style="color:var(--text)">The LCS returns.</b> The LTA lasted one season; NA is back to an 8-team LCS with partner + guest teams. Summer runs 25 Jul – 4 Oct.',
-  '<b style="color:var(--text)">Road to NYC.</b> Worlds comes to North America with the final at Barclays Center — T1 defending a three-peat.'
+  {icon:'🔥', title:'The Golden Road that wasn\'t', stat:'3–2', statLbl:'MSI final',
+   sub:'BLG won First Stand, both LPL splits and ran the MSI upper bracket — then HLE beat them twice in a week, closing it off a Kanavi Baron steal.'},
+  {icon:'📈', title:'HLE\'s rebuild paid off', stat:'1st', statLbl:'international title',
+   sub:'Last in the LCK Cup, then restructured around Zeus, Gumayusi, Kanavi and Zeka. Zeus is the second player ever after Faker with both Worlds and MSI Finals MVP.'},
+  {icon:'🏆', title:'Europe is back in finals', stat:'2', statLbl:'international finals',
+   sub:'G2 reached the First Stand final (beating Gen.G en route) and Karmine Corp the EWC final. Neither closed, but two LEC finalists in one year.'},
+  {icon:'🇺🇸', title:'The LCS returns', stat:'8', statLbl:'teams',
+   sub:'The LTA lasted one season; NA is back to an 8-team LCS with partner + guest teams. Summer runs 25 Jul – 4 Oct.'},
+  {icon:'🗽', title:'Road to NYC', stat:'14 Nov', statLbl:'Worlds final',
+   sub:'Worlds comes to North America with the final at Barclays Center — T1 defending a three-peat.'}
 ];
 
 /* Mirror of lolesports.com official Global Power Rankings — updated 9 Aug 2026 */
@@ -791,6 +1115,29 @@ function logoHTML(name) {
   return `<span class="twrap"><img class="tlogo" src="${esc(url)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'"><span class="tmono">${initials}</span></span>`;
 }
 
+/* big crest for the home board: a sized box holding the badge, with the
+   team's initials as the placeholder if the image is missing or 404s */
+function crestInner(name) {
+  const url = findLogo(name);
+  const ini = esc(String(name||'?').split(/\s+/).map(w=>w[0]||'').join('').slice(0,3).toUpperCase());
+  if (!url) return `<span class="ini" style="display:flex">${ini}</span>`;
+  return `<img src="${esc(url)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ini" style="display:none">${ini}</span>`;
+}
+function crestHTML(name, cls) { return `<span class="${cls}">${crestInner(name)}</span>`; }
+
+/* -------- region crests (from the API's league images, cached) -------- */
+let leagueLogos = JSON.parse(localStorage.getItem(LS('leagueLogos')) || '{}');   // slug -> url
+function leagueLogoHTML(slug) {
+  const url = leagueLogos[slug];
+  const nm = esc((REGIONS[slug]?.name || slug).toUpperCase().slice(0,3));
+  if (!url) return `<span class="ini" style="display:flex">${nm}</span>`;
+  return `<img src="${esc(url)}" alt="${nm}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ini" style="display:none">${nm}</span>`;
+}
+/* fill every static crest slot in the chrome (nav, footer, region heroes) */
+function renderLeagueChrome() {
+  document.querySelectorAll('[data-lg]').forEach(box => { box.innerHTML = leagueLogoHTML(box.dataset.lg); });
+}
+
 /* =====================================================================
    API LAYER
 ===================================================================== */
@@ -828,18 +1175,24 @@ async function api(path, params={}) {
 
 let allLeagues = JSON.parse(localStorage.getItem(LS('allLeagues')) || '{}'); // every slug -> id
 async function resolveLeagues() {
-  if (leagueIds && Object.keys(leagueIds).length === 4 && Object.keys(allLeagues).length) return leagueIds;
+  if (leagueIds && Object.keys(leagueIds).length === 4 && Object.keys(allLeagues).length
+      && Object.keys(leagueLogos).length === 4) return leagueIds;
   const data = await api('/getLeagues');
   const out = {};
   for (const lg of data.data.leagues) {
     const slug = (lg.slug||'').toLowerCase();
     allLeagues[slug] = lg.id;
-    if (REGIONS[slug]) out[slug] = lg.id;
+    if (REGIONS[slug]) {
+      out[slug] = lg.id;
+      if (lg.image) leagueLogos[slug] = String(lg.image).replace(/^http:/,'https:');
+    }
   }
   if (Object.keys(out).length) {
     leagueIds = out;
     localStorage.setItem(LS('leagueIds'), JSON.stringify(out));
     localStorage.setItem(LS('allLeagues'), JSON.stringify(allLeagues));
+    localStorage.setItem(LS('leagueLogos'), JSON.stringify(leagueLogos));
+    renderLeagueChrome();
   }
   return leagueIds;
 }
@@ -1110,39 +1463,288 @@ function formCells(form, name) {
   return `<td><span class="form-dots">${f.dots}</span></td><td class="num"><span class="${f.sw?'streak-w':'streak-l'}">${f.streak}</span></td>`;
 }
 
-/* merged cross-region agenda for the Home tab */
-function renderAgenda() {
-  const box = $('#homeAgenda'); if (!box) return;
-  const now = Date.now(), horizon = now + 48*3600*1000;
-  let all = [];
+/* =====================================================================
+   HOME BOARD
+   One page: today's overview, live cards, the next fixtures, the
+   rankings/storylines/honours band and a results carousel. The nav's
+   All / Live / Today / Tomorrow chips decide which of those show.
+===================================================================== */
+let homeFilter = 'all';        // all | live | today | tomorrow
+let nextExpanded = false, ranksExpanded = false, storiesExpanded = false, honoursExpanded = false;
+
+const dayKey = d => { const x = new Date(d); return x.getFullYear()+'-'+x.getMonth()+'-'+x.getDate(); };
+
+/* match ids the /getLive feed says are on air right now \u2014 the cached schedule
+   can still call them 'unstarted' for a few minutes after the broadcast opens */
+function liveMatchIds() {
+  return new Set(liveEvents.filter(e => e.state==='inProgress' && e.match?.id).map(e => e.match.id));
+}
+/* every fetched fixture across the four regions, tagged with its region */
+function allFixtures() {
+  const out = [], seen = new Set();
   for (const slug of Object.keys(REGIONS))
-    for (const ev of (scheduleCache[slug]||[]))
-      if (ev.state==='unstarted') all.push({slug, ev});
-  all.sort((a,b) => new Date(a.ev.startTime) - new Date(b.ev.startTime));
-  let list = all.filter(x => { const t = +new Date(x.ev.startTime); return t >= now-3600e3 && t <= horizon; });
-  let sub = 'all regions \u00B7 local time';
-  if (!list.length) { list = all.slice(0,8); sub = 'nothing in 48h \u2014 next fixtures shown'; }
-  const subEl = $('#agendaSub'); if (subEl) subEl.textContent = sub;
-  if (!list.length) {
-    box.innerHTML = `<div class="loading">${apiOk===false ? 'API unreachable \u2014 schedules will appear once it responds.' : 'No upcoming fixtures in the fetched window.'}</div>`;
+    for (const ev of (scheduleCache[slug]||[])) {
+      const k = (ev.match?.id||'') + ev.startTime;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({slug, ev});
+    }
+  return out;
+}
+/* live > done > up. The API sometimes marks a fixture 'completed' hours before
+   it is played, with no winner and 0–0 games — trust the result, not the flag,
+   or the board shows phantom 0–0 finals. */
+const hasWinner = ev => (ev.match?.teams||[]).some(t => t.result?.outcome === 'win');
+function evPhase(ev, lids) {
+  if (ev.state === 'inProgress' || (ev.match?.id && lids.has(ev.match.id))) return 'live';
+  if (ev.state === 'completed') return hasWinner(ev) ? 'done' : 'up';
+  return 'up';
+}
+
+/* -------- today overview + per-region cards -------- */
+function renderOverview(lids) {
+  const today = dayKey(Date.now());
+  const per = {};
+  for (const slug of Object.keys(REGIONS)) per[slug] = { total:0, done:0, live:0 };
+  let up = 0, done = 0;
+  for (const {slug, ev} of allFixtures()) {
+    if (dayKey(ev.startTime) !== today) continue;
+    const ph = evPhase(ev, lids);
+    per[slug].total++;
+    if (ph === 'done') { done++; per[slug].done++; }
+    else if (ph === 'live') per[slug].live++;
+    else up++;
+  }
+  const liveNow = liveEvents.filter(e => e.state==='inProgress' && e.match).length;
+  $('#ovLive').textContent = liveNow;
+  $('#ovUp').textContent = up;
+  $('#ovDone').textContent = done;
+  $('#ovFoot').textContent = 'Across 4 regions \u00B7 ' +
+    new Date().toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long'});
+
+  const pill = $('#hdrLive');
+  if (pill) { pill.textContent = liveNow ? 'LIVE' : 'OFF AIR'; pill.className = 'live-pill' + (liveNow ? '' : ' idle'); }
+
+  const box = $('#homeNext');
+  box.innerHTML = '';
+  for (const slug of Object.keys(REGIONS)) {
+    const R = REGIONS[slug], p = per[slug];
+    const card = el('div','ov-rg');
+    card.style.setProperty('--rg', R.color);
+    const n = Math.min(Math.max(p.total, 5), 8);
+    let pips = '';
+    for (let i = 0; i < n; i++)
+      pips += `<span class="pip ${i < p.done ? 'on' : (i < p.done + p.live ? 'live' : '')}"></span>`;
+    card.innerHTML = `<div class="top"><span class="lgw">${leagueLogoHTML(slug)}</span>${R.name}</div>
+      <div class="n">${p.total}</div>
+      <div class="lbl">${p.total === 1 ? 'MATCH' : 'MATCHES'} TODAY</div>
+      <div class="pips">${pips}</div>`;
+    card.addEventListener('click', () => switchTab(slug));
+    box.appendChild(card);
+  }
+  return per;
+}
+
+/* -------- live cards -------- */
+function liveCard(ev) {
+  const slug = (ev.league?.slug||'').toLowerCase();
+  const R = REGIONS[slug];
+  const t = ev.match?.teams || [];
+  const a = t[0]||{}, b = t[1]||{};
+  const aw = a.result?.gameWins ?? 0, bw = b.result?.gameWins ?? 0;
+  const bo = ev.match?.strategy?.count;
+  const games = ev.match?.games || [];
+  const played = games.length ? games.filter(g => g.state === 'completed').length : (aw + bw);
+  const gameNo = Math.min(bo || 99, played + 1);
+  const url = liveWatchUrl(ev);
+  const watch = url ? `<div class="lc-act"><a class="btn-watchlive sm" href="${url}" target="_blank" rel="noopener">Watch live</a></div>` : '';
+  const chip = `<span class="lg"${R ? ` style="--rg:${R.color}"` : ''}>${R ? `<span class="lgw">${leagueLogoHTML(slug)}</span>` : ''}${esc(R ? R.name : (ev.league?.name || 'LIVE'))}</span>`;
+  const clock = `<span class="lc-clock" data-since="${esc(ev.startTime)}" title="Time since this broadcast went live">--:--</span>`;
+  const card = el('div','lcard');
+  const bothTBD = (!a.name || a.name==='TBD') && (!b.name || b.name==='TBD');
+  if (bothTBD) {
+    card.innerHTML = `<div class="lc-top">${chip}<span class="lc-game">On air</span>${clock}</div>
+      <div class="lc-note">${esc(ev.league?.name || 'League')} broadcast is live \u2014 match details not posted yet</div>${watch}`;
+    return card;
+  }
+  card.innerHTML = `<div class="lc-top">${chip}<span class="lc-game">${bo ? 'Game ' + gameNo : 'Live'}</span>${clock}</div>
+    <div class="lc-body">
+      <div class="lc-side">${crestHTML(a.name,'lc-logo')}<div class="lc-code" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</div></div>
+      <div class="lc-score"><span class="${aw>bw?'hi':''}">${aw}</span><span class="sep">\u2013</span><span class="${bw>aw?'hi':''}">${bw}</span></div>
+      <div class="lc-side">${crestHTML(b.name,'lc-logo')}<div class="lc-code" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</div></div>
+    </div>
+    <div class="lc-bo">${bo ? 'Best of ' + bo : esc(ev.blockName||'')}</div>${watch}`;
+  return card;
+}
+
+function renderLiveCards() {
+  const box = $('#homeLive'); if (!box) return;
+  const majors = liveEvents.filter(e => e.state==='inProgress' && e.match);
+  $('#liveCount').textContent = majors.length ? majors.length + ' broadcast' + (majors.length>1?'s':'') : '';
+  box.innerHTML = '';
+  if (!majors.length) {
+    box.innerHTML = `<div class="lc-note">${apiOk===false
+      ? 'API unreachable \u2014 open lolesports.com to check live games.'
+      : 'Nothing live right now across tracked leagues.'}</div>`;
     return;
   }
+  majors.forEach(ev => box.appendChild(liveCard(ev)));
+}
+
+/* -------- next up -------- */
+function renderAgenda() {
+  const box = $('#homeAgenda'); if (!box) return;
+  const now = Date.now(), horizon = now + 48*3600e3, lids = liveMatchIds();
+  const all = allFixtures()
+    .filter(x => x.ev.match?.teams?.length === 2 && evPhase(x.ev, lids) === 'up')
+    .sort((a,b) => new Date(a.ev.startTime) - new Date(b.ev.startTime));
+  let list, sub;
+  if (homeFilter === 'today') {
+    list = all.filter(x => dayKey(x.ev.startTime) === dayKey(now));
+    sub = 'today \u00B7 local time';
+  } else if (homeFilter === 'tomorrow') {
+    list = all.filter(x => dayKey(x.ev.startTime) === dayKey(now + 864e5));
+    sub = 'tomorrow \u00B7 local time';
+  } else {
+    list = all.filter(x => { const t = +new Date(x.ev.startTime); return t >= now - 3600e3 && t <= horizon; });
+    sub = 'next 48 hours \u00B7 all regions \u00B7 local time';
+    if (!list.length) { list = all.slice(0,8); sub = 'nothing in 48h \u2014 next fixtures shown'; }
+  }
+  const total = list.length;
+  const more = $('#nextMore');
+  if (more) {
+    more.style.display = total > 6 ? '' : 'none';
+    more.textContent = nextExpanded ? '\u2039 Show fewer' : `View full schedule (${total}) \u203A`;
+  }
+  if (!nextExpanded) list = list.slice(0,6);
+  const subEl = $('#agendaSub'); if (subEl) subEl.textContent = sub;
   box.innerHTML = '';
+  if (!list.length) {
+    box.innerHTML = `<div class="loading">${apiOk===false
+      ? 'API unreachable \u2014 schedules will appear once it responds.'
+      : 'No fixtures scheduled in this window.'}</div>`;
+    return;
+  }
   let lastDay = '';
   for (const {slug, ev} of list) {
     const R = REGIONS[slug];
-    const {day,time} = fmtWhen(ev.startTime);
-    if (day !== lastDay) { box.appendChild(el('div','ag-day', esc(day))); lastDay = day; }
-    const t = ev.match?.teams||[];
-    const strat = ev.match?.strategy?.count ? 'Bo'+ev.match.strategy.count : '';
-    const row = el('div','ag-row');
-    row.style.setProperty('--ag', R.color);
-    row.innerHTML = `<div class="ag-lg">${R.name}</div>
-      <div class="ag-vs">${logoHTML(t[0]?.name)} ${esc(t[0]?.name||'TBD')} <span class="code" style="color:var(--faint)">vs</span> ${logoHTML(t[1]?.name)} ${esc(t[1]?.name||'TBD')}${bigMatch(ev)?' '+BIG_BADGE:''}</div>
-      <div class="ag-when">${esc(time)}${strat?' <span style="color:var(--faint);font-size:10px">'+strat+'</span>':''}<span class="cdn">${esc(fmtCountdown(ev.startTime))}</span></div>`;
+    const {day, time} = fmtWhen(ev.startTime);
+    if (homeFilter === 'all' && day !== lastDay) { box.appendChild(el('div','ag-day', esc(day))); lastDay = day; }
+    const t = ev.match.teams;
+    const bo = ev.match?.strategy?.count ? 'Best of ' + ev.match.strategy.count : '';
+    const row = el('div','nxt');
+    row.style.setProperty('--rg', R.color);
+    row.innerHTML = `
+      <div><div class="n-time">${esc(time)}</div><span class="n-cd">${esc(fmtCountdown(ev.startTime))}</span></div>
+      <div class="n-rg"><span class="lgw">${leagueLogoHTML(slug)}</span>
+        <div><span class="nm">${R.name}</span><span class="sp">${esc(R.splitLabel)}</span></div></div>
+      <div class="n-a"><span class="n-code" title="${esc(t[0]?.name||'TBD')}">${esc(teamAbbr(t[0]))}</span>${crestHTML(t[0]?.name,'n-lg')}</div>
+      <div class="n-vs">VS</div>
+      <div class="n-b">${crestHTML(t[1]?.name,'n-lg')}<span class="n-code" title="${esc(t[1]?.name||'TBD')}">${esc(teamAbbr(t[1]))}</span></div>
+      <div class="n-meta">${esc(bo)}${ev.blockName?'<br>'+esc(ev.blockName):''}${bigMatch(ev)?'<br>'+BIG_BADGE:''}</div>`;
     row.addEventListener('click', () => switchTab(slug));
     box.appendChild(row);
   }
+}
+
+/* -------- recently completed carousel -------- */
+function renderRecent() {
+  const strip = $('#recentStrip'); if (!strip) return;
+  const lids = liveMatchIds();
+  let done = allFixtures()
+    .filter(x => x.ev.match?.teams?.length === 2 && evPhase(x.ev, lids) === 'done')
+    .sort((a,b) => new Date(b.ev.startTime) - new Date(a.ev.startTime));
+  if (homeFilter === 'today') done = done.filter(x => dayKey(x.ev.startTime) === dayKey(Date.now()));
+  const total = done.length;
+  done = done.slice(0,16);
+  const sub = $('#recentSub');
+  if (sub) sub.textContent = (homeFilter === 'today' ? 'today' : 'all regions')
+    + ' \u00B7 showing ' + done.length + ' of ' + total + ' fetched';
+  strip.innerHTML = '';
+  if (!done.length) { strip.innerHTML = '<div class="loading">No completed matches in the fetched window.</div>'; return; }
+  for (const {slug, ev} of done) {
+    const R = REGIONS[slug], t = ev.match.teams, a = t[0]||{}, b = t[1]||{};
+    const aw = a.result?.gameWins ?? 0, bw = b.result?.gameWins ?? 0;
+    const aWin = a.result?.outcome === 'win', bWin = b.result?.outcome === 'win';
+    const d = new Date(ev.startTime).toLocaleDateString(undefined,{day:'numeric', month:'short'});
+    const card = el('div','rc');
+    card.style.setProperty('--rg', R.color);
+    card.innerHTML = `<div class="top"><span class="lgw">${leagueLogoHTML(slug)}</span><span class="rgn">${R.name}</span><span class="d">${esc(d)}</span></div>
+      <div class="mid">
+        <div class="side${aWin?' won':''}">${crestHTML(a.name,'lg')}<span class="cd" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</span></div>
+        <div class="sc"><span class="${aWin?'w':'l'}">${aw}</span> - <span class="${bWin?'w':'l'}">${bw}</span></div>
+        <div class="side${bWin?' won':''}">${crestHTML(b.name,'lg')}<span class="cd" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</span></div>
+      </div>
+      <div class="bo">${ev.match?.strategy?.count ? 'BO'+ev.match.strategy.count : esc(ev.blockName||'')}</div>`;
+    card.addEventListener('click', () => switchTab(slug));
+    strip.appendChild(card);
+  }
+}
+
+/* -------- storylines + honours panels -------- */
+function renderStorylines() {
+  const box = $('#storylines'); if (!box) return;
+  const list = storiesExpanded ? STORYLINES : STORYLINES.slice(0,3);
+  box.innerHTML = list.map(s => `<div class="sl">
+      <div class="h"><span class="ic">${s.icon}</span>${esc(s.title)}</div>
+      <div class="stat">${esc(s.stat)}<small>${esc(s.statLbl)}</small></div>
+      <div class="sub">${esc(s.sub)}</div>
+    </div>`).join('');
+  const btn = $('#storiesMore');
+  if (btn) {
+    btn.style.display = STORYLINES.length > 3 ? '' : 'none';
+    btn.textContent = storiesExpanded ? 'Show fewer' : 'View all storylines';
+  }
+}
+
+function honourRowHTML(h) {
+  const idx = HONOURS.indexOf(h);
+  const isTeam = h.done && h.champ && h.champ !== 'In progress';
+  const crest = isTeam ? crestHTML(h.champ, 'lg')
+    : `<span class="lg"><span class="ini" style="display:flex">${esc(String(h.date).slice(0,3).toUpperCase())}</span></span>`;
+  return `<div class="hn${h.done?'':' pending'}${h.d?' linked':''}" data-hidx="${idx}"${h.d?' role="button" tabindex="0" title="Open tournament details"':''}>
+    <div><div class="ev">${esc(h.ev)}</div>
+      <div class="ch">${isTeam ? 'Champion <b>'+esc(h.champ)+'</b>' : '<b>'+esc(h.champ)+'</b> \u00B7 '+esc(h.date)}</div></div>
+    ${crest}</div>`;
+}
+function renderHonoursPanel() {
+  const box = $('#honoursBoard'); if (!box) return;
+  const list = honoursExpanded ? HONOURS : HONOURS.slice(-5);
+  box.innerHTML = list.map(honourRowHTML).join('');
+  wireHonours(box);
+  const btn = $('#honoursMore');
+  if (btn) btn.textContent = honoursExpanded ? '\u2039 Show recent only' : 'View all honours \u203A';
+}
+
+/* -------- header clock + live elapsed timers -------- */
+function tickClocks() {
+  const now = new Date();
+  const dEl = $('#hdrDate'), cEl = $('#hdrClock'), tzEl = $('#hdrTz');
+  if (dEl) dEl.textContent = now.toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  if (cEl) cEl.textContent = now.toLocaleTimeString(undefined,{hour:'2-digit', minute:'2-digit'});
+  if (tzEl && !tzEl.textContent) {
+    const p = new Intl.DateTimeFormat(undefined,{timeZoneName:'short'}).formatToParts(now).find(x => x.type==='timeZoneName');
+    tzEl.textContent = p ? p.value : '';
+  }
+  const p2 = x => String(x).padStart(2,'0');
+  document.querySelectorAll('[data-since]').forEach(s => {
+    const ms = Date.now() - Date.parse(s.dataset.since);
+    if (!isFinite(ms) || ms < 0) { s.textContent = '00:00'; return; }
+    const tot = Math.floor(ms/1000), h = Math.floor(tot/3600), m = Math.floor(tot%3600/60), sec = tot%60;
+    s.textContent = h ? `${h}:${p2(m)}:${p2(sec)}` : `${p2(m)}:${p2(sec)}`;
+  });
+}
+
+/* -------- which panels the active filter shows -------- */
+function applyHomeFilter() {
+  const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+  show('livePanel',   homeFilter !== 'tomorrow');
+  show('nextPanel',   homeFilter !== 'live');
+  show('recentPanel', homeFilter === 'all' || homeFilter === 'today');
+  const tri = document.querySelector('#page-home .tri');
+  if (tri) tri.style.display = homeFilter === 'all' ? '' : 'none';
+  document.querySelectorAll('.fchip').forEach(c =>
+    c.classList.toggle('active', c.dataset.f === homeFilter && document.getElementById('page-home').classList.contains('active')));
 }
 
 /* =====================================================================
@@ -1156,7 +1758,8 @@ function buildRegionPage(slug) {
 
   const hero = el('div','region-hero');
   hero.style.setProperty('--rg', R.color);
-  hero.innerHTML = `<h1>${R.name}</h1>
+  hero.innerHTML = `<span class="lgw" data-lg="${slug}" style="width:52px;height:52px"></span>
+    <h1>${R.name}</h1>
     <div><div class="sub">${esc(R.full)}</div><div class="sub" style="color:var(--gold)">${esc(R.splitLabel)}</div></div>
     <div class="links">
       <a class="btn small" href="${R.wiki}" target="_blank" rel="noopener">Leaguepedia ↗</a>
@@ -1255,7 +1858,7 @@ function honourHTML(h) {
     <div class="detail">${esc(h.detail)}</div></div></div>`;
 }
 function wireHonours(container) {
-  container.querySelectorAll('.honour.linked').forEach(elm => {
+  container.querySelectorAll('.honour.linked, .hn.linked').forEach(elm => {
     const open = () => openHonour(+elm.dataset.hidx);
     elm.addEventListener('click', open);
     elm.addEventListener('keydown', e => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); open(); } });
@@ -1526,7 +2129,9 @@ function renderWatch(slug, liveEv) {
     box.innerHTML = `<div class="watch-live"><span class="live-chip">LIVE</span>
       <b>${esc(liveLabel(liveEv))}</b>
       ${ytUrl ? `<a class="btn-watchlive" href="${ytUrl}" target="_blank" rel="noopener">Watch live now on YouTube</a>` : ''}</div>`
-      + (ytUrl && location.protocol !== 'file:'
+      // embed only when the API gave us an actual video id — ytUrl can be the
+      // channel /live fallback, which has no embeddable parameter
+      + (yt && ytUrl && location.protocol !== 'file:'
           ? `<div class="watch-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(yt.parameter)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Live broadcast"></iframe></div>` : '');
     note.textContent = ytUrl ? '' : 'Live now — open the channel links above.';
   } else {
@@ -2040,61 +2645,15 @@ function simMatchEl(slug, m, resolved) {
    HOME
 ===================================================================== */
 function renderHome() {
+  renderOverview(liveMatchIds());
+  renderLiveCards();
   renderAgenda();
-  // live now
-  const box = $('#homeLive');
-  const majors = liveEvents.filter(e => e.state==='inProgress' && e.match);
-  $('#liveCount').textContent = majors.length ? majors.length + ' broadcast' + (majors.length>1?'s':'') : '';
-  box.innerHTML = '';
-  if (majors.length) {
-    majors.forEach(e => {
-      const row = matchRow(e);
-      const meta = row.querySelector('.meta');
-      if (meta) meta.innerHTML = `<span style="color:var(--gold)">${esc(e.league?.name||'')}</span>`;
-      const url = liveWatchUrl(e);
-      if (url) {
-        const a = el('a','btn-watchlive sm','Watch live on YouTube');
-        a.href = url;
-        a.target = '_blank'; a.rel = 'noopener';
-        if (meta) { meta.appendChild(document.createElement('br')); meta.appendChild(a); }
-        else { const strip = row.children[1]; if (strip) strip.appendChild(a); }
-      }
-      box.appendChild(row);
-    });
-  } else {
-    box.innerHTML = `<div class="loading">${apiOk===false ? 'API unreachable — open lolesports.com to check live games.' : 'Nothing live right now across tracked leagues.'}</div>`;
-  }
-
-  // next up per region
-  const grid = $('#homeNext');
-  grid.innerHTML = '';
-  for (const slug of Object.keys(REGIONS)) {
-    const R = REGIONS[slug];
-    const nx = nextEventFor(slug);
-    const card = el('div','nextcard');
-    card.style.setProperty('--rg', R.color);
-    if (nx) {
-      const {day,time} = fmtWhen(nx.startTime);
-      const t = nx.match?.teams||[];
-      card.innerHTML = `<div class="lg">${R.name}</div>
-        <div class="vs">${logoHTML(t[0]?.name)} ${esc(t[0]?.name||'TBD')} <span class="code" style="color:var(--faint)">vs</span> ${logoHTML(t[1]?.name)} ${esc(t[1]?.name||'TBD')}</div>
-        <div class="when-big">${esc(day)} · <span class="t">${esc(time)}</span></div>
-        <div><span class="cd">${esc(fmtCountdown(nx.startTime))}</span>${bigMatch(nx)?' '+BIG_BADGE:''}</div>
-        <div class="tm">${esc(nx.blockName||'')}</div>`;
-    } else {
-      card.innerHTML = `<div class="lg">${R.name}</div>
-        <div class="vs" style="color:var(--dim)">No fetched fixtures</div>
-        <div class="tm"><a href="${R.wiki}" target="_blank" rel="noopener">Full calendar ↗</a></div>`;
-    }
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', () => switchTab(slug));
-    grid.appendChild(card);
-  }
-
-  // honours + storylines (static)
-  $('#honoursBoard').innerHTML = HONOURS.map(honourHTML).join('');
-  wireHonours($('#honoursBoard'));
-  $('#storylines').innerHTML = STORYLINES.map(s => `<div>${s}</div>`).join('');
+  renderRanks();
+  renderStorylines();
+  renderHonoursPanel();
+  renderRecent();
+  applyHomeFilter();
+  tickClocks();
 }
 
 /* ticker */
@@ -2123,18 +2682,30 @@ function renderTicker() {
 ===================================================================== */
 function renderRanks() {
   const list = $('#rankList');
+  if (!list) return;
   list.innerHTML = '';
-  POWER_RANKINGS.forEach((r,i) => {
-    const mv = r.move > 0 ? `<span class="rk-move up">▲${r.move}</span>`
-             : r.move < 0 ? `<span class="rk-move down">▼${-r.move}</span>`
-             : `<span class="rk-move flat">–</span>`;
-    const row = el('div','rk-row');
-    row.innerHTML = `<div class="rk-num">${i+1}</div>${mv}${logoHTML(r.t)}
-      <div class="rk-name">${esc(r.t)}<span class="rk-wl">${esc(r.wl)}</span></div>
-      <span class="rk-pts">${r.pts} pts</span>
-      <span class="rk-region">${esc(r.r)}</span>`;
+  const pts = POWER_RANKINGS.map(r => r.pts);
+  const hi = Math.max(...pts), lo = Math.min(...pts);
+  const rows = ranksExpanded ? POWER_RANKINGS : POWER_RANKINGS.slice(0,5);
+  rows.forEach((r,i) => {
+    // 8-segment meter scaled across the spread of the current top 10
+    const share = hi === lo ? 1 : (r.pts - lo + 60) / (hi - lo + 60);
+    const on = Math.max(1, Math.min(8, Math.round(share * 8)));
+    let meter = '';
+    for (let s = 0; s < 8; s++) meter += `<i class="${s < on ? 'on' : ''}"></i>`;
+    const mv = r.move > 0 ? `<span class="mv up">▲${r.move}</span>`
+             : r.move < 0 ? `<span class="mv down">▼${-r.move}</span>`
+             : `<span class="mv flat">–</span>`;
+    const row = el('div','rk2');
+    row.innerHTML = `<div class="p">${i+1}</div>
+      <span class="lgw">${crestInner(r.t)}</span>
+      <div class="nm">${esc(r.t)}<span class="sub">${esc(r.r)} · ${esc(r.wl)}</span></div>
+      <div class="meter">${meter}</div>
+      <div class="pts">${r.pts}</div>${mv}`;
     list.appendChild(row);
   });
+  const btn = $('#ranksMore');
+  if (btn) btn.textContent = ranksExpanded ? 'Show top 5' : 'View full rankings';
   $('#rkNote').textContent = 'Mirrors the official lolesports Global Power Rankings · as of ' + POWER_RANKINGS_ASOF;
 }
 
@@ -2144,9 +2715,28 @@ function renderRanks() {
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id==='page-'+name));
+  document.querySelectorAll('.fchip').forEach(c => c.classList.toggle('active', name==='home' && c.dataset.f===homeFilter));
   localStorage.setItem(LS('tab'), name);
+  window.scrollTo({top:0, behavior:'smooth'});
 }
-document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+document.querySelectorAll('.tab, .f-rg').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+/* view filters double as the way back to the home board */
+function setFilter(f) {
+  homeFilter = f;
+  nextExpanded = false;
+  switchTab('home');
+  renderHome();
+}
+document.querySelectorAll('.fchip').forEach(c => c.addEventListener('click', () => setFilter(c.dataset.f)));
+$('#liveAll').addEventListener('click', () => setFilter('live'));
+$('#nextMore').addEventListener('click', () => { nextExpanded = !nextExpanded; renderAgenda(); });
+$('#ranksMore').addEventListener('click', () => { ranksExpanded = !ranksExpanded; renderRanks(); });
+$('#storiesMore').addEventListener('click', () => { storiesExpanded = !storiesExpanded; renderStorylines(); });
+$('#honoursMore').addEventListener('click', () => { honoursExpanded = !honoursExpanded; renderHonoursPanel(); });
+const rcScroll = dx => { const s = $('#recentStrip'); if (s) s.scrollBy({left:dx, behavior:'smooth'}); };
+$('#rcPrev').addEventListener('click', () => rcScroll(-500));
+$('#rcNext').addEventListener('click', () => rcScroll(500));
 
 function setStatus(ok, msg) {
   apiOk = ok;
@@ -2207,16 +2797,20 @@ async function refreshAll(deep=true) {
     for (const evs of Object.values(scheduleCache)) harvestLogos(evs);
     harvestLogos(liveEvents);
     localStorage.setItem(LS('logos'), JSON.stringify(teamLogos));
-    setStatus(true, 'API: live');
+    setStatus(true, 'Data updates in real time');
     localStorage.setItem(LS('schedCache'), JSON.stringify(scheduleCache));
   } catch (e) {
-    setStatus(false, 'API: offline (cached data)');
+    setStatus(false, 'Offline — showing cached data');
     scheduleCache = JSON.parse(localStorage.getItem(LS('schedCache')) || '{}');
   }
+  renderLeagueChrome();
+  // one bad region must not stop the home board from rendering
   for (const slug of Object.keys(REGIONS)) {
-    renderRegionData(slug);
-    renderWatch(slug, findLiveFor(slug));
-    renderSim(slug);
+    try {
+      renderRegionData(slug);
+      renderWatch(slug, findLiveFor(slug));
+      renderSim(slug);
+    } catch (e) { console.error('render failed for ' + slug, e); }
   }
   renderHome();
   renderTicker();
@@ -2227,11 +2821,13 @@ $('#refreshBtn').addEventListener('click', () => refreshAll(true));
 
 /* boot */
 for (const slug of Object.keys(REGIONS)) buildRegionPage(slug);
-renderRanks();
+renderLeagueChrome();
 renderHome();
 renderTicker();
 switchTab(localStorage.getItem(LS('tab')) || 'home');
 refreshAll(true);
+tickClocks();
+setInterval(tickClocks, 1000);                     // header clock + live match timers
 setInterval(() => refreshAll(false), 60_000);      // live check every minute
 setInterval(() => refreshAll(true), 5*60_000);     // full schedule every 5 min
 </script>
