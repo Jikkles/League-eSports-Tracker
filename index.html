@@ -528,7 +528,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 #homeAgenda .ag-day:first-child{padding-top:2px}
 
 /* ---- next up + recent games, half the board each ---- */
-.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
+.duo>.panel{display:flex;flex-direction:column}
 .duo .nxt{grid-template-columns:86px 66px minmax(0,1fr) 78px;gap:10px;padding:9px 4px}
 .duo .nxt .n-when{padding-left:4px}
 .duo .nxt .n-time,.duo .nxt .n-date{font-size:21px;letter-spacing:-.5px}
@@ -543,8 +544,15 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .n-date{font-family:var(--disp);font-weight:800;line-height:1}
 .n-sc{font-family:var(--disp);font-weight:800;font-size:23px;text-align:center;white-space:nowrap;letter-spacing:.5px}
 .n-sc i{font-style:normal;color:var(--faint);font-weight:600;margin:0 8px}
-/* region crest toggles on the fixtures / results panels */
-.rgfilt{display:inline-flex;align-items:center;gap:4px;margin-right:6px}
+/* every slot is the same height, filled or blank, so filtering never resizes */
+.duo .nxt{min-height:72px}
+.duo .n-when .n-cd + .n-cd{margin-top:1px}
+.nxt.empty{min-height:72px;cursor:default;pointer-events:none;display:block}
+.nxt.empty:hover{background:none}
+.nxt.empty.msg{font-family:var(--mono);font-size:11px;color:var(--faint);padding-top:24px;text-align:center}
+
+/* region crest toggles — pinned beside the panel title so they never move */
+.rgfilt{display:inline-flex;align-items:center;gap:4px;margin-left:12px}
 .rgf{background:none;border:1px solid transparent;border-radius:var(--radius);padding:4px 5px;line-height:0;opacity:.6;
   transition:opacity .12s ease,border-color .12s ease,background .12s ease}
 .rgf .lgw{width:26px;height:26px}
@@ -569,6 +577,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .p-head .right a.mini,.p-head .right button.mini{background:none;border:none;font-family:var(--body);font-weight:600;font-size:11.5px;
   color:var(--dim);padding:2px 0;letter-spacing:.3px}
 .p-head .right .mini:hover{color:var(--cyan);text-decoration:none}
+.p-head .right .mini:disabled{opacity:.35;cursor:default}
+.p-head .right .mini:disabled:hover{color:var(--dim)}
 
 /* rankings */
 .rk2{display:grid;grid-template-columns:20px 34px 1fr 76px 42px 24px;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line)}
@@ -699,9 +709,6 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   </div>
   <nav>
     <button class="fchip active" data-f="all">All</button>
-    <button class="fchip" data-f="live">Live</button>
-    <button class="fchip" data-f="today">Today</button>
-    <button class="fchip" data-f="tomorrow">Tomorrow</button>
     <span class="nav-div"></span>
     <button class="tab" data-tab="lec"><span class="lgw" data-lg="lec"></span>LEC</button>
     <button class="tab" data-tab="lck"><span class="lgw" data-lg="lck"></span>LCK</button>
@@ -734,37 +741,35 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
     <div class="panel live-panel" id="livePanel">
       <div class="p-head"><div class="p-title"><span class="dot-live"></span>Live Now</div>
         <span class="p-sub" id="liveCount"></span>
-        <div class="right"><button class="mini" id="liveAll">View all live matches ›</button></div></div>
+        </div>
       <div class="live-grid" id="homeLive"><div class="loading">Checking for live broadcasts…</div></div>
     </div>
 
     <div class="duo">
       <div class="panel" id="nextPanel">
         <div class="p-head"><div class="p-title">Next Up</div>
-          <div class="right">
-            <div class="rgfilt" data-filt="next">
-              <button class="rgf all active" data-r="">All</button>
-              <button class="rgf" data-r="lec" title="LEC"><span class="lgw" data-lg="lec"></span></button>
-              <button class="rgf" data-r="lck" title="LCK"><span class="lgw" data-lg="lck"></span></button>
-              <button class="rgf" data-r="lpl" title="LPL"><span class="lgw" data-lg="lpl"></span></button>
-              <button class="rgf" data-r="lcs" title="LCS"><span class="lgw" data-lg="lcs"></span></button>
-            </div>
-            <button class="mini" id="nextMore">View full schedule ›</button></div></div>
+          <div class="rgfilt" data-filt="next">
+            <button class="rgf all active" data-r="">All</button>
+            <button class="rgf" data-r="lec" title="LEC"><span class="lgw" data-lg="lec"></span></button>
+            <button class="rgf" data-r="lck" title="LCK"><span class="lgw" data-lg="lck"></span></button>
+            <button class="rgf" data-r="lpl" title="LPL"><span class="lgw" data-lg="lpl"></span></button>
+            <button class="rgf" data-r="lcs" title="LCS"><span class="lgw" data-lg="lcs"></span></button>
+          </div>
+          <div class="right"><button class="mini" id="nextMore">View full schedule ›</button></div></div>
         <div class="p-sub sub-line" id="agendaSub">all regions · local time</div>
         <div class="nxt-list" id="homeAgenda"><div class="loading">Loading schedules…</div></div>
       </div>
 
       <div class="panel" id="recentPanel">
         <div class="p-head"><div class="p-title">Recent Games</div>
-          <div class="right">
-            <div class="rgfilt" data-filt="recent">
-              <button class="rgf all active" data-r="">All</button>
-              <button class="rgf" data-r="lec" title="LEC"><span class="lgw" data-lg="lec"></span></button>
-              <button class="rgf" data-r="lck" title="LCK"><span class="lgw" data-lg="lck"></span></button>
-              <button class="rgf" data-r="lpl" title="LPL"><span class="lgw" data-lg="lpl"></span></button>
-              <button class="rgf" data-r="lcs" title="LCS"><span class="lgw" data-lg="lcs"></span></button>
-            </div>
-            <button class="mini" id="recentMore">View all results ›</button></div></div>
+          <div class="rgfilt" data-filt="recent">
+            <button class="rgf all active" data-r="">All</button>
+            <button class="rgf" data-r="lec" title="LEC"><span class="lgw" data-lg="lec"></span></button>
+            <button class="rgf" data-r="lck" title="LCK"><span class="lgw" data-lg="lck"></span></button>
+            <button class="rgf" data-r="lpl" title="LPL"><span class="lgw" data-lg="lpl"></span></button>
+            <button class="rgf" data-r="lcs" title="LCS"><span class="lgw" data-lg="lcs"></span></button>
+          </div>
+          <div class="right"><button class="mini" id="recentMore">View all results ›</button></div></div>
         <div class="p-sub sub-line" id="recentSub">all regions · latest results</div>
         <div class="nxt-list" id="recentStrip"><div class="loading">Loading results…</div></div>
       </div>
@@ -865,7 +870,7 @@ const REGIONS = {
         // Legend: 1-2 -> playoffs, 3-5 -> play-in. Rise: 1 -> playoffs, 2-4 -> play-in, 5 out
         groupCuts:{ legend:[{after:2, kind:'po'}], rise:[{after:1, kind:'po'},{after:4, kind:'pi'}] } },
   lpl:{ name:'LPL', full:'League of Legends Pro League', color:'var(--lpl)', slug:'lpl',
-        bili:'https://live.bilibili.com/lol', yt:'https://www.youtube.com/@LPL/live', vods:'https://www.youtube.com/@LPL/videos',
+        bili:'https://live.bilibili.com/lol', yt:'https://www.youtube.com/@LPL_English/live', vods:'https://www.youtube.com/@LPL_English/streams',
         twitch:'https://www.twitch.tv/lplenglish',   // the LPL's own English cast
 
         wiki:'https://lol.fandom.com/wiki/LPL/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026',
@@ -1531,10 +1536,23 @@ function formCells(form, name) {
    rankings/storylines/honours band and a results carousel. The nav's
    All / Live / Today / Tomorrow chips decide which of those show.
 ===================================================================== */
-let homeFilter = 'all';        // all | live | today | tomorrow
+/* the board always shows everything; the nav's All chip is the way back to it */
 let nextExpanded = false, ranksExpanded = true, storiesExpanded = true, recentExpanded = false;
 let boardRegion = '';          // '' = every region, else a REGIONS slug
 const BOARD_ROWS = 4;          // fixtures / results shown before expanding
+
+/* Both lists keep a constant height: whatever the filter leaves out is made up
+   with blank slots, so switching region never shifts the page around. */
+function padRows(box, shown, expanded, emptyMsg) {
+  if (expanded) return;
+  if (!shown && emptyMsg) {
+    const first = el('div','nxt empty msg');
+    first.textContent = emptyMsg;
+    box.appendChild(first);
+    shown = 1;
+  }
+  for (let i = shown; i < BOARD_ROWS; i++) box.appendChild(el('div','nxt empty'));
+}
 
 const dayKey = d => { const x = new Date(d); return x.getFullYear()+'-'+x.getMonth()+'-'+x.getDate(); };
 
@@ -1727,44 +1745,39 @@ function renderAgenda() {
     .filter(x => !boardRegion || x.slug === boardRegion)
     .sort((a,b) => new Date(a.ev.startTime) - new Date(b.ev.startTime));
   const where = boardRegion ? REGIONS[boardRegion].name : 'all regions';
-  let list, sub;
-  if (homeFilter === 'today') {
-    list = all.filter(x => dayKey(x.ev.startTime) === dayKey(now));
-    sub = `today \u00B7 ${where} \u00B7 local time`;
-  } else if (homeFilter === 'tomorrow') {
-    list = all.filter(x => dayKey(x.ev.startTime) === dayKey(now + 864e5));
-    sub = `tomorrow \u00B7 ${where} \u00B7 local time`;
-  } else {
-    list = all.filter(x => { const t = +new Date(x.ev.startTime); return t >= now - 3600e3 && t <= horizon; });
-    sub = `next 48 hours \u00B7 ${where} \u00B7 local time`;
-    if (!list.length) { list = all.slice(0, BOARD_ROWS); sub = `nothing in 48h \u00B7 ${where} \u2014 next fixtures shown`; }
-  }
+  let list = all.filter(x => { const t = +new Date(x.ev.startTime); return t >= now - 3600e3 && t <= horizon; });
+  let sub = `next 48 hours \u00B7 ${where} \u00B7 local time`;
+  if (!list.length) { list = all.slice(0, BOARD_ROWS); sub = `nothing in 48h \u00B7 ${where} \u2014 next fixtures shown`; }
   const total = list.length;
   const more = $('#nextMore');
   if (more) {
-    more.style.display = total > BOARD_ROWS ? '' : 'none';
+    more.disabled = total <= BOARD_ROWS;
     more.textContent = nextExpanded ? '\u2039 Show fewer' : `View full schedule (${total}) \u203A`;
   }
   if (!nextExpanded) list = list.slice(0, BOARD_ROWS);
   const subEl = $('#agendaSub'); if (subEl) subEl.textContent = sub;
   box.innerHTML = '';
   if (!list.length) {
-    box.innerHTML = `<div class="loading">${apiOk===false
+    padRows(box, 0, false, apiOk===false
       ? 'API unreachable \u2014 schedules will appear once it responds.'
-      : 'No fixtures scheduled in this window.'}</div>`;
+      : 'No fixtures scheduled in this window.');
     return;
   }
   let lastDay = '';
   for (const {slug, ev} of list) {
     const R = REGIONS[slug];
     const {day, time} = fmtWhen(ev.startTime);
-    if (homeFilter === 'all' && day !== lastDay) { box.appendChild(el('div','ag-day', esc(day))); lastDay = day; }
+    // day dividers only in the expanded list — collapsed, every row carries its
+    // own date so the panel is exactly as tall whatever the filter shows
+    if (nextExpanded && day !== lastDay) { box.appendChild(el('div','ag-day', esc(day))); lastDay = day; }
     const t = ev.match.teams;
     const bo = ev.match?.strategy?.count ? 'Best of ' + ev.match.strategy.count : '';
     const row = el('div','nxt');
     row.style.setProperty('--rg', R.color);
     row.innerHTML = `
-      <div class="n-when"><div class="n-time">${esc(time)}</div><span class="n-cd">${esc(fmtCountdown(ev.startTime))}</span></div>
+      <div class="n-when"><div class="n-time">${esc(time)}</div>
+        ${nextExpanded ? '' : `<span class="n-cd">${esc(day)}</span>`}
+        <span class="n-cd">${esc(fmtCountdown(ev.startTime))}</span></div>
       <div class="n-rg"><span class="lgw">${leagueLogoHTML(slug)}</span>
         <div><span class="nm">${R.name}</span><span class="sp">${esc(R.splitLabel)}</span></div></div>
       <div class="n-mid">
@@ -1776,6 +1789,7 @@ function renderAgenda() {
     row.addEventListener('click', () => switchTab(slug));
     box.appendChild(row);
   }
+  padRows(box, list.length, nextExpanded);
 }
 
 /* -------- recent games \u2014 same row rhythm as Next Up, score instead of VS -------- */
@@ -1786,19 +1800,17 @@ function renderRecent() {
     .filter(x => x.ev.match?.teams?.length === 2 && ['done','pending'].includes(evPhase(x.ev, lids)))
     .filter(x => !boardRegion || x.slug === boardRegion)
     .sort((a,b) => new Date(b.ev.startTime) - new Date(a.ev.startTime));
-  if (homeFilter === 'today') done = done.filter(x => dayKey(x.ev.startTime) === dayKey(Date.now()));
   const total = done.length;
   done = done.slice(0, recentExpanded ? 24 : BOARD_ROWS);
   const sub = $('#recentSub');
-  if (sub) sub.textContent = (boardRegion ? REGIONS[boardRegion].name : 'all regions')
-    + (homeFilter === 'today' ? ' \u00B7 today' : '') + ' \u00B7 latest results';
+  if (sub) sub.textContent = (boardRegion ? REGIONS[boardRegion].name : 'all regions') + ' \u00B7 latest results';
   const more = $('#recentMore');
   if (more) {
-    more.style.display = total > BOARD_ROWS ? '' : 'none';
+    more.disabled = total <= BOARD_ROWS;
     more.textContent = recentExpanded ? '\u2039 Show fewer' : `View all results (${total}) \u203A`;
   }
   strip.innerHTML = '';
-  if (!done.length) { strip.innerHTML = '<div class="loading">No completed matches in the fetched window.</div>'; return; }
+  if (!done.length) { padRows(strip, 0, false, 'No completed matches in the fetched window.'); return; }
   for (const {slug, ev} of done) {
     const R = REGIONS[slug], t = ev.match.teams, a = t[0]||{}, b = t[1]||{};
     const aw = a.result?.gameWins ?? 0, bw = b.result?.gameWins ?? 0;
@@ -1822,6 +1834,7 @@ function renderRecent() {
     row.addEventListener('click', () => switchTab(slug));
     strip.appendChild(row);
   }
+  padRows(strip, done.length, recentExpanded);
 }
 
 /* -------- storylines + honours panels -------- */
@@ -1876,16 +1889,10 @@ function tickClocks() {
   });
 }
 
-/* -------- which panels the active filter shows -------- */
+/* the All chip lights up whenever the home board is the active tab */
 function applyHomeFilter() {
-  const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-  show('livePanel',   homeFilter !== 'tomorrow');
-  show('nextPanel',   homeFilter !== 'live');
-  show('recentPanel', homeFilter === 'all' || homeFilter === 'today');
-  const tri = document.querySelector('#page-home .tri');
-  if (tri) tri.style.display = homeFilter === 'all' ? '' : 'none';
-  document.querySelectorAll('.fchip').forEach(c =>
-    c.classList.toggle('active', c.dataset.f === homeFilter && document.getElementById('page-home').classList.contains('active')));
+  const onHome = document.getElementById('page-home').classList.contains('active');
+  document.querySelectorAll('.fchip').forEach(c => c.classList.toggle('active', onHome));
 }
 
 /* =====================================================================
@@ -2877,21 +2884,18 @@ function renderRanks() {
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id==='page-'+name));
-  document.querySelectorAll('.fchip').forEach(c => c.classList.toggle('active', name==='home' && c.dataset.f===homeFilter));
+  document.querySelectorAll('.fchip').forEach(c => c.classList.toggle('active', name === 'home'));
   localStorage.setItem(LS('tab'), name);
   window.scrollTo({top:0, behavior:'smooth'});
 }
 document.querySelectorAll('.tab, .f-rg').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
-/* view filters double as the way back to the home board */
-function setFilter(f) {
-  homeFilter = f;
-  nextExpanded = false;
+/* the All chip is the way back to the home board */
+document.querySelectorAll('.fchip').forEach(c => c.addEventListener('click', () => {
+  nextExpanded = recentExpanded = false;
   switchTab('home');
   renderHome();
-}
-document.querySelectorAll('.fchip').forEach(c => c.addEventListener('click', () => setFilter(c.dataset.f)));
-$('#liveAll').addEventListener('click', () => setFilter('live'));
+}));
 $('#nextMore').addEventListener('click', () => { nextExpanded = !nextExpanded; renderAgenda(); });
 $('#ranksMore').addEventListener('click', () => { ranksExpanded = !ranksExpanded; renderRanks(); });
 $('#storiesMore').addEventListener('click', () => { storiesExpanded = !storiesExpanded; renderStorylines(); });
