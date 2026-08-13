@@ -1278,14 +1278,22 @@ let lastApiError = '';
 
 async function apiOnce(url, prefix) {
   const target = prefix ? prefix + encodeURIComponent(url.toString()) : url.toString();
-  const res = await fetch(target, { headers: { 'x-api-key': API_KEY } });
+  const res = await fetch(target, { headers: { 'x-api-key': API_KEY }, cache: 'no-store' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
+  const out = await res.json();
+  // a CORS proxy that is refusing us answers 200 with its own error envelope;
+  // taken as a success it pins us to a dead transport and strands stale data
+  if (!out || typeof out.data !== 'object' || out.data === null)
+    throw new Error(out && out.error ? String(out.error).slice(0,80) : 'unexpected response');
+  return out;
 }
 async function api(path, params={}) {
   const url = new URL(API + path);
   url.searchParams.set('hl', HL);
   for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
+  // NB: no cache-busting param here — /persisted/gw rejects any query string it
+  // does not know with a 400, so the browser cache is defeated in apiOnce with
+  // `cache: 'no-store'` instead, which leaves the URL untouched.
   const order = [transport, ...PROXIES.map((_,i) => i).filter(i => i !== transport)];
   let err = null;
   for (const i of order) {
@@ -3175,8 +3183,10 @@ function openApiHelp() {
   document.addEventListener('keydown', modalEsc);
 }
 
+let lastGoodAt = 0;                 // when a refresh last actually came back
 async function refreshAll(deep=true) {
   $('#lastRefresh').textContent = '…';
+  let ok = false;
   try {
     await resolveLeagues();
     // one region's schedule failing must not cost us the live feed as well — a
@@ -3194,6 +3204,7 @@ async function refreshAll(deep=true) {
     localStorage.setItem(LS('logos'), JSON.stringify(teamLogos));
     setStatus(true, 'Data updates in real time');
     localStorage.setItem(LS('schedCache'), JSON.stringify(scheduleCache));
+    ok = true; lastGoodAt = Date.now();
   } catch (e) {
     setStatus(false, 'Offline — showing cached data');
     scheduleCache = JSON.parse(localStorage.getItem(LS('schedCache')) || '{}');
@@ -3210,7 +3221,11 @@ async function refreshAll(deep=true) {
   renderHome();
   renderTicker();
   renderRanks();
-  $('#lastRefresh').textContent = 'updated ' + new Date().toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  // a refresh that failed must not stamp the clock as though the board were
+  // current — that is what let an hour-old game sit there looking live
+  const hhmm = t => new Date(t).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  $('#lastRefresh').textContent = ok ? 'updated ' + hhmm(Date.now())
+    : (lastGoodAt ? 'stale · last update ' + hhmm(lastGoodAt) : 'no data — API unreachable');
 }
 $('#refreshBtn').addEventListener('click', () => refreshAll(true));
 
