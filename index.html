@@ -1187,6 +1187,12 @@ const POWER_RANKINGS = [
 let leagueIds = JSON.parse(localStorage.getItem(LS('leagueIds')) || 'null'); // {lec:id,...}
 let scheduleCache = {};  // slug -> events[]
 let liveEvents = [];
+/* when the live feed last answered. It is only evidence of what is on air while
+   it is fresh — if the fetch starts failing, the last successful answer must not
+   keep a finished broadcast pinned to the board forever. */
+let liveEventsAt = 0;
+const LIVE_FEED_TTL = 5*60e3;                 // ~5 failed polls before we stop trusting it
+const liveFeedFresh = () => Date.now() - liveEventsAt < LIVE_FEED_TTL;
 let apiOk = null;
 
 const $ = s => document.querySelector(s);
@@ -1344,6 +1350,7 @@ async function fetchSchedule(slug) {
 async function fetchLive() {
   const data = await api('/getLive');
   liveEvents = data.data.schedule?.events || [];
+  liveEventsAt = Date.now();
   return liveEvents;
 }
 
@@ -1622,9 +1629,14 @@ function padRows(box, shown, expanded, emptyMsg) {
 const dayKey = d => { const x = new Date(d); return x.getFullYear()+'-'+x.getMonth()+'-'+x.getDate(); };
 
 /* match ids the /getLive feed says are on air right now \u2014 the cached schedule
-   can still call them 'unstarted' for a few minutes after the broadcast opens */
+   can still call them 'unstarted' for a few minutes after the broadcast opens.
+   A feed that has gone stale, or that is still carrying a series the schedule
+   has since called for one side, is not evidence of anything. */
 function liveMatchIds() {
-  return new Set(liveEvents.filter(e => e.state==='inProgress' && e.match?.id).map(e => e.match.id));
+  if (!liveFeedFresh()) return new Set();
+  return new Set(liveEvents
+    .filter(e => e.state==='inProgress' && e.match?.id && !matchFinished(e))
+    .map(e => e.match.id));
 }
 /* every fetched fixture across the four regions, tagged with its region */
 function allFixtures() {
@@ -1643,6 +1655,19 @@ function allFixtures() {
    or the board shows phantom 0–0 finals. */
 const hasWinner = ev => (ev.match?.teams||[]).some(t => t.result?.outcome === 'win');
 
+/* The live feed keeps carrying a series as 'inProgress' after it has actually
+   ended, and its copy of the teams still shows the score from mid-series. The
+   schedule — refetched in full every five minutes — publishes the winner first,
+   so a match the schedule has settled is over no matter what the feed claims. */
+function matchFinished(ev) {
+  if (hasWinner(ev)) return true;
+  const id = ev.match?.id;
+  if (!id) return false;
+  for (const evs of Object.values(scheduleCache))
+    for (const s of evs) if (s.match?.id === id) return hasWinner(s);
+  return false;
+}
+
 /* The /getLive feed does not carry every broadcast — the LPL, whose streams
    live on Bilibili, never appears in it. So a fixture that is past its start
    time with no published winner is taken to be on air until a series could
@@ -1651,22 +1676,23 @@ const LIVE_WINDOW_MS = 4*3600e3;
 function startedAgo(ev) { return Date.now() - Date.parse(ev.startTime); }
 
 function evPhase(ev, lids) {
+  // a published winner settles it before any state flag does — the API leaves
+  // a decided series sitting on 'inProgress' for a good while after the fact
+  if (hasWinner(ev)) return ev.state === 'unstarted' ? 'up' : 'done';
   if (ev.state === 'inProgress' || (ev.match?.id && lids.has(ev.match.id))) return 'live';
-  if (!hasWinner(ev)) {
-    const ago = startedAgo(ev);
-    if (!isFinite(ago) || ago < 0) return 'up';                 // still to come
-    if (ago < LIVE_WINDOW_MS) return 'onair';                   // under way, unreported
-    return ev.state === 'completed' ? 'pending' : 'up';         // result outstanding
-  }
-  return ev.state === 'completed' ? 'done' : 'up';
+  const ago = startedAgo(ev);
+  if (!isFinite(ago) || ago < 0) return 'up';                   // still to come
+  if (ago < LIVE_WINDOW_MS) return 'onair';                     // under way, unreported
+  return ev.state === 'completed' ? 'pending' : 'up';           // result outstanding
 }
 
 /* everything on air right now: the live feed first, then fixtures the feed
    never mentioned. `assumed` marks the ones we inferred from the clock. */
 function liveNowList() {
   const out = [], seen = new Set();
-  for (const ev of liveEvents) {
+  for (const ev of (liveFeedFresh() ? liveEvents : [])) {
     if (ev.state !== 'inProgress' || !ev.match) continue;
+    if (matchFinished(ev)) continue;           // the schedule has already called it
     const slug = (ev.league?.slug||'').toLowerCase();
     if (!REGIONS[slug]) continue;              // this board tracks LEC/LCK/LPL/LCS only
     out.push({ ev, slug, assumed: false });
@@ -3010,8 +3036,10 @@ function renderHome() {
 function renderTicker() {
   const track = $('#tickerTrack');
   const items = [];
-  liveEvents.filter(e => e.state==='inProgress' && e.match && REGIONS[(e.league?.slug||'').toLowerCase()]).forEach(e => {
-    items.push(`<span class="tick-item"><span class="live-chip">LIVE</span><span class="tick-lg" style="color:var(--gold)">${esc(e.league?.name||'')}</span><b>${esc(liveLabel(e))}</b></span>`);
+  // same source of truth as the live cards, so the ticker can't claim a match is
+  // live after the board has stopped saying so
+  liveNowList().filter(m => !m.assumed).forEach(({ev, slug}) => {
+    items.push(`<span class="tick-item"><span class="live-chip">LIVE</span><span class="tick-lg" style="color:${REGIONS[slug].color}">${esc(REGIONS[slug].name)}</span><b>${esc(liveLabel(ev))}</b></span>`);
   });
   for (const slug of Object.keys(REGIONS)) {
     const nx = nextEventFor(slug);
@@ -3151,10 +3179,16 @@ async function refreshAll(deep=true) {
   $('#lastRefresh').textContent = '…';
   try {
     await resolveLeagues();
-    if (deep) await Promise.all(Object.keys(REGIONS).map(fetchSchedule));
+    // one region's schedule failing must not cost us the live feed as well — a
+    // live feed that stops refreshing is exactly what strands a finished match
+    // on the board, so only a total blackout counts as a failed refresh here
+    if (deep) {
+      const got = await Promise.allSettled(Object.keys(REGIONS).map(fetchSchedule));
+      if (got.every(r => r.status === 'rejected')) throw got[0].reason;
+    }
     await fetchLive();
     if (deep) await fetchAllTeams();
-    if (deep) await Promise.all(Object.keys(REGIONS).map(fetchStandings));
+    if (deep) await Promise.allSettled(Object.keys(REGIONS).map(fetchStandings));
     for (const evs of Object.values(scheduleCache)) harvestLogos(evs);
     harvestLogos(liveEvents);
     localStorage.setItem(LS('logos'), JSON.stringify(teamLogos));
