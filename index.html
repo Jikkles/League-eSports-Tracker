@@ -2450,8 +2450,11 @@ function renderRegionData(slug) {
   const phase = {};
   events.forEach(e => { phase[(e.match?.id||'') + e.startTime] = evPhase(e, lids); });
   const ph = e => phase[(e.match?.id||'') + e.startTime];
-  const up = events.filter(e => ph(e) === 'up').slice(0,4);
-  const live = events.filter(e => ph(e) === 'live' || ph(e) === 'onair');
+  // the panel is always four rows: anything on air leads, and the upcoming
+  // fixtures fill what's left rather than being pushed down the list
+  const SCHED_ROWS = 4;
+  const live = events.filter(e => ph(e) === 'live' || ph(e) === 'onair').slice(0, SCHED_ROWS);
+  const up = events.filter(e => ph(e) === 'up').slice(0, SCHED_ROWS - live.length);
   const done = events.filter(e => ph(e) === 'done' || ph(e) === 'pending').slice(-4).reverse();
 
   const schedEl = $('#sched-'+slug);
