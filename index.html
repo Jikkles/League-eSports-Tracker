@@ -1440,11 +1440,16 @@ function teamAbbr(t) {
   return words.map(w => w[0]).join('').slice(0,4).toUpperCase();
 }
 
-function matchRow(ev) {
+function matchRow(ev, phase) {
   const t = ev.match?.teams || [];
   const a = t[0]||{}, b = t[1]||{};
-  const live = ev.state === 'inProgress';
-  const done = ev.state === 'completed';
+  // a row's state comes from the same phase the boards use rather than from
+  // ev.state alone, so a broadcast the live feed never carries — every LPL
+  // game, which streams on Bilibili — still reads as live here
+  const ph = phase || evPhase(ev, liveMatchIds());
+  const live = ph === 'live' || ph === 'onair';
+  const assumed = ph === 'onair';        // on air by the clock; no score published
+  const done = !live && (ph === 'done' || ph === 'pending');
   const {day,time} = fmtWhen(ev.startTime);
   const strat = ev.match?.strategy?.count ? 'Bo'+ev.match.strategy.count : '';
   let score;
@@ -1453,10 +1458,11 @@ function matchRow(ev) {
     const aw = a.result?.gameWins ?? 0, bw = b.result?.gameWins ?? 0;
     const aWin = a.result?.outcome === 'win';
     const bWin = b.result?.outcome === 'win';
-    // marked complete with no winner = the result simply isn't out yet, and the
-    // 0-0 the API carries would read as a scoreline that never happened
-    score = (done && !settled)
-      ? '<span class="l" title="Result not published yet">–</span>'
+    // no winner yet means the result simply isn't out — either still being
+    // played or not posted — and the 0-0 the API carries would read as a
+    // scoreline that never happened
+    score = (!settled && (done || assumed))
+      ? `<span class="l" title="${assumed?'Under way — this broadcast publishes no live score':'Result not published yet'}">–</span>`
       : `<span class="${aWin?'w':(done?'l':'')}">${aw}</span> – <span class="${bWin?'w':(done?'l':'')}">${bw}</span>`;
   } else {
     score = '<span class="vs">vs</span>';   // the kickoff time already sits in the left column
@@ -2459,13 +2465,13 @@ function renderRegionData(slug) {
 
   const schedEl = $('#sched-'+slug);
   schedEl.innerHTML = '';
-  live.forEach(e => schedEl.appendChild(matchRow(e)));
-  if (up.length) up.forEach(e => schedEl.appendChild(matchRow(e)));
+  live.forEach(e => schedEl.appendChild(matchRow(e, ph(e))));
+  if (up.length) up.forEach(e => schedEl.appendChild(matchRow(e, ph(e))));
   else if (!live.length) schedEl.innerHTML = '<div class="loading">No upcoming games in the fetched window — check the Leaguepedia link above for the full calendar.</div>';
 
   const resEl = $('#results-'+slug);
   resEl.innerHTML = '';
-  if (done.length) done.forEach(e => resEl.appendChild(matchRow(e)));
+  if (done.length) done.forEach(e => resEl.appendChild(matchRow(e, ph(e))));
   else resEl.innerHTML = '<div class="loading">No completed games fetched yet.</div>';
 
   const tbl = $('#table-'+slug);
