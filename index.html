@@ -221,8 +221,20 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .chip.sel{border-color:var(--cyan);background:var(--cyan);color:#001014}
 .chip .tlogo,.chip .tmono{width:16px;height:16px}
 .chip .x{color:var(--faint);margin-left:2px;font-family:var(--mono);font-size:10px}
-.bracket{display:grid;gap:14px 18px;padding:6px 2px;align-items:stretch}
-.bcell{display:flex;flex-direction:column;gap:12px;justify-content:center;min-width:0;height:100%}
+.bracket{display:grid;gap:14px 34px;padding:6px 2px;align-items:stretch;position:relative}
+.bcell{display:flex;flex-direction:column;gap:12px;justify-content:center;min-width:0;height:100%;position:relative;z-index:1}
+/* advancement wiring, drawn to measured box positions after layout */
+.bwires{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:0}
+.bwires .wire{fill:none;stroke-width:1.5;stroke-linejoin:miter}
+.bwires .wire.adv{stroke:#4E4E4E}
+.bwires .wire.adv.live{stroke:var(--cyan);stroke-width:2}
+.bwires .wire.drop{stroke:rgba(232,57,74,.42);stroke-dasharray:4 4}
+.bwires .wire.drop.live{stroke:rgba(232,57,74,.85)}
+.wire-key{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:8px}
+.wire-key span{display:inline-flex;align-items:center;gap:6px}
+.wire-key i{width:22px;height:0;border-top:1.5px solid #3D3D3D;display:inline-block}
+.wire-key i.drop{border-top-style:dashed;border-top-color:rgba(232,57,74,.6)}
+.wire-key i.live{border-top-color:var(--cyan);border-top-width:2px}
 .bgroup-label{display:inline-block;background:#1A1A1A;color:var(--dim);font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;padding:5px 12px;border-radius:var(--pill);margin-bottom:-4px;align-self:flex-start}
 .bmatch{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
 .bslot{display:flex;align-items:center;gap:8px;padding:9px 10px;min-height:40px;font-size:14px;font-weight:600;border-bottom:1px solid var(--line)}
@@ -2041,6 +2053,7 @@ function buildRegionPage(slug) {
       <button class="btn small" id="simAddBtn-${slug}">+ Add</button>
     </div>
     <div class="bracket" id="simBracket-${slug}"></div>
+    <div class="wire-key"><span><i></i> winner advances</span><span><i class="drop"></i> loser drops to the lower bracket</span><span><i class="live"></i> lights up once you pick that match</span></div>
     <div id="simChamp-${slug}"></div>`;
   page.appendChild(sim);
 
@@ -2833,6 +2846,7 @@ function renderSim(slug) {
     }
     cells[key].appendChild(simMatchEl(slug, m, resolved));
   }
+  drawSimWires(slug);
 
   /* champion banner */
   const finalM = F.matches[F.matches.length-1];
@@ -2852,6 +2866,7 @@ function renderSim(slug) {
 function simMatchEl(slug, m, resolved) {
   const S = simLoad(slug);
   const box = el('div','bmatch');
+  box.dataset.mid = m.id;                     // the anchor the wiring measures against
   const [pA, pB] = resolved[m.id];
   let pr = null;
   if (pA && pB && pA !== pB) {
@@ -2904,6 +2919,67 @@ function simMatchEl(slug, m, resolved) {
     box.appendChild(slot);
   });
   return box;
+}
+
+/* ---------- advancement wiring ----------
+   lolesports.com draws the path between boxes, so the bracket reads without
+   anyone having to decode "winner of M3". Solid where a winner moves on,
+   dashed red where a loser drops into the lower bracket; a path lights up
+   once the team making that move is actually known.
+
+   Routing is a three-segment elbow — out of the source's right edge, across,
+   then into the destination's left edge — with the vertical parked in the
+   column gap just before the destination. Long runs (an upper-bracket final
+   reaching the grand final) only ever cross upper-bracket columns that are
+   empty by then, so a wire never cuts through a match box. */
+function drawSimWires(slug) {
+  const br = $('#simBracket-'+slug);
+  if (!br) return;
+  const old = br.querySelector('.bwires');
+  if (old) old.remove();
+  if (!br.clientWidth) return;        // hidden tab: nothing to measure, redrawn on switch
+  const S = simLoad(slug), F = FORMATS[S.format];
+  if (!F) return;
+  const root = br.getBoundingClientRect();
+  const at = {};
+  br.querySelectorAll('.bmatch[data-mid]').forEach(b => {
+    const r = b.getBoundingClientRect();
+    at[b.dataset.mid] = { l: r.left - root.left + br.scrollLeft, r: r.right - root.left + br.scrollLeft,
+                          y: (r.top + r.bottom)/2 - root.top };
+  });
+  let paths = '';
+  const nextLane = {}, laneOf = {};   // one lane per destination, so drops fork too
+  for (const m of F.matches) {
+    const dst = at[m.id];
+    if (!dst) continue;
+    for (const src of m.s) {
+      const [kind, id] = src.split(':');
+      if (kind !== 'w' && kind !== 'l') continue;
+      const from = at[id];
+      if (!from) continue;
+      const span = dst.l - from.r;
+      // winners share one elbow per column, which is what draws the classic fork;
+      // drops step further left so they never trace over a winner's line
+      let inset = Math.min(22, Math.max(5, span/2));
+      if (kind === 'l') {
+        const col = Math.round(dst.l);
+        if (laneOf[m.id] == null) laneOf[m.id] = (nextLane[col] = (nextLane[col] || 0) + 1) - 1;
+        inset = Math.min(span - 4, inset + 6 + laneOf[m.id]*6);
+      }
+      const ex = dst.l - Math.max(4, inset);
+      // a drop leaves just under the source's midline, so where it shares a run
+      // with that match's winner line the two stay legible as separate paths
+      const y0 = from.y + (kind === 'l' ? 7 : 0);
+      const d = Math.abs(dst.y - y0) < 1
+        ? `M${from.r} ${y0} H${dst.l}`
+        : `M${from.r} ${y0} H${ex} V${dst.y} H${dst.l}`;
+      const decided = !!S.winners[id];
+      paths += `<path class="wire ${kind==='l'?'drop':'adv'}${decided?' live':''}" d="${d}"/>`;
+    }
+  }
+  const w = Math.max(br.scrollWidth, br.clientWidth), h = br.scrollHeight;
+  br.insertAdjacentHTML('afterbegin',
+    `<svg class="bwires" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">${paths}</svg>`);
 }
 
 /* =====================================================================
@@ -2980,8 +3056,17 @@ function switchTab(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id==='page-'+name));
   document.querySelectorAll('.fchip').forEach(c => c.classList.toggle('active', name === 'home'));
   localStorage.setItem(LS('tab'), name);
+  // the bracket wiring is measured, so it can only be drawn once the page is visible
+  if (REGIONS[name]) drawSimWires(name);
   window.scrollTo({top:0, behavior:'smooth'});
 }
+
+/* boxes move when the column widths do, so the wiring is re-measured after a
+   resize and once the display fonts have settled */
+let wireTimer = null;
+function redrawAllWires() { Object.keys(REGIONS).forEach(s => { try { drawSimWires(s); } catch (e) {} }); }
+window.addEventListener('resize', () => { clearTimeout(wireTimer); wireTimer = setTimeout(redrawAllWires, 150); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(redrawAllWires);
 document.querySelectorAll('.tab, .f-rg').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
 /* the All chip is the way back to the home board */
