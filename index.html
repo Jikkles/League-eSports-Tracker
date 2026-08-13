@@ -189,6 +189,16 @@ a.btn-watchlive::before{content:'▶';font-size:10px}
 a.btn-watchlive:hover{filter:brightness(1.12);text-decoration:none}
 a.btn-watchlive.sm{padding:5px 12px;font-size:10px;letter-spacing:1px;margin:6px 0 0;margin-left:0}
 .match a.btn-watchlive.sm{margin-left:14px}
+/* each channel wears its own platform colour, so the eye lands on the right
+   place to watch before it reads the label — red stays for live state only */
+a.btn-watchlive[data-brand="twitch"]{background:#9146FF}
+a.btn-watchlive[data-brand="youtube"]{background:#FF0000}
+a.btn-watchlive[data-brand="bilibili"]{background:#FB7299;color:#21000B !important}
+a.btn-watchlive[data-brand="chzzk"]{background:#00FFA3;color:#00291B !important}
+a.btn-watchlive[data-brand="afreecatv"]{background:#3B5EDB}
+a.btn-watchlive[data-brand="douyu"]{background:#FF5D23}
+a.btn-watchlive[data-brand="huya"]{background:#FF9600;color:#2A1600 !important}
+a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .watch-links{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .stream-note{font-family:var(--mono);font-size:10px;color:var(--faint)}
 .vod-btn{background:#1C1C1C;border:1px solid #262626;color:var(--dim);font-family:var(--body);font-weight:600;font-size:10px;padding:3px 10px;border-radius:var(--pill);transition:background .12s ease,color .12s ease}
@@ -498,6 +508,18 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .lc-alt{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--dim);border:1px solid var(--line2);
   border-radius:var(--pill);padding:5px 11px;text-transform:uppercase}
 .lc-alt:hover{border-color:var(--cyan);color:var(--cyan);text-decoration:none}
+/* the alternates stay outlined so the primary stream still leads, but they
+   carry their platform's colour and fill with it on hover */
+.lc-alt[data-brand="twitch"]{color:#A970FF;border-color:rgba(145,70,255,.5)}
+.lc-alt[data-brand="twitch"]:hover{background:#9146FF;border-color:#9146FF;color:#fff}
+.lc-alt[data-brand="youtube"]{color:#FF4444;border-color:rgba(255,0,0,.5)}
+.lc-alt[data-brand="youtube"]:hover{background:#FF0000;border-color:#FF0000;color:#fff}
+.lc-alt[data-brand="bilibili"]{color:#FB7299;border-color:rgba(251,114,153,.5)}
+.lc-alt[data-brand="bilibili"]:hover{background:#FB7299;border-color:#FB7299;color:#21000B}
+.lc-alt[data-brand="chzzk"]{color:#00FFA3;border-color:rgba(0,255,163,.45)}
+.lc-alt[data-brand="chzzk"]:hover{background:#00FFA3;border-color:#00FFA3;color:#00291B}
+.lc-alt[data-brand="afreecatv"]{color:#7E96EE;border-color:rgba(59,94,219,.55)}
+.lc-alt[data-brand="afreecatv"]:hover{background:#3B5EDB;border-color:#3B5EDB;color:#fff}
 .lc-note{grid-column:1/-1;text-align:center;font-family:var(--mono);font-size:12px;color:var(--dim);padding:8px 0}
 
 /* nothing on air — the panel calms down and reads like a region's watch box */
@@ -1705,9 +1727,9 @@ function liveCard(ev, cols, opts) {
   // on Bilibili, the LCK on YouTube)
   const { lead, alts } = watchLinks(ev, slug);
   let acts = '';
-  if (lead) acts += `<a class="btn-watchlive sm" href="${lead.url}" target="_blank" rel="noopener">Watch on ${esc(lead.name)}</a>`;
+  if (lead) acts += `<a class="btn-watchlive sm" data-brand="${esc(brandKey(lead.name))}" href="${lead.url}" target="_blank" rel="noopener">Watch on ${esc(lead.name)}</a>`;
   acts += alts.slice(0, cols >= 4 ? 1 : 2).map(([label, href]) =>   // narrow cards keep one alternate
-    `<a class="lc-alt" href="${href}" target="_blank" rel="noopener">${esc(label)} ↗</a>`).join('');
+    `<a class="lc-alt" data-brand="${esc(brandKey(label))}" href="${href}" target="_blank" rel="noopener">${esc(label)} ↗</a>`).join('');
   const watch = acts ? `<div class="lc-act">${acts}</div>` : '';
   const chip = `<span class="lg"${R ? ` style="--rg:${R.color}"` : ''}>${R ? `<span class="lgw">${leagueLogoHTML(slug)}</span>` : ''}${esc(R ? R.name : (ev.league?.name || 'LIVE'))}</span>`;
   const clock = `<span class="lc-clock" data-since="${esc(ev.startTime)}" title="Time since this broadcast went live">--:--</span>`;
@@ -2306,6 +2328,10 @@ function findLiveFor(slug) {
   return liveNowList().find(x => x.slug === slug) || null;
 }
 
+/* the CSS hook that paints a watch link in its platform's own colour —
+   'YouTube' -> youtube, 'CHZZK' -> chzzk, and so on */
+function brandKey(name) { return String(name||'').toLowerCase().replace(/[^a-z]/g,''); }
+
 /* primary + alternate places to watch, shared by the live cards and the
    region pages: the feed's own stream first, otherwise the league's channels */
 function watchLinks(ev, slug) {
@@ -2337,7 +2363,7 @@ function renderWatch(slug, live) {
     const w = watchLinks(liveEv, slug);
     box.innerHTML = `<div class="watch-live"><span class="live-chip">LIVE</span>
       <b>${esc(liveLabel(liveEv))}</b>
-      ${w.lead ? `<a class="btn-watchlive" href="${w.lead.url}" target="_blank" rel="noopener">Watch live now on ${esc(w.lead.name)}</a>` : ''}</div>`
+      ${w.lead ? `<a class="btn-watchlive" data-brand="${esc(brandKey(w.lead.name))}" href="${w.lead.url}" target="_blank" rel="noopener">Watch live now on ${esc(w.lead.name)}</a>` : ''}</div>`
       // only YouTube streams are embeddable, and only with a real video id
       + (w.embed && location.protocol !== 'file:'
           ? `<div class="watch-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(w.embed)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Live broadcast"></iframe></div>` : '');
