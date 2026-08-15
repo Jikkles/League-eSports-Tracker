@@ -2047,7 +2047,8 @@ function buildRegionPage(slug) {
   // schedule + results
   const two = el('div','two-col');
   const sched = el('div','panel rg'); sched.style.setProperty('--rg', R.color);
-  sched.innerHTML = `<div class="p-head"><div class="p-title link" id="schedOpen-${slug}" role="button" tabindex="0" title="Open the full remaining schedule">Schedule <span class="chev">›</span></div><span class="p-sub">upcoming · local time</span></div>
+  sched.innerHTML = `<div class="p-head"><div class="p-title link" id="schedOpen-${slug}" role="button" tabindex="0" title="Open the full remaining schedule">Schedule <span class="chev">›</span></div><span class="p-sub">upcoming · local time</span>
+      <div class="right"><button class="mini" id="schedMore-${slug}">View full schedule ›</button></div></div>
     <div id="sched-${slug}"><div class="loading">Loading…</div></div>`;
   const res = el('div','panel rg'); res.style.setProperty('--rg', R.color);
   res.innerHTML = `<div class="p-head"><div class="p-title">Recent Results</div><span class="p-sub">▶ VOD finds the YouTube links per game</span></div>
@@ -2058,6 +2059,7 @@ function buildRegionPage(slug) {
   const openSched = () => openScheduleModal(slug);
   schedBtn.addEventListener('click', openSched);
   schedBtn.addEventListener('keydown', e => { if (e.key==='Enter' || e.key===' ') { e.preventDefault(); openSched(); } });
+  sched.querySelector('#schedMore-'+slug).addEventListener('click', openSched);
 
   // standings table
   const st = el('div','panel rg'); st.style.setProperty('--rg', R.color);
@@ -2239,14 +2241,21 @@ function closeModal() {
 }
 
 /* -------- full remaining schedule for a region's current split -------- */
+/* everything still to play in this split — the one list behind both the modal
+   and the count on the button that opens it, so the two can't disagree. A
+   settled series is excluded even if the API is still calling it inProgress. */
+function remainingFixtures(slug) {
+  return splitEvents(slug)
+    .filter(ev => ev.match?.teams?.length === 2 && !hasWinner(ev)
+                  && (ev.state === 'unstarted' || ev.state === 'inProgress'))
+    .sort((a,b) => new Date(a.startTime) - new Date(b.startTime));
+}
+
 function openScheduleModal(slug) {
   const R = REGIONS[slug];
   if (!R) return;
   closeModal();
-  const now = Date.now();
-  const events = splitEvents(slug)
-    .filter(ev => ev.match?.teams?.length === 2 && (ev.state === 'unstarted' || ev.state === 'inProgress'))
-    .sort((a,b) => new Date(a.startTime) - new Date(b.startTime));
+  const events = remainingFixtures(slug);
   const bg = el('div','modal-bg'); bg.id = 'tModal';
   const box = el('div','modal');
   box.innerHTML = `<button class="modal-close" aria-label="Close">\u2715</button>
@@ -2496,6 +2505,17 @@ function renderRegionData(slug) {
   const live = events.filter(e => ph(e) === 'live' || ph(e) === 'onair').slice(0, SCHED_ROWS);
   const up = events.filter(e => ph(e) === 'up').slice(0, SCHED_ROWS - live.length);
   const done = events.filter(e => ph(e) === 'done' || ph(e) === 'pending').slice(-4).reverse();
+
+  // the panel only ever shows four rows, so say how many the modal holds — a
+  // greyed-out "View full schedule" with no number reads as broken
+  const schedMore = $('#schedMore-'+slug);
+  if (schedMore) {
+    const remaining = remainingFixtures(slug).length;
+    schedMore.disabled = !remaining;
+    schedMore.textContent = remaining
+      ? `View full schedule (${remaining}) ›`
+      : (apiOk===false ? 'Schedule unavailable' : 'No fixtures published');
+  }
 
   const schedEl = $('#sched-'+slug);
   schedEl.innerHTML = '';
