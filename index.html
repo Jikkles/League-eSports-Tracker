@@ -1436,11 +1436,18 @@ function fmtCountdown(iso) {
   if (h >= 1) return `in ${h}h ${m%60}m`;
   return `in ${m}m`;
 }
+/* Every clock on the board reads 24-hour, whatever locale the browser reports.
+   The viewer's region should decide the time zone, not the notation — a board
+   that says 02:00 PM to one person and 14:00 to another is a schedule you have
+   to translate before you trust it. hourCycle rather than hour12, so midnight
+   comes out 00:00 and not 24:00. */
+const HHMM_OPTS = { hour:'2-digit', minute:'2-digit', hourCycle:'h23' };
+const fmtHM = t => new Date(t).toLocaleTimeString(undefined, HHMM_OPTS);
+
 function fmtWhen(iso) {
   const d = new Date(iso);
   const day = d.toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
-  const time = d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
-  return {day, time};
+  return {day, time: fmtHM(d)};
 }
 
 /* short team label: prefer the API's official code (FNC, KC, G2), else build
@@ -1995,7 +2002,7 @@ function tickClocks() {
   const now = new Date();
   const dEl = $('#hdrDate'), cEl = $('#hdrClock'), tzEl = $('#hdrTz');
   if (dEl) dEl.textContent = now.toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long', year:'numeric'});
-  if (cEl) cEl.textContent = now.toLocaleTimeString(undefined,{hour:'2-digit', minute:'2-digit'});
+  if (cEl) cEl.textContent = fmtHM(now);
   if (tzEl && !tzEl.textContent) {
     const p = new Intl.DateTimeFormat(undefined,{timeZoneName:'short'}).formatToParts(now).find(x => x.type==='timeZoneName');
     tzEl.textContent = p ? p.value : '';
@@ -3243,9 +3250,8 @@ async function refreshAll(deep=true) {
   renderRanks();
   // a refresh that failed must not stamp the clock as though the board were
   // current — that is what let an hour-old game sit there looking live
-  const hhmm = t => new Date(t).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
-  $('#lastRefresh').textContent = ok ? 'updated ' + hhmm(Date.now())
-    : (lastGoodAt ? 'stale · last update ' + hhmm(lastGoodAt) : 'no data — API unreachable');
+  $('#lastRefresh').textContent = ok ? 'updated ' + fmtHM(Date.now())
+    : (lastGoodAt ? 'stale · last update ' + fmtHM(lastGoodAt) : 'no data — API unreachable');
 }
 $('#refreshBtn').addEventListener('click', () => refreshAll(true));
 
