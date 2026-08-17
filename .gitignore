@@ -4,3 +4,8 @@ node_modules/
 
 # scratch output from tools/smoke.mjs --shot
 smoke.png
+
+# Claude Code's per-machine permission grants. The project's own Claude config
+# that is meant to be shared lives in CLAUDE.md and .claude/skills/, both of
+# which stay tracked; this file is just whatever "always allow" was clicked here.
+.claude/settings.json
