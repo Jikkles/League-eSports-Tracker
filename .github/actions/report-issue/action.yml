@@ -1,0 +1,92 @@
+name: Report to an issue
+description: >
+  Open, update or close a single long-lived issue for one automated check.
+  Extracted from api-canary.yml so every job in this repo reports the same way.
+
+# Why this exists: the canary was the only job anyone actually heard from. A red
+# daily smoke run or a failed drafts scrape lands in the Actions tab and nowhere
+# else, which is the same as nowhere — the whole point of a daily job is that
+# nobody is watching it. This gives the other jobs the canary's behaviour:
+# one issue per check, updated in place rather than piling up, closed on its own
+# once the thing recovers.
+
+inputs:
+  healthy:
+    description: '"true" when the check passed. Anything else opens or updates the issue.'
+    required: true
+  label:
+    description: Label identifying this check's issue. One label per check.
+    required: true
+  title:
+    description: Issue title, used when creating.
+    required: true
+  body-file:
+    description: Path to a markdown file holding the issue body.
+    required: false
+    default: ''
+  body:
+    description: Inline markdown body, used when body-file is not given.
+    required: false
+    default: ''
+  color:
+    description: Hex colour for the label.
+    required: false
+    default: B60205
+  description:
+    description: Label description, shown in the repo's label list.
+    required: false
+    default: Raised automatically by a scheduled check
+  token:
+    description: Token with issues:write.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Open or update the issue
+      if: inputs.healthy != 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        LABEL: ${{ inputs.label }}
+        TITLE: ${{ inputs.title }}
+        BODY_FILE: ${{ inputs.body-file }}
+        BODY: ${{ inputs.body }}
+        COLOR: ${{ inputs.color }}
+        DESCRIPTION: ${{ inputs.description }}
+      run: |
+        set -euo pipefail
+
+        # a body-file wins; otherwise fall back to the inline body
+        file="$BODY_FILE"
+        if [ -z "$file" ] || [ ! -f "$file" ]; then
+          file="$(mktemp)"
+          printf '%s\n' "$BODY" > "$file"
+        fi
+
+        gh label create "$LABEL" --color "$COLOR" --description "$DESCRIPTION" --force
+
+        existing=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+        if [ -n "$existing" ]; then
+          gh issue edit "$existing" --body-file "$file"
+          echo "updated issue #$existing"
+        else
+          gh issue create --title "$TITLE" --body-file "$file" --label "$LABEL"
+        fi
+
+    - name: Close the issue once it recovers
+      if: inputs.healthy == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        LABEL: ${{ inputs.label }}
+      run: |
+        set -euo pipefail
+        existing=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+        if [ -n "$existing" ]; then
+          gh issue comment "$existing" --body "Passing again as of $(date -u '+%Y-%m-%d %H:%M UTC'). Closing."
+          gh issue close "$existing"
+          echo "closed issue #$existing"
+        else
+          echo "passing; no open issue to close"
+        fi

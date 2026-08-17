@@ -55,35 +55,15 @@ jobs:
 
       # A single long-lived issue, updated in place — a multi-day outage should
       # not produce a multi-day pile of identical issues.
-      - name: Open or update the issue
-        if: steps.probe.outputs.healthy == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh label create "$LABEL" --color B60205 \
-            --description "Raised automatically when the lolesports API stops matching what index.html expects" \
-            --force
-          existing=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
-          if [ -n "$existing" ]; then
-            gh issue edit "$existing" --body-file canary-report.md
-            echo "updated issue #$existing"
-          else
-            gh issue create --title "$TITLE" --body-file canary-report.md --label "$LABEL"
-          fi
-
-      - name: Close the issue once the API is back
-        if: steps.probe.outputs.healthy == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          existing=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body "All canary checks passed on $(date -u '+%Y-%m-%d %H:%M UTC'). Closing."
-            gh issue close "$existing"
-            echo "closed issue #$existing"
-          else
-            echo "all checks passed; no open issue to close"
-          fi
+      - name: Report
+        uses: ./.github/actions/report-issue
+        with:
+          healthy: ${{ steps.probe.outputs.healthy }}
+          label: ${{ env.LABEL }}
+          title: ${{ env.TITLE }}
+          body-file: canary-report.md
+          description: Raised automatically when the lolesports API stops matching what index.html expects
+          token: ${{ github.token }}
 
       - name: Fail the run if the API has moved
         if: steps.probe.outputs.healthy == 'false'

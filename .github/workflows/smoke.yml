@@ -24,6 +24,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write        # only used by the scheduled run, to raise the failure
 
 env:
   # pinned so the browser cache key is stable; this repo has no lockfile to pin it
@@ -53,7 +54,20 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Open the page and check it renders
-        run: node tools/smoke.mjs --shot smoke.png
+        id: smoke
+        run: |
+          # not piped into tee: a pipeline reports tee's status, which is always 0
+          if node tools/smoke.mjs --shot smoke.png > smoke-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat smoke-log.txt
+          {
+            echo '```'
+            cat smoke-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # the screenshot is the fastest way to see what a failure actually looked like
       - name: Keep the screenshot
@@ -64,3 +78,39 @@ jobs:
           path: smoke.png
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Write the report
+        if: steps.smoke.outputs.healthy == 'false'
+        run: |
+          {
+            echo "The daily smoke run opened [index.html](../blob/main/index.html) in headless chromium and it did not render cleanly."
+            echo
+            echo "Worth knowing before digging in: this test needs the live API, so a genuine upstream outage shows up here as a failure. If there is an open \`api-canary\` issue, that is the explanation and this will clear on its own."
+            echo
+            echo "The full-page screenshot is attached to [the run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) as \`page-${{ github.run_number }}\`."
+            echo
+            echo '```'
+            cat smoke-log.txt
+            echo '```'
+            echo
+            echo "Reproduce locally with \`npm install --no-save playwright && npx playwright install chromium\`, then \`node tools/smoke.mjs --headed\`."
+            echo
+            echo "<sub>Posted by [smoke.yml](../blob/main/.github/workflows/smoke.yml). Updated in place on each run, and closed automatically once the page renders again.</sub>"
+          } > smoke-report.md
+
+      # Only the scheduled run raises an issue. On push and PR the red check is
+      # already in front of whoever caused it; an issue as well is just noise.
+      - name: Report
+        if: github.event_name == 'schedule'
+        uses: ./.github/actions/report-issue
+        with:
+          healthy: ${{ steps.smoke.outputs.healthy }}
+          label: smoke-failing
+          title: 'Smoke: the page stopped rendering'
+          body-file: smoke-report.md
+          description: Raised automatically when the daily browser run cannot render index.html
+          token: ${{ github.token }}
+
+      - name: Fail the run if the page did not render
+        if: steps.smoke.outputs.healthy == 'false'
+        run: exit 1
