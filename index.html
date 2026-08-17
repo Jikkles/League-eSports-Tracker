@@ -207,6 +207,12 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 /* series detail — the game-by-game boards that open under a finished series */
 .match.expandable{cursor:pointer}
 .match.open{background:#1F1F1F;border-color:var(--line2);border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
+/* the same boards open under a result on the home board, where the rows are
+   dividers rather than cards — so the open row just lights up and hands over */
+.nxt.open{background:#1F1F1F;border-bottom-color:var(--line2)}
+.nxt-list .sdet{margin:0 0 8px}
+.nxt-list .drill{display:inline-block;margin-left:0;color:var(--dim)}
+.nxt:hover .drill,.nxt.open .drill{color:var(--cyan)}
 .drill{margin-left:6px}
 .sdet{background:var(--panel2);border:1px solid var(--line2);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:14px 14px 10px;margin-bottom:8px}
 .sdet-msg{font-family:var(--mono);font-size:11px;color:var(--faint);padding:14px;text-align:center}
@@ -247,8 +253,9 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .res-tag.w{color:var(--win)} .res-tag.l{color:var(--faint)}
 .steam-obj{display:flex;gap:11px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--faint);border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:6px}
 .steam-obj b{color:var(--text);font-weight:600}
-/* portrait | handle | role over champion | (space) | KDA over the rest — the
-   row is wide, so nothing is stacked that doesn't have to be */
+/* portrait | handle | role | (space) | KDA over the rest — the row is wide, so
+   nothing is stacked that doesn't have to be. The champion isn't named: the
+   portrait is the label, and it carries the name in its tooltip */
 /* the handle column is a fixed width, not auto: every player row is its own
    grid, so an auto column would settle at a different place on each line and
    leave the roles stepping raggedly down the board */
@@ -260,10 +267,23 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .pname{grid-column:2;grid-row:1 / -1;min-width:0;font-weight:700;font-size:17px;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pmeta{grid-column:3;grid-row:1 / -1;min-width:0;display:flex;flex-direction:column;gap:1px;font-family:var(--mono);line-height:1.35}
 .pmeta .role{font-size:11.5px;font-weight:600;letter-spacing:1.1px;color:var(--dim)}
-.pmeta .pchn{font-size:13.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pkda{grid-column:5;grid-row:1;text-align:right;font-family:var(--mono);font-size:19px;font-weight:600;white-space:nowrap;line-height:1.2}
 .pkda .kdsl{color:var(--faint);margin:0 2px;font-size:15px}
 .pcs{grid-column:5;grid-row:2;text-align:right;font-family:var(--mono);font-size:12.5px;color:var(--dim);white-space:nowrap;line-height:1.3}
+/* the right-hand board reads outward from the gutter — stats, role, handle,
+   portrait — so the two teams face each other and the champions sit on the
+   outside edges. Only worth doing while the boards are genuinely side by side:
+   below this the sgrid stacks them and a mirrored second board reads backwards */
+@container (min-width:801px){
+  .steam.mirror .steam-hd{flex-direction:row-reverse}
+  .steam.mirror .steam-hd .res-tag{margin-left:0;margin-right:auto}
+  .steam.mirror .steam-obj{justify-content:flex-end}
+  .steam.mirror .splayer{grid-template-columns:auto 1fr auto 118px 40px}
+  .steam.mirror .pwrap{grid-column:5}
+  .steam.mirror .pname{grid-column:4;text-align:right}
+  .steam.mirror .pmeta{grid-column:3;align-items:flex-end}
+  .steam.mirror .pkda,.steam.mirror .pcs{grid-column:1;text-align:left}
+}
 /* narrow panels give the handle its own line and put role · champion under it */
 @container (max-width:520px){
   .splayer{grid-template-columns:40px minmax(0,1fr) auto;column-gap:10px}
@@ -2110,7 +2130,7 @@ function champArt(id) {
   return `<span class="pwrap champ" title="${esc(label)}"><img src="${esc(url)}" alt="${esc(label)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ini">${ini}</span></span>`;
 }
 
-function teamBoardHTML(side, meta, frame, roster, info, winnerId, teamId) {
+function teamBoardHTML(side, meta, frame, roster, info, winnerId, teamId, mirror) {
   const name = info.name || (side === 'blue' ? 'Blue side' : 'Red side');
   const won  = !!winnerId && winnerId === teamId;
   const stat = {};
@@ -2121,12 +2141,12 @@ function teamBoardHTML(side, meta, frame, roster, info, winnerId, teamId) {
     return `<div class="splayer">
       ${champArt(pm.championId)}
       <div class="pname">${esc(handle)}</div>
-      <div class="pmeta"><span class="role">${esc(roleLabel(pm.role))}</span><span class="pchn">${esc(champLabel(pm.championId))}</span></div>
+      <div class="pmeta"><span class="role">${esc(roleLabel(pm.role))}</span></div>
       <div class="pkda">${st.kills??0}<span class="kdsl">/</span>${st.deaths??0}<span class="kdsl">/</span>${st.assists??0}</div>
       <div class="pcs">Lv ${st.level??'–'} · ${st.creepScore??0} CS · ${goldFmt(st.totalGold)}</div>
     </div>`;
   }).join('');
-  return `<div class="steam${won?' won':''}">
+  return `<div class="steam${won?' won':''}${mirror?' mirror':''}">
     <div class="steam-hd">
       <span class="side ${side}" title="${side==='blue'?'Blue side — picked first':'Red side — picked second'}">${side==='blue'?'BLUE':'RED'}</span>
       ${logoHTML(name)}<span class="nm">${esc(name)}</span>
@@ -2174,25 +2194,26 @@ function salvagedBoardHTML(game, entry, winnerId, order, tinfo) {
   if (!x) return '';
   const idOf = nm => (Object.keys(tinfo).find(k => nk(tinfo[k].name) === nk(nm)) || '');
   const blueId = idOf(x.bt), redId = idOf(x.rt);
-  const block = (side, name, s, teamId) => {
+  const block = (side, name, s, teamId, mirror) => {
     const won = !!winnerId && winnerId === teamId;
     const rows = (s.p || []).map(p => `<div class="splayer">
       ${champArt(p[1])}
       <div class="pname">${esc(p[0])}</div>
-      <div class="pmeta"><span class="role">${esc(roleLabel(p[2]))}</span><span class="pchn">${esc(champLabel(p[1]))}</span></div>
+      <div class="pmeta"><span class="role">${esc(roleLabel(p[2]))}</span></div>
       <div class="pkda">${p[3]}<span class="kdsl">/</span>${p[4]}<span class="kdsl">/</span>${p[5]}</div>
       <div class="pcs">Lv ${p[6]} · ${p[7]} CS · ${goldFmt(p[8])}</div>
     </div>`).join('');
-    return `<div class="steam${won?' won':''}">
+    return `<div class="steam${won?' won':''}${mirror?' mirror':''}">
       <div class="steam-hd"><span class="side ${side}">${side==='blue'?'BLUE':'RED'}</span>
         ${logoHTML(name)}<span class="nm">${esc(name)}</span>
         ${winnerId ? `<span class="res-tag ${won?'w':'l'}">${won?'WIN':'LOSS'}</span>` : ''}</div>
       <div class="steam-obj"><span><b>${s.k??0}</b> kills</span><span><b>${goldFmt(s.g)}</b> gold</span></div>
       ${rows}</div>`;
   };
-  const boards = { [blueId]: () => block('blue', x.bt, x.b, blueId), [redId]: () => block('red', x.rt, x.r, redId) };
+  // the second column is the mirrored one, whichever side ended up there
+  const boards = { [blueId]: m => block('blue', x.bt, x.b, blueId, m), [redId]: m => block('red', x.rt, x.r, redId, m) };
   const cols = (order && boards[order[0]] && boards[order[1]])
-    ? [boards[order[0]](), boards[order[1]]()] : [boards[blueId](), boards[redId]()];
+    ? [boards[order[0]](false), boards[order[1]](true)] : [boards[blueId](false), boards[redId](true)];
   return `<div class="sgame">
     <div class="sgame-hd">${head}<div class="sgame-meta">
       <span class="fpick">${esc(x.bt)} first pick</span>
@@ -2225,12 +2246,13 @@ function gameBoardHTML(game, win, rosterOf, tinfo, winnerId, order) {
   const patch = String(gm.patchVersion||'').split('.').slice(0,2).join('.');
   const blueId = gm.blueTeamMetadata?.esportsTeamId, redId = gm.redTeamMetadata?.esportsTeamId;
   const board = {
-    [blueId]: () => teamBoardHTML('blue', gm.blueTeamMetadata, last.blueTeam, rosterOf[blueId]||{}, tinfo[blueId]||{}, winnerId, blueId),
-    [redId]:  () => teamBoardHTML('red',  gm.redTeamMetadata,  last.redTeam,  rosterOf[redId] ||{}, tinfo[redId] ||{}, winnerId, redId)
+    [blueId]: m => teamBoardHTML('blue', gm.blueTeamMetadata, last.blueTeam, rosterOf[blueId]||{}, tinfo[blueId]||{}, winnerId, blueId, m),
+    [redId]:  m => teamBoardHTML('red',  gm.redTeamMetadata,  last.redTeam,  rosterOf[redId] ||{}, tinfo[redId] ||{}, winnerId, redId, m)
   };
+  // the second column is the mirrored one, whichever side ended up there
   const cols = (order && order.length === 2 && board[order[0]] && board[order[1]])
-    ? [board[order[0]](), board[order[1]]()]
-    : [board[blueId](), board[redId]()];
+    ? [board[order[0]](false), board[order[1]](true)]
+    : [board[blueId](false), board[redId](true)];
   return `<div class="sgame">
     <div class="sgame-hd">${head}<div class="sgame-meta">
       ${blueId ? `<span class="fpick" title="Blue side drafts first">${esc(nameOf(blueId))} first pick</span>` : ''}
@@ -2726,8 +2748,11 @@ function renderRecent() {
               : `<div class="n-sc"><span class="${aWin?'w':'l'}">${aw}</span><i>\u2013</i><span class="${bWin?'w':'l'}">${bw}</span></div>`}
         <div class="n-b${bWin||tbc?'':' lost'}">${crestHTML(b.name,'n-lg')}<span class="n-code" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</span></div>
       </div>
-      <div class="n-meta">${tbc ? 'Result pending' : esc(bo)}${ev.blockName?'<br>'+esc(ev.blockName):''}</div>`;
-    row.addEventListener('click', () => switchTab(slug));
+      <div class="n-meta">${tbc ? 'Result pending' : esc(bo)}${ev.blockName?'<br>'+esc(ev.blockName):''}${ev.match?.id?'<br><span class="drill">▾ Games</span>':''}</div>`;
+    // a result opens into its own game-by-game boards, right here on the board —
+    // the region page is a click away in the nav and isn't what this row is about
+    if (ev.match?.id) row.addEventListener('click', () => toggleSeries(row, ev));
+    else row.addEventListener('click', () => switchTab(slug));
     strip.appendChild(row);
   }
   padRows(strip, done.length, recentExpanded);
