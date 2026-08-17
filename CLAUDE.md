@@ -22,6 +22,14 @@ Deployed via GitHub Pages straight from this repo.
   DRAFTS markers and their JSON, duplicate element IDs, stray browser files at the root,
   and the file-size budget. `.github/workflows/health.yml` runs it on every push and PR,
   so a broken edit fails CI rather than reaching Pages.
+- **For anything that touches rendering**, also run `node tools/smoke.mjs` — it opens the
+  real page in a browser and is the only check that catches a parse-clean edit which
+  throws on first render. It needs playwright, installed *without* a package.json:
+  ```
+  npm install --no-save playwright && npx playwright install chromium
+  ```
+  `--headed` watches it happen, `--shot out.png` saves a full-page screenshot.
+  `node_modules/` is gitignored; the repo still has no package.json and must not grow one.
 - **Palette is lolesports.com's**, not the old hextech gold theme: pure-black canvas
   (`--bg:#000000`), near-black panels, white type, cyan (`--cyan:#0BC6E3`) as the sole
   accent for live state / league identity, red for live/loss, green for win. Region
@@ -71,12 +79,23 @@ that happens, find the new name from a gol.gg game page `<title>` and update the
 
 ## Automation
 
-Four things run without anyone asking:
+Five things run without anyone asking:
 
 - `.github/workflows/health.yml` — `tools/check.mjs` on every push and PR
+- `.github/workflows/smoke.yml` — `tools/smoke.mjs` on every push and PR, and daily at 07:30 UTC
 - `.github/workflows/drafts.yml` — `tools/drafts.mjs` daily at 06:00 UTC, commits changes
 - `.github/workflows/api-canary.yml` — `tools/api-canary.mjs` daily at 07:00 UTC
 - GitHub Pages rebuild on push to `main`
+
+The three checks answer different questions and none of them substitutes for another:
+`check.mjs` asks whether the script *parses*, `api-canary.mjs` asks whether the API
+*answers*, and `smoke.mjs` asks whether the page *works* — it serves the repo over http,
+opens it in headless chromium against a cold profile (so, empty localStorage: the
+first-visit path), and checks the nav, home board, all four league tabs, standings rows
+and bracket wiring, failing on any uncaught exception or console error.
+
+Because it needs the live API, a genuine upstream outage turns the smoke run red; the
+canary issue is the explanation when that happens.
 
 The canary walks the same lolesports API calls the page walks, in the same order with the
 same fallbacks, and asserts the shapes the render code reads. It exists because the API is

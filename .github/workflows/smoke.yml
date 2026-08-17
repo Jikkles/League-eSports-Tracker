@@ -1,0 +1,66 @@
+name: Smoke test
+
+# health.yml proves the script parses and api-canary.yml proves the API answers.
+# Neither proves the page works. This opens it in a real browser against live
+# data and checks it renders: nav, home board, all four league tabs, standings
+# rows, bracket wiring, and nothing thrown along the way.
+#
+# It runs on push and PR as the regression gate, and again daily — a payload
+# the canary is happy with can still be one the render code chokes on.
+#
+# Note it depends on the live API, so a genuine upstream outage will show up
+# here as a red run. When that happens the canary issue is the explanation.
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '30 7 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # pinned so the browser cache key is stable; this repo has no lockfile to pin it
+  PLAYWRIGHT_VERSION: 1.62.1
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Cache the browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ env.PLAYWRIGHT_VERSION }}
+
+      # --no-save keeps the repo free of a package.json, per the ground rules
+      - name: Install playwright
+        run: |
+          npm install --no-save playwright@"$PLAYWRIGHT_VERSION"
+          npx playwright install --with-deps chromium
+
+      - name: Open the page and check it renders
+        run: node tools/smoke.mjs --shot smoke.png
+
+      # the screenshot is the fastest way to see what a failure actually looked like
+      - name: Keep the screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: page-${{ github.run_number }}
+          path: smoke.png
+          if-no-files-found: ignore
+          retention-days: 14

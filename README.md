@@ -46,7 +46,9 @@ Riot Games or any league.
   go straight to the live site, and the unofficial API can move without warning. `tools/check.mjs`
   runs on every push and refuses anything that doesn't parse or that trips one of the page's
   invariants; `tools/api-canary.mjs` walks the API daily and raises an issue if it stops matching
-  what the page expects.
+  what the page expects; and `tools/smoke.mjs` opens the real page in a headless browser on every
+  push, checking that the nav, home board, standings and brackets actually render and that nothing
+  throws on the way.
 
 ## Tech
 

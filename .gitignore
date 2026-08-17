@@ -1,0 +1,6 @@
+# tools/smoke.mjs needs playwright, installed with --no-save so this repo never
+# grows a package.json (see the single-file ground rules in CLAUDE.md)
+node_modules/
+
+# scratch output from tools/smoke.mjs --shot
+smoke.png
