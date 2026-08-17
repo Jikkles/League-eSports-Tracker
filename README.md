@@ -43,12 +43,22 @@ Riot Games or any league.
 - **State** — your saved playoff-bracket simulations and caches persist locally in your browser
   via `localStorage`. Nothing is sent to a server; there is no backend.
 - **Keeping itself honest** — because there's no build step, a broken hand-edit would otherwise
-  go straight to the live site, and the unofficial API can move without warning. `tools/check.mjs`
-  runs on every push and refuses anything that doesn't parse or that trips one of the page's
-  invariants; `tools/api-canary.mjs` walks the API daily and raises an issue if it stops matching
-  what the page expects; and `tools/smoke.mjs` opens the real page in a headless browser on every
-  push, checking that the nav, home board, standings and brackets actually render and that nothing
-  throws on the way.
+  go straight to the live site, and the unofficial API can move without warning. Five checks run
+  on their own, each asking a different question:
+
+  | | question it answers |
+  |---|---|
+  | `tools/check.mjs` | does the page parse, and is the baked-in data structurally sound? |
+  | `tools/api-canary.mjs` | does the unofficial API still answer in the shape the page reads? |
+  | `tools/smoke.mjs` | does the page actually render, in a real headless browser? |
+  | `tools/stale.mjs` | is the hand-researched data still true, or has the season moved on? |
+  | `tools/deployed.mjs` | is the live site serving the commit that was just pushed? |
+
+  Each raises a single GitHub issue when it fails, updates that issue in place rather than
+  piling up duplicates, and closes it automatically once the problem clears. `stale.mjs` is
+  the one that turns "remember to check the data" into "the repo tells you": it compares the
+  baked-in constants against the live sources daily and reports what has drifted, down to
+  which constant to edit.
 
 ## Tech
 
@@ -64,7 +74,13 @@ minute.
 This repo is set up for [Claude Code](https://claude.com/claude-code): `CLAUDE.md` documents the
 project's ground rules, and `.claude/skills/league-esports-tracker/` contains a skill that
 researches current standings/results/formats and patches the relevant constants for you. From
-the repo folder, just run `claude` and ask for what you want updated.
+the repo folder, just run `claude` and ask for what you want updated. Running
+`node tools/stale.mjs` first will tell you what actually needs attention.
+
+The same job also runs weekly in CI (`.github/workflows/research.yml`), opening a pull request
+rather than pushing — because the rule for this data is *never invent a score, a points total or
+a format*, and the only way to hold a bot to that is to read the diff. It stays dormant until an
+`ANTHROPIC_API_KEY` repository secret is added.
 
 ## Disclaimer
 

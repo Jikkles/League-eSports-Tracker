@@ -20,8 +20,13 @@ Deployed via GitHub Pages straight from this repo.
 - **Verify every edit** with `node tools/check.mjs`. It parses the inline `<script>`
   and checks the invariants that break the page silently: the `nexusdesk_` prefix, the
   DRAFTS markers and their JSON, duplicate element IDs, stray browser files at the root,
-  and the file-size budget. `.github/workflows/health.yml` runs it on every push and PR,
-  so a broken edit fails CI rather than reaching Pages.
+  the file-size budget, and the structure of the baked-in data constants — every
+  `defFormat` resolving to a real `FORMATS` key, every `w:`/`l:` bracket reference
+  resolving to a match that exists, every seed placed exactly once, and the fields
+  `HONOURS` / `POWER_RANKINGS` / `STORYLINES` are read by. It checks *shape*, never
+  *currency*; whether the data is still true is `tools/stale.mjs`'s question.
+  `.github/workflows/health.yml` runs it on every push and PR, so a broken edit fails
+  CI rather than reaching Pages.
 - **For anything that touches rendering**, also run `node tools/smoke.mjs` — it opens the
   real page in a browser and is the only check that catches a parse-clean edit which
   throws on first render. It needs playwright, installed *without* a package.json:
@@ -53,6 +58,14 @@ Deployed via GitHub Pages straight from this repo.
 - When patching baked-in data: research via web search / Leaguepedia (`lol.fandom.com`)
   / Liquipedia (`liquipedia.net`), never invent scores/points/formats — if a value can't
   be verified, leave it and say so. Make targeted string replacements, not rewrites.
+- **`node tools/stale.mjs` says what needs patching.** It compares the constants above
+  against the live API and gol.gg and reports drift as either STALE (provably out of
+  date — a split label naming the wrong split, a `defaultGames` the standings have
+  already exceeded, a `groupCuts` key no longer matching any group, a cut line past the
+  end of its table, a rankings mirror older than three weeks) or NOTE (a judgement call
+  — a split that just started, a season link pointing at last year, a trophy the
+  honours board may be missing). Start a data session here rather than guessing.
+  Anything it reports comes with the constant to edit.
 
 ## Generated data: the DRAFTS block
 
@@ -66,36 +79,70 @@ never fetch it at runtime — the data has to be baked in ahead of time.
 
 - `node tools/drafts.mjs --dry-run` — report what would change, write nothing
 - `node tools/drafts.mjs` — patch `index.html` in place
+- `node tools/drafts.mjs --prune` — also drop games from previous splits
 - `.github/workflows/drafts.yml` runs it daily at 06:00 UTC and commits any change
 
 The script is incremental (recorded games are skipped) and throttled to ~1 req/sec —
 gol.gg is a small Patreon-funded site, so don't remove `POLITE_MS`. Scope is the current
 split only, which keeps the block to tens of KB rather than hundreds.
 
-**At split boundaries** the `LEAGUES[].golgg` tournament names in `tools/drafts.mjs` go
-stale (`LEC 2026 Summer Season`, `LCK 2026 Rounds 3-4`, …). The script fails loudly with
-"tournament … returned no played matches" rather than silently writing nothing — when
-that happens, find the new name from a gol.gg game page `<title>` and update the map.
+**Split boundaries are handled automatically.** gol.gg addresses tournaments by name and
+renames them every split, so the name is now discovered at runtime from gol.gg's own
+tournament-list endpoint (`tools/golgg.mjs`) rather than hardcoded. `LEAGUES[].golgg` is
+kept only as documentation and as a fallback when that endpoint is unreachable — when
+`tools/stale.mjs` notes the published name has changed, update it to keep the record
+honest, but nothing is broken in the meantime.
+
+**Pruning is manual and deliberate.** DRAFTS is scoped to the current split, but nothing
+removes the previous one — it just grows against the 400 KB budget. `--prune` enumerates
+every game Riot places in the current split and drops everything else. It only ever runs
+on an explicit flag (or the `prune` input on the workflow's manual dispatch), and it
+refuses to delete anything if enumeration was incomplete, since a partial list would
+take the live split with it. Run it once after a rollover.
 
 ## Automation
 
-Five things run without anyone asking:
+These run without anyone asking:
 
 - `.github/workflows/health.yml` — `tools/check.mjs` on every push and PR
 - `.github/workflows/smoke.yml` — `tools/smoke.mjs` on every push and PR, and daily at 07:30 UTC
 - `.github/workflows/drafts.yml` — `tools/drafts.mjs` daily at 06:00 UTC, commits changes
 - `.github/workflows/api-canary.yml` — `tools/api-canary.mjs` daily at 07:00 UTC
+- `.github/workflows/stale.yml` — `tools/stale.mjs` daily at 08:00 UTC
+- `.github/workflows/deployed.yml` — `tools/deployed.mjs` after each push to `main`, and daily at 08:45 UTC
+- `.github/workflows/research.yml` — weekly data-refresh PR, Mondays at 09:00 UTC
+  (**inert until an `ANTHROPIC_API_KEY` secret exists**; it skips with a note rather than failing)
+- `.github/dependabot.yml` — monthly action bumps, minor/patch grouped into one PR
 - GitHub Pages rebuild on push to `main`
 
-The three checks answer different questions and none of them substitutes for another:
-`check.mjs` asks whether the script *parses*, `api-canary.mjs` asks whether the API
-*answers*, and `smoke.mjs` asks whether the page *works* — it serves the repo over http,
-opens it in headless chromium against a cold profile (so, empty localStorage: the
-first-visit path), and checks the nav, home board, all four league tabs, standings rows
-and bracket wiring, failing on any uncaught exception or console error.
+The checks answer different questions and none of them substitutes for another:
+
+| tool | question |
+|---|---|
+| `check.mjs` | does the script *parse*, and is the data structurally *sound*? |
+| `api-canary.mjs` | does the API still *answer* in the shape the page reads? |
+| `smoke.mjs` | does the page actually *render*? |
+| `stale.mjs` | is the baked-in data still *true*? |
+| `deployed.mjs` | is the live site serving *this* build? |
+
+`smoke.mjs` serves the repo over http, opens it in headless chromium against a cold
+profile (so, empty localStorage: the first-visit path), and checks the nav, home board,
+all four league tabs, standings rows and bracket wiring, failing on any uncaught
+exception or console error.
 
 Because it needs the live API, a genuine upstream outage turns the smoke run red; the
 canary issue is the explanation when that happens.
+
+**Everything reports the same way.** `.github/actions/report-issue` is a composite action
+that opens one labelled issue per check, updates it in place on subsequent runs, and
+closes it once the check passes again — so a multi-day problem is one issue, not a pile,
+and a recovery needs no cleanup. Each check owns a label: `api-canary`, `stale-data`,
+`smoke-failing`, `drafts-failing`, `deploy-stale`. Scheduled jobs report through it;
+push and PR runs deliberately don't, because a red check is already in front of whoever
+caused it.
+
+The weekly research job opens a **pull request and never pushes to `main`** — the "never
+invent scores/points/formats" rule above is only enforceable if a human reads the diff.
 
 The canary walks the same lolesports API calls the page walks, in the same order with the
 same fallbacks, and asserts the shapes the render code reads. It exists because the API is
@@ -107,5 +154,7 @@ and a league sitting between splits are treated as normal, not failures.
 
 ## Workflow
 
-Typical session: research current LoL esports state → patch the relevant constant(s) →
-`node tools/check.mjs` → commit → push. GitHub Pages rebuilds automatically in ~1 minute.
+Typical session: `node tools/stale.mjs` to see what has actually drifted → research the
+current LoL esports state → patch the relevant constant(s) → `node tools/check.mjs` →
+`node tools/smoke.mjs` if anything touched rendering → commit → push. GitHub Pages
+rebuilds automatically in ~1 minute, and `deployed.yml` confirms it landed.
