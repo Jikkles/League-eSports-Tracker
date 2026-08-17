@@ -42,6 +42,11 @@ Riot Games or any league.
   with no manual step.
 - **State** — your saved playoff-bracket simulations and caches persist locally in your browser
   via `localStorage`. Nothing is sent to a server; there is no backend.
+- **Keeping itself honest** — because there's no build step, a broken hand-edit would otherwise
+  go straight to the live site, and the unofficial API can move without warning. `tools/check.mjs`
+  runs on every push and refuses anything that doesn't parse or that trips one of the page's
+  invariants; `tools/api-canary.mjs` walks the API daily and raises an issue if it stops matching
+  what the page expects.
 
 ## Tech
 

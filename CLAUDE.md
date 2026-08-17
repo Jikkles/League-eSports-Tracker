@@ -17,10 +17,11 @@ Deployed via GitHub Pages straight from this repo.
   NexusDesk to League Esports Tracker, but saved state (sim brackets, caches, settings)
   in users' browsers still depends on the old key prefix — renaming it silently wipes
   everyone's saved state.
-- **Verify every edit** by extracting the inline `<script>` and syntax-checking it:
-  ```
-  node -e "fs=require('fs');fs.writeFileSync('_check.js', fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1])" && node --check _check.js && rm _check.js
-  ```
+- **Verify every edit** with `node tools/check.mjs`. It parses the inline `<script>`
+  and checks the invariants that break the page silently: the `nexusdesk_` prefix, the
+  DRAFTS markers and their JSON, duplicate element IDs, stray browser files at the root,
+  and the file-size budget. `.github/workflows/health.yml` runs it on every push and PR,
+  so a broken edit fails CI rather than reaching Pages.
 - **Palette is lolesports.com's**, not the old hextech gold theme: pure-black canvas
   (`--bg:#000000`), near-black panels, white type, cyan (`--cyan:#0BC6E3`) as the sole
   accent for live state / league identity, red for live/loss, green for win. Region
@@ -68,8 +69,24 @@ stale (`LEC 2026 Summer Season`, `LCK 2026 Rounds 3-4`, …). The script fails l
 "tournament … returned no played matches" rather than silently writing nothing — when
 that happens, find the new name from a gol.gg game page `<title>` and update the map.
 
+## Automation
+
+Four things run without anyone asking:
+
+- `.github/workflows/health.yml` — `tools/check.mjs` on every push and PR
+- `.github/workflows/drafts.yml` — `tools/drafts.mjs` daily at 06:00 UTC, commits changes
+- `.github/workflows/api-canary.yml` — `tools/api-canary.mjs` daily at 07:00 UTC
+- GitHub Pages rebuild on push to `main`
+
+The canary walks the same lolesports API calls the page walks, in the same order with the
+same fallbacks, and asserts the shapes the render code reads. It exists because the API is
+unofficial and reached with a public key lifted from Riot's web client — when that key
+rotates or a payload moves, the page renders empty tables rather than erroring, so nothing
+tells you. On failure it opens a single `api-canary`-labelled issue, updates it in place on
+subsequent runs, and closes it once the API recovers. An empty `getLive` (nothing on air)
+and a league sitting between splits are treated as normal, not failures.
+
 ## Workflow
 
 Typical session: research current LoL esports state → patch the relevant constant(s) →
-`node --check` the script → commit → push. GitHub Pages rebuilds automatically in
-~1 minute.
+`node tools/check.mjs` → commit → push. GitHub Pages rebuilds automatically in ~1 minute.

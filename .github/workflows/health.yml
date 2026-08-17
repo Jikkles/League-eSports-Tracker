@@ -1,0 +1,32 @@
+name: Health check
+
+# The page is one hand-edited file with no build step, served straight to
+# GitHub Pages from main. The only syntax check in the repo used to live inside
+# drafts.yml, which meant it only guarded the bot's commits — a hand-edit that
+# broke the inline script shipped unverified. This guards every push.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: health-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check index.html
+        run: node tools/check.mjs

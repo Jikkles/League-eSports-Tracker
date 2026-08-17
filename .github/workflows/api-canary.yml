@@ -1,0 +1,90 @@
+name: API canary
+
+# Everything live on the page — schedules, live games, standings, logos, match
+# detail — comes from an unofficial lolesports endpoint reached with a public
+# key lifted from Riot's web client. When that key rotates or a payload shape
+# moves, the page does not throw anything visible; it renders empty tables. So
+# walk the same calls the page walks, once a day, and raise an issue when the
+# answer stops looking right.
+#
+# 07:00 UTC, an hour behind the drafts refresh so the two never contend.
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: api-canary
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  TITLE: 'API canary: the lolesports API has moved'
+  LABEL: api-canary
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Probe the API
+        id: probe
+        run: |
+          # not piped into tee: a pipeline reports tee's status, which is always 0
+          if node tools/api-canary.mjs --report canary-report.md > canary-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat canary-log.txt
+          {
+            echo '```'
+            cat canary-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # A single long-lived issue, updated in place — a multi-day outage should
+      # not produce a multi-day pile of identical issues.
+      - name: Open or update the issue
+        if: steps.probe.outputs.healthy == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "$LABEL" --color B60205 \
+            --description "Raised automatically when the lolesports API stops matching what index.html expects" \
+            --force
+          existing=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file canary-report.md
+            echo "updated issue #$existing"
+          else
+            gh issue create --title "$TITLE" --body-file canary-report.md --label "$LABEL"
+          fi
+
+      - name: Close the issue once the API is back
+        if: steps.probe.outputs.healthy == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "All canary checks passed on $(date -u '+%Y-%m-%d %H:%M UTC'). Closing."
+            gh issue close "$existing"
+            echo "closed issue #$existing"
+          else
+            echo "all checks passed; no open issue to close"
+          fi
+
+      - name: Fail the run if the API has moved
+        if: steps.probe.outputs.healthy == 'false'
+        run: exit 1
