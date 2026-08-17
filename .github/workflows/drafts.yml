@@ -1,0 +1,59 @@
+name: Refresh drafts
+
+# Picks/bans, and full scoreboards for the games missing from Riot's live-stats
+# feed, come from gol.gg — which sends no CORS headers, so the page can never
+# fetch it itself. This bakes the data into index.html instead.
+#
+# Runs after the day's games are done everywhere: 06:00 UTC catches the previous
+# day's LEC/LCS evenings and the LCK/LPL afternoons. Also runnable by hand.
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+# never let two runs fight over the same file
+concurrency:
+  group: drafts
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Scrape gol.gg and patch index.html
+        run: node tools/drafts.mjs
+
+      - name: Check the page still parses
+        run: |
+          node -e "
+            const fs = require('fs');
+            const html = fs.readFileSync('index.html', 'utf8');
+            const m = html.match(/<script>([\s\S]*?)<\/script>/);
+            if (!m) { console.error('no inline script found'); process.exit(1); }
+            fs.writeFileSync('_check.js', m[1]);
+          "
+          node --check _check.js
+          rm _check.js
+
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "no new games; nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Refresh drafts from gol.gg"
+          git push
