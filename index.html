@@ -182,8 +182,6 @@ td .tlogo,td .tmono{width:18px;height:18px}
 
 /* watch panel */
 .watch-live{display:flex;align-items:center;gap:12px;padding:12px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;font-size:14px}
-.watch-embed{aspect-ratio:16/9;background:var(--bg2);border:1px solid var(--line);margin-bottom:10px}
-.watch-embed iframe{width:100%;height:100%;border:none;display:block}
 a.btn-watchlive{display:inline-flex;align-items:center;gap:8px;background:var(--live);color:#fff !important;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1.5px;padding:9px 20px;border-radius:var(--radius);text-transform:uppercase;margin-left:auto;transition:filter .12s ease}
 a.btn-watchlive::before{content:'▶';font-size:10px}
 a.btn-watchlive:hover{filter:brightness(1.12);text-decoration:none}
@@ -3185,7 +3183,7 @@ function watchLinks(ev, slug) {
   if (R?.bili   && s?.provider !== 'bilibili') alts.push(['Bilibili', R.bili]);
   let lead = s ? { url: s.url, name: s.name } : null;
   if (!lead && alts.length) { const [name, url] = alts.shift(); lead = { url, name }; }
-  return { lead, alts, embed: (s && s.provider === 'youtube') ? s.param : null };
+  return { lead, alts };
 }
 
 function renderWatch(slug, live) {
@@ -3203,12 +3201,13 @@ function renderWatch(slug, live) {
     const liveEv = live.ev || live;          // tolerate a bare event too
     state.innerHTML = '<span class="live-chip">LIVE</span>';
     const w = watchLinks(liveEv, slug);
+    // no embedded player: only YouTube allows one, so embedding it gave the two
+    // YouTube leagues a giant slab of YouTube's own chrome while the Twitch ones
+    // got a tidy card. Every league now gets the card, and the stream opens on
+    // the platform that hosts it.
     box.innerHTML = `<div class="watch-live"><span class="live-chip">LIVE</span>
       <b>${esc(liveLabel(liveEv))}</b>
-      ${w.lead ? `<a class="btn-watchlive" data-brand="${esc(brandKey(w.lead.name))}" href="${w.lead.url}" target="_blank" rel="noopener">Watch live now on ${esc(w.lead.name)}</a>` : ''}</div>`
-      // only YouTube streams are embeddable, and only with a real video id
-      + (w.embed && location.protocol !== 'file:'
-          ? `<div class="watch-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(w.embed)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen title="Live broadcast"></iframe></div>` : '');
+      ${w.lead ? `<a class="btn-watchlive" data-brand="${esc(brandKey(w.lead.name))}" href="${w.lead.url}" target="_blank" rel="noopener">Watch live now on ${esc(w.lead.name)}</a>` : ''}</div>`;
     note.textContent = live.assumed
       ? 'This broadcast isn’t carried by the lolesports live feed, so no live score is published — the channel links above are the way in.'
       : (w.lead ? '' : 'Live now — open the channel links above.');
