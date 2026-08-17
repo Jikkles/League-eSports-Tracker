@@ -1,0 +1,126 @@
+name: Weekly research
+
+# The one piece of this repo that was still entirely manual: researching what
+# has happened in LoL esports and patching the constants that describe it. The
+# procedure is already written down — CLAUDE.md's data-model section and the
+# league-esports-tracker skill in .claude/skills/ — so this runs it on a
+# schedule instead of waiting for someone to remember.
+#
+# It opens a pull request. It never pushes to main, and that is deliberate: the
+# ground rule for this data is "never invent scores/points/formats — if a value
+# cannot be verified, leave it and say so", and the only way to hold a bot to
+# that is for a human to read the diff. The automation removes the *chore*, not
+# the judgement.
+#
+# Runs Monday morning, after the weekend's games and after the daily jobs have
+# refreshed drafts and reported any staleness — so the stale-data issue, if
+# there is one, is already open and forms part of the brief.
+#
+# INERT UNTIL CONFIGURED: needs an ANTHROPIC_API_KEY repository secret. Without
+# one it skips with a note rather than failing every Monday.
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      focus:
+        description: Narrow the brief (e.g. "power rankings only", "add the LEC summer final to HONOURS")
+        required: false
+        default: ''
+
+concurrency:
+  group: research
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # secrets are not available to a job-level `if`, so gate on a step output
+      - name: Check for the API key
+        id: guard
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            echo "Skipped: no ANTHROPIC_API_KEY secret is set. Add one under Settings → Secrets and variables → Actions to enable the weekly research PR." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.guard.outputs.has_key == 'true'
+
+      - uses: actions/setup-node@v7
+        if: steps.guard.outputs.has_key == 'true'
+        with:
+          node-version: '20'
+
+      # Hand the model the current drift report rather than making it rediscover
+      # what is stale — stale.mjs already knows, and it is cheaper and more
+      # reliable than asking twice.
+      - name: Collect the current staleness report
+        if: steps.guard.outputs.has_key == 'true'
+        run: node tools/stale.mjs > stale-now.txt 2>&1 || true
+
+      - name: Research and patch
+        if: steps.guard.outputs.has_key == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: >-
+            --max-turns 40
+            --allowedTools "Read,Edit,Glob,Grep,WebSearch,WebFetch,Bash(node tools/*),Bash(git *),Bash(gh pr *)"
+          prompt: |
+            Refresh the baked-in LoL esports data in index.html, then open a pull request.
+
+            Read CLAUDE.md first — its "Data model" section governs this work, and
+            the .claude/skills/league-esports-tracker skill describes the same
+            procedure in more detail. Follow both.
+
+            ${{ inputs.focus && format('Focus for this run: {0}', inputs.focus) || 'No narrowing focus: cover the constants listed below.' }}
+
+            tools/stale.mjs has already run; its output is in stale-now.txt.
+            Read it first and treat anything it flags as the priority.
+
+            IN SCOPE — these constants only:
+              - POWER_RANKINGS and POWER_RANKINGS_ASOF (mirror of lolesports.com's
+                Global Power Rankings — copy it, do not compute your own)
+              - STORYLINES (the home-tab narrative bullets)
+              - HONOURS (add tournaments that have concluded since the last update)
+              - REGIONS splitLabel / defaultGames / defFormat / cuts, but only when
+                stale-now.txt says they are wrong
+
+            OUT OF SCOPE — do not touch:
+              - the DRAFTS block (tools/drafts.mjs owns it; hand-edits are forbidden)
+              - anything in tools/ or .github/
+              - CSS, markup, or any rendering code
+              - the nexusdesk_ localStorage prefix and any existing element ID
+
+            RULES:
+              - Verify every value against Leaguepedia (lol.fandom.com), Liquipedia
+                or lolesports.com. Never infer a score, a points total or a format.
+              - If a value cannot be verified, LEAVE IT UNCHANGED and say so in the
+                PR description. An unverified value is worse than a stale one.
+              - Make targeted string replacements. Do not rewrite whole constants,
+                and do not reformat surrounding code.
+              - Keep the existing tone in STORYLINES: specific, factual, one stat
+                per bullet.
+
+            THEN, before opening the PR:
+              - run `node tools/check.mjs` and fix anything it reports
+              - run `node tools/stale.mjs` and confirm the things you set out to
+                fix are no longer flagged
+              - if neither tool is clean, do not open the PR; explain what blocked you
+
+            Open the PR from a branch named research/YYYY-MM-DD against main. In the
+            description: what changed, the source URL backing each change, and an
+            explicit list of anything you deliberately left alone and why. If nothing
+            needed changing, say that and do not open a PR.
