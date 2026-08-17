@@ -206,6 +206,68 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .vod-links{display:inline-flex;gap:6px}
 .vod-links a{font-family:var(--mono);font-size:10px;border:1px solid rgba(91,155,255,.45);border-radius:3px;padding:2px 6px}
 
+/* series detail — the game-by-game boards that open under a finished series */
+.match.expandable{cursor:pointer}
+.match.open{background:#1F1F1F;border-color:var(--line2);border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
+.drill{margin-left:6px}
+.sdet{background:var(--panel2);border:1px solid var(--line2);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:14px 14px 10px;margin-bottom:8px}
+.sdet-msg{font-family:var(--mono);font-size:11px;color:var(--faint);padding:14px;text-align:center}
+.sgame{margin-bottom:16px}
+.sgame:last-of-type{margin-bottom:8px}
+.sgame-hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:10px}
+.sgame-no{font-family:var(--disp);font-weight:800;font-size:18px;letter-spacing:-.3px}
+.sgame-meta{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.sgame-meta .ingame{color:var(--live);font-weight:600}
+.sgame-meta .fpick{color:#7FA5FF;font-weight:600}
+.sgame-meta .wonby{color:var(--win);font-weight:600}
+.sgame-meta .viagg{color:var(--faint);font-style:italic}
+/* the draft — greyed and desaturated so bans never read as picks */
+.bans{display:flex;align-items:flex-start;gap:10px;margin:0 0 10px;padding:7px 9px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+.banlbl{flex:none;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.2px;color:var(--faint);padding-top:5px}
+.banset{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;flex:1;min-width:0}
+.banrow{display:flex;align-items:center;gap:5px;min-width:0}
+.bant{flex:none;font-family:var(--mono);font-size:10.5px;color:var(--dim);width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.banc{flex:none;position:relative;width:24px;height:24px;display:block}
+.banc img{width:24px;height:24px;border-radius:4px;display:block;filter:grayscale(1) brightness(.62);border:1px solid var(--line2)}
+.banc::after{content:'';position:absolute;left:2px;right:2px;top:11px;height:1.5px;background:var(--loss);opacity:.85;transform:rotate(-45deg)}
+@container (max-width:800px){.banset{grid-template-columns:1fr}}
+/* the boards sit in panels of very different widths — a region page column and
+   a near-full-width modal — so they stack on their own size, not the screen's */
+.sdet{container-type:inline-size}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@container (max-width:800px){.sgrid{grid-template-columns:1fr}}
+.steam{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:9px 10px}
+.steam.won{border-color:rgba(49,196,111,.4);background:linear-gradient(180deg,rgba(49,196,111,.05),transparent 60px)}
+.steam-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.steam-hd .nm{font-family:var(--mono);font-weight:600;font-size:15px;letter-spacing:.4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.steam-hd .tlogo,.steam-hd .tmono{width:22px;height:22px}
+.side{flex:none;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1.2px;padding:2px 6px;border-radius:3px}
+.side.blue{background:rgba(76,125,255,.16);color:#7FA5FF;border:1px solid rgba(76,125,255,.4)}
+.side.red{background:rgba(232,57,74,.16);color:#FF7B87;border:1px solid rgba(232,57,74,.4)}
+.res-tag{flex:none;margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px}
+.res-tag.w{color:var(--win)} .res-tag.l{color:var(--faint)}
+.steam-obj{display:flex;gap:11px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--faint);border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:6px}
+.steam-obj b{color:var(--text);font-weight:600}
+.splayer{display:grid;grid-template-columns:34px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:9px;align-items:center;padding:5px 2px}
+.splayer + .splayer{border-top:1px solid rgba(255,255,255,.045)}
+.pwrap{position:relative;flex:none;width:34px;height:34px;grid-row:1 / -1}
+.pwrap img{width:34px;height:34px;display:block;background:#000;border:1px solid var(--line2);border-radius:var(--radius);object-fit:cover}
+.pwrap .ini{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--faint);background:#0A0A0A;border:1px solid var(--line2);border-radius:var(--radius)}
+.pinfo{grid-column:2;grid-row:1 / -1;min-width:0}
+.pname{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.psub{font-family:var(--mono);font-size:10.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.psub .role{color:var(--faint);letter-spacing:.8px}
+.pkda{grid-column:3;grid-row:1;text-align:right;font-family:var(--mono);font-size:14px;font-weight:600;white-space:nowrap}
+.pkda .kdsl{color:var(--faint);margin:0 1px}
+.pcs{grid-column:3;grid-row:2;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--faint);white-space:nowrap}
+/* on a phone the level/CS/gold line would squeeze the names down to three
+   letters, so it drops to its own row and gives the handles the width back */
+@container (max-width:430px){
+  .pinfo{grid-row:1}
+  .pcs{grid-column:2 / -1;grid-row:2;text-align:left}
+}
+@media(max-width:900px){.sgrid{grid-template-columns:1fr}}
+
 /* bracket simulator */
 .sim-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .sim-toolbar select{background:var(--panel2);border:1px solid var(--line2);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 9px;border-radius:var(--radius)}
@@ -925,9 +987,10 @@ const REGIONS = {
         // @LCK is the Korean-language channel; @LCKglobal carries the English cast
         yt:'https://www.youtube.com/@LCKglobal/live', twitch:'https://www.twitch.tv/lck', vods:'https://www.youtube.com/@LCKglobal/videos',
         wiki:'https://lol.fandom.com/wiki/LCK/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LCK/2026',
-        splitLabel:'Rounds 3–4 2026', defaultGames:15, defFormat:'de6b',
-        // Legend: 1-2 -> playoffs, 3-5 -> play-in. Rise: 1 -> playoffs, 2-4 -> play-in, 5 out
-        groupCuts:{ legend:[{after:2, kind:'po'}], rise:[{after:1, kind:'po'},{after:4, kind:'pi'}] } },
+        splitLabel:'Rounds 3–4 2026', defaultGames:8, defFormat:'de6b',
+        // double round robin inside a group of five = 8 games each
+        // Legend: 1-4 -> playoffs, 5 -> play-in. Rise: 1-3 -> play-in, 4-5 out
+        groupCuts:{ legend:[{after:4, kind:'po'}], rise:[{after:3, kind:'pi'}] } },
   lpl:{ name:'LPL', full:'League of Legends Pro League', color:'var(--lpl)', slug:'lpl',
         bili:'https://live.bilibili.com/lol', yt:'https://www.youtube.com/@LPL_English/live', vods:'https://www.youtube.com/@LPL_English/streams',
         twitch:'https://www.twitch.tv/lplenglish',   // the LPL's own English cast
@@ -939,8 +1002,8 @@ const REGIONS = {
   lcs:{ name:'LCS', full:'League Championship Series', color:'var(--lcs)', slug:'lcs',
         yt:'https://www.youtube.com/@LCS/live', twitch:'https://www.twitch.tv/lcs', vods:'https://www.youtube.com/@LCS/videos',
         wiki:'https://lol.fandom.com/wiki/LCS/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LCS/2026/Summer',
-        splitLabel:'Summer 2026', defaultGames:14, defFormat:'de6b',
-        cuts:[{after:6, kind:'po'}] }    // single table, top 6 -> playoffs
+        splitLabel:'Summer 2026', defaultGames:7, defFormat:'de6b',
+        cuts:[{after:6, kind:'po'}] }    // single round robin of 8, top 6 -> playoffs
 };
 
 /* -------- Baked-in 2026 season data (verified Aug 2026) -------- */
@@ -1146,11 +1209,13 @@ const HONOURS = [
          {g:'Grand Final', col:3,row:1, a:'Dplus KIA',sa:3, b:'Karmine Corp',sb:0},
          {g:'3rd Place Match', col:3,row:2, a:'Gen.G',sa:2, b:'T1',sb:1}]}],
        wiki:'https://lol.fandom.com/wiki/Esports_World_Cup_2026', liqui:'https://liquipedia.net/leagueoflegends/Esports_World_Cup/2026' }},
-  {date:'Aug', ev:'KeSPA Cup', champ:'In progress', detail:'Running now alongside LCK Rounds 3–4', done:false,
-   d:{ dates:'August 2026 · in progress', host:'South Korea', upcoming:true,
-       fmt:'Korea\'s traditional off-circuit cup, running alongside LCK Rounds 3–4 with LCK and Challengers sides involved.',
-       podium:[], teams:[], results:[],
-       wiki:'https://lol.fandom.com/wiki/KeSPA_Cup_2026', liqui:'https://liquipedia.net/leagueoflegends/KeSPA_Cup/2026' }},
+  {date:'Jul–Aug', ev:'KeSPA Cup', champ:'In progress', detail:'Final 18 Aug in Daejeon · NONGSHIM RED FORCE already through · T1 v DN SOOPers for the other seat', done:false,
+   d:{ dates:'20 Jul – 18 Aug 2026 · Mondays and Tuesdays', host:'Online, then Daejeon Esports Arena for the closing rounds', slug:'kespa_cup', upcoming:true, live:true,
+       fmt:'Korea\'s traditional off-circuit cup, running alongside LCK Rounds 3–4 with all ten LCK teams entered. Two groups of five play a Bo1 single round robin and the top four of each go through; playoff Stage 1 is a modified Swiss over four rounds, pairing teams on equal records. Stage 2 is a three-round Bo5 ladder into the final, with ₩52m won on the table and ₩30m of it to the winner.',
+       podium:[],
+       teams:['Gen.G Esports','T1','Dplus KIA','Hanwha Life Esports','kt Rolster','NONGSHIM RED FORCE','DN SOOPers','BNK FEARX','KIWOOM DRX','HANJIN BRION'],
+       results:[{r:'Stage 2 · Round 1', a:'DN SOOPers', sa:3, b:'Hanwha Life Esports', sb:0}],
+       wiki:'https://lol.fandom.com/wiki/2026_LoL_KeSPA_Cup', liqui:'https://liquipedia.net/leagueoflegends/KeSPA_Cup/2026' }},
   {date:'Oct–Nov', ev:'Worlds 2026', champ:'North America', detail:'Final: Barclays Center, NYC · 14 Nov · T1 three-time defending champions', done:false,
    d:{ dates:'October – 14 November 2026', host:'United States · Final: Barclays Center, Brooklyn NYC', slug:'worlds', upcoming:true,
        fmt:'The World Championship comes to North America. HLE\'s MSI title carries a conditional auto-qualification; the LCK, LPL, LEC and LCS each send their top three from the summer playoffs. T1 defend a three-peat.',
@@ -1167,26 +1232,31 @@ const STORYLINES = [
    sub:'Last in the LCK Cup, then restructured around Zeus, Gumayusi, Kanavi and Zeka. Zeus is the second player ever after Faker with both Worlds and MSI Finals MVP.'},
   {icon:'🏆', title:'Europe is back in finals', stat:'2', statLbl:'international finals',
    sub:'G2 reached the First Stand final (beating Gen.G en route) and Karmine Corp the EWC final. Neither closed, but two LEC finalists in one year.'},
-  {icon:'🇺🇸', title:'The LCS returns', stat:'8', statLbl:'teams',
-   sub:'The LTA lasted one season; NA is back to an 8-team LCS with partner + guest teams. Summer runs 25 Jul – 4 Oct.'},
+  {icon:'⚡', title:'Karmine Corp still hunting a trophy', stat:'6–0', statLbl:'LEC Summer, 12–1 in games',
+   sub:'Beaten in the Versus final, the Spring final and the EWC final inside one year. They lead Summer unbeaten, G2 two series back at 6–2.'},
   {icon:'🗽', title:'Road to NYC', stat:'14 Nov', statLbl:'Worlds final',
-   sub:'Worlds comes to North America with the final at Barclays Center — T1 defending a three-peat.'}
+   sub:'Worlds comes to North America with the final at Barclays Center. The LEC, LCK and LCS each send their summer top three; T1 defend a three-peat.'}
 ];
 
-/* Mirror of lolesports.com official Global Power Rankings — updated 9 Aug 2026 */
-const POWER_RANKINGS_ASOF = '9 Aug 2026';
+/* Mirror of lolesports.com official Global Power Rankings — updated 16 Aug 2026 */
+const POWER_RANKINGS_ASOF = '16 Aug 2026';
 const POWER_RANKINGS = [
-  {t:'Bilibili Gaming',     r:'LPL', pts:1552, wl:'41-9',  move:0},
-  {t:'Hanwha Life Esports', r:'LCK', pts:1546, wl:'23-10', move:0},
-  {t:'T1',                  r:'LCK', pts:1512, wl:'26-11', move:0},
-  {t:'Gen.G',               r:'LCK', pts:1500, wl:'27-8',  move:0},
-  {t:'G2 Esports',          r:'LEC', pts:1473, wl:'28-13', move:0},
-  {t:'LYON',                r:'LCS', pts:1458, wl:'20-8',  move:0},
-  {t:'Top Esports',         r:'LPL', pts:1420, wl:'24-18', move:0},
-  {t:'Karmine Corp',        r:'LEC', pts:1405, wl:'29-11', move:1},
-  {t:'Anyone\'s Legend',    r:'LPL', pts:1400, wl:'26-14', move:1},
-  {t:'kt Rolster',          r:'LCK', pts:1396, wl:'18-12', move:-2}
+  {t:'Bilibili Gaming',     r:'LPL', pts:1537, wl:'43-10', move:0},
+  {t:'Hanwha Life Esports', r:'LCK', pts:1529, wl:'24-11', move:0},
+  {t:'Gen.G',               r:'LCK', pts:1527, wl:'29-8',  move:0},
+  {t:'T1',                  r:'LCK', pts:1487, wl:'26-13', move:0},
+  {t:'LYON',                r:'LCS', pts:1458, wl:'20-8',  move:1},
+  {t:'G2 Esports',          r:'LEC', pts:1456, wl:'30-14', move:-1},
+  {t:'Dplus KIA',           r:'LCK', pts:1410, wl:'24-13', move:0},
+  {t:'Karmine Corp',        r:'LEC', pts:1405, wl:'29-11', move:0},
+  {t:'Anyone\'s Legend',    r:'LPL', pts:1394, wl:'29-14', move:0},
+  {t:'Top Esports',         r:'LPL', pts:1392, wl:'25-20', move:0}
 ];
+
+/* DRAFTS:generated */
+const DRAFTS = {
+};
+/* DRAFTS:end */
 
 /* -------- state -------- */
 let leagueIds = JSON.parse(localStorage.getItem(LS('leagueIds')) || 'null'); // {lec:id,...}
@@ -1279,7 +1349,24 @@ function renderLeagueChrome() {
    The working transport is remembered so later calls skip the dead ones.      */
 const PROXIES = ['', 'https://corsproxy.io/?url=', 'https://api.codetabs.com/v1/proxy?quest='];
 let transport = Math.min(PROXIES.length-1, Math.max(0, +localStorage.getItem(LS('transport')) || 0));
+let transportAt = +localStorage.getItem(LS('transportAt')) || 0;
 let lastApiError = '';
+
+/* A proxy picked up during one bad network used to be carried around for good,
+   because the retry order started at the remembered transport and so never
+   tried direct again. That leaves every later call running through a public
+   proxy — slower, and enough to trip a security suite's web filter. So the
+   direct route gets re-tested every half hour; if it works we go back to it. */
+const TRANSPORT_RETRY = 30*60e3;
+const preferredTransport = () =>
+  (transport && Date.now() - transportAt > TRANSPORT_RETRY) ? 0 : transport;
+function rememberTransport(i) {
+  transportAt = Date.now();
+  localStorage.setItem(LS('transportAt'), String(transportAt));
+  if (i === transport) return;
+  transport = i;
+  localStorage.setItem(LS('transport'), String(i));
+}
 
 async function apiOnce(url, prefix) {
   const target = prefix ? prefix + encodeURIComponent(url.toString()) : url.toString();
@@ -1299,12 +1386,13 @@ async function api(path, params={}) {
   // NB: no cache-busting param here — /persisted/gw rejects any query string it
   // does not know with a 400, so the browser cache is defeated in apiOnce with
   // `cache: 'no-store'` instead, which leaves the URL untouched.
-  const order = [transport, ...PROXIES.map((_,i) => i).filter(i => i !== transport)];
+  const first = preferredTransport();
+  const order = [first, ...PROXIES.map((_,i) => i).filter(i => i !== first)];
   let err = null;
   for (const i of order) {
     try {
       const out = await apiOnce(url, PROXIES[i]);
-      if (i !== transport) { transport = i; localStorage.setItem(LS('transport'), String(i)); }
+      rememberTransport(i);
       lastApiError = '';
       return out;
     } catch (e) { err = e; }
@@ -1511,9 +1599,16 @@ function matchRow(ev, phase) {
   if (done && settled && ev.match?.id) {     // nothing to watch back until it's actually over
     const meta = row.querySelector('.meta');
     const btn = el('button','vod-btn','▶ VOD');
-    btn.addEventListener('click', () => loadVods(btn, ev.match.id));
+    btn.addEventListener('click', e => { e.stopPropagation(); loadVods(btn, ev.match.id); });
     meta.appendChild(document.createElement('br'));
     meta.appendChild(btn);
+    // a finished series opens up into its game-by-game boards
+    const drill = el('button','vod-btn drill','▾ Games');
+    drill.title = 'Line-ups, champions and scores for every game';
+    drill.addEventListener('click', e => { e.stopPropagation(); toggleSeries(row, ev); });
+    meta.appendChild(drill);
+    row.classList.add('expandable');
+    row.addEventListener('click', () => toggleSeries(row, ev));
   }
   return row;
 }
@@ -1541,6 +1636,370 @@ async function loadVods(btn, matchId) {
     }
   } catch(e) {
     btn.textContent = 'VOD n/a';
+  }
+}
+
+/* =====================================================================
+   SERIES DETAIL — the game-by-game boards under a finished series
+   Line-ups, champions and per-player scores come from the same live-stats
+   feed the lolesports site runs on. That feed publishes no pick/ban order,
+   and no other endpoint on the API carries one, so the draft is the single
+   thing these boards can't show.
+===================================================================== */
+const FEED = 'https://feed.lolesports.com/livestats/v1';
+const DDRAGON = 'https://ddragon.leagueoflegends.com';
+const DEX_TTL = 7*24*3600e3;
+
+let rosters  = JSON.parse(localStorage.getItem(LS('rosters'))  || '{}');  // teamId -> {at, p:{playerId:[handle,photo]}}
+let champDex = JSON.parse(localStorage.getItem(LS('champdex')) || '{}');  // {v, at, n:{ddragonKey:name}}
+
+/* The stats feed takes no api key and accepts only a couple of request headers,
+   so it gets a bare fetch. Both it and Data Dragon send `Allow-Origin: *`, so
+   the direct call works from any real origin and is always tried first — the
+   public CORS proxies are kept for the file:// case alone, because security
+   suites flag them as suspicious and firing one needlessly sets off an alert.
+   An HTTP answer also stops us: the host was reached and simply has nothing,
+   which no amount of proxying will change. */
+async function plainJSON(url) {
+  try {
+    const res = await fetch(url, { cache:'no-store' });
+    if (res.ok) return await res.json();
+    throw Object.assign(new Error('HTTP ' + res.status), { reached:true });
+  } catch (e) {
+    if (e.reached || location.protocol !== 'file:') throw e;
+  }
+  let err = null;
+  for (const prefix of PROXIES.filter(Boolean)) {
+    try {
+      const res = await fetch(prefix + encodeURIComponent(url), { cache:'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    } catch (e) { err = e; }
+  }
+  throw err || new Error('network error');
+}
+
+/* champion art + display names from Data Dragon. The feed returns Data Dragon's
+   own champion key, so the picture never depends on this lookup — only the
+   label does, and that degrades to 'Monkey King' rather than 'Wukong'. */
+async function loadChampDex() {
+  if (champDex.v && champDex.n && Date.now() - (champDex.at||0) < DEX_TTL) return;
+  try {
+    const vers = await plainJSON(DDRAGON + '/api/versions.json');
+    const v = Array.isArray(vers) ? vers[0] : null;
+    if (!v) throw new Error('no version');
+    const data = await plainJSON(`${DDRAGON}/cdn/${v}/data/en_US/champion.json`);
+    const n = {};
+    for (const [key, c] of Object.entries(data.data||{})) n[key] = c.name;
+    if (!Object.keys(n).length) throw new Error('empty dex');
+    champDex = { v, at: Date.now(), n };
+    localStorage.setItem(LS('champdex'), JSON.stringify(champDex));
+  } catch(e) { /* keep whatever we already had */ }
+}
+const champIcon  = id => (champDex.v && id) ? `${DDRAGON}/cdn/${champDex.v}/img/champion/${encodeURIComponent(id)}.png` : '';
+const champLabel = id => (champDex.n && champDex.n[id]) || String(id||'').replace(/([a-z])([A-Z])/g,'$1 $2');
+
+/* Rosters, fetched one team at a time and kept. This is only about the handles:
+   the feed writes the in-game name with the team tag welded on, so the roster is
+   what turns 'EDGZdz' back into 'Zdz'.
+
+   An entry used to be [handle, headshotUrl] and is now just the handle, so a
+   cache written by the older build is read through this rather than dropped —
+   otherwise every name comes out as "Siwoo,https://static.lolesports.com/...". */
+const rosterHandle = v => Array.isArray(v) ? String(v[0]||'') : (typeof v === 'string' ? v : '');
+
+async function loadRoster(teamId) {
+  if (!teamId) return {};
+  const hit = rosters[teamId];
+  if (hit && Date.now() - (hit.at||0) < DEX_TTL) return hit.p || {};
+  try {
+    const data = await api('/getTeams', { id: teamId });
+    const p = {};
+    for (const pl of data.data?.teams?.[0]?.players || [])
+      if (pl.id && pl.summonerName) p[pl.id] = pl.summonerName;
+    if (Object.keys(rosters).length > 120) rosters = {};   // keep the cache from creeping
+    rosters[teamId] = { at: Date.now(), p };
+    localStorage.setItem(LS('rosters'), JSON.stringify(rosters));
+    return p;
+  } catch(e) { return (hit && hit.p) || {}; }
+}
+
+/* The feed serves a ten-frame window ending at `startingTime`, so asking for a
+   moment comfortably after the series finished lands on the closing frame. It
+   rejects anything that isn't safely in the past, hence the clamp. */
+function windowStamp(startIso) {
+  const t = Math.min(Date.parse(startIso) + 12*3600e3, Date.now() - 180e3);  // past the end of even a long Bo5
+  return new Date(Math.floor(t/10000)*10000).toISOString().replace(/\.\d+Z$/, 'Z');
+}
+const gameWindow = (gameId, startIso) => plainJSON(`${FEED}/window/${gameId}?startingTime=${windowStamp(startIso)}`);
+
+/* The feed never names a winner, and no closing stat settles it alone — a base
+   race is won on less gold, and a seventy-minute game can leave the loser with
+   more inhibitor kills. What is beyond doubt is the series scoreline the API
+   publishes, so the games are ranked by how hard they lean one way and the wins
+   handed out to match that scoreline exactly. Checked against every completed
+   series of the current splits: it reproduces all of them. */
+function frameMargin(f) {
+  const b = f && f.blueTeam, r = f && f.redTeam;
+  if (!b || !r) return null;
+  return (b.inhibitors - r.inhibitors) * 2
+       + (b.towers - r.towers) * 0.5
+       + (((b.totalGold||0) - (r.totalGold||0))) / 5000
+       + (((b.totalKills||0) - (r.totalKills||0))) / 10;
+}
+const leanToward = (g, teamId) => g.blueId === teamId ? g.margin : -g.margin;
+
+/* board: [{blueId, redId, margin, ended}], pair: [idA, idB], target: {id: wins}
+   -> [winning team id | null, ...] per game.
+
+   About one game in a hundred is missing from the feed entirely (204, no
+   content, at any timestamp) — but its winner is still recoverable, because the
+   readable games plus the scoreline leave only so many ways to make the total
+   add up. Every split of the readable games consistent with the scoreline is
+   scored on how well it agrees with the margins, the best one wins, and whatever
+   the missing games must then be worth is handed to whoever is owed it. */
+function assignGameWinners(board, pair, target) {
+  const out = board.map(() => null);
+  const [A, B] = pair || [];
+  const readable = board.map((g,i) => ({g,i}))
+    .filter(({g}) => g.ended && g.margin != null && g.blueId && g.redId);
+  const wantA = target[A], wantB = target[B];
+  const scored = !!A && !!B && Number.isFinite(wantA) && Number.isFinite(wantB)
+                 && wantA + wantB === board.length;
+  if (!scored) {                       // still being played, or no scoreline yet
+    for (const {g, i} of readable) out[i] = g.margin > 0 ? g.blueId : (g.margin < 0 ? g.redId : null);
+    return out;
+  }
+  const gap = board.length - readable.length;          // games the feed dropped
+  const ranked = readable.slice().sort((x, y) => leanToward(y.g, A) - leanToward(x.g, A));
+  let best = null;
+  for (let a = Math.max(0, wantA - gap); a <= Math.min(readable.length, wantA); a++) {
+    const score = ranked.reduce((s, {g}, n) => s + leanToward(g, n < a ? A : B), 0);
+    if (!best || score > best.score) best = { a, score };
+  }
+  if (!best) return out;
+  ranked.forEach(({i}, n) => { out[i] = n < best.a ? A : B; });
+  // the missing games account for the rest of the scoreline; only name them when
+  // one side is owed all of them, otherwise which was which is unknowable
+  const oweA = wantA - best.a, oweB = wantB - (readable.length - best.a);
+  const owed = oweA && oweB ? null : (oweA ? A : (oweB ? B : null));
+  if (owed) board.forEach((g, i) => { if (out[i] == null) out[i] = owed; });
+  return out;
+}
+
+const ROLE_LBL = { top:'TOP', jungle:'JGL', mid:'MID', bottom:'BOT', support:'SUP' };
+const roleLabel = r => ROLE_LBL[String(r||'').toLowerCase()] || String(r||'').toUpperCase().slice(0,3);
+const goldFmt = g => (g == null) ? '—' : (g >= 1000 ? (g/1000).toFixed(1)+'k' : String(g));
+// the feed prefixes the team tag onto the in-game name — 'FNC Soboro', and in
+// the LPL with no space at all ('EDGZdz'), which is why the roster wins when
+// we have it and this is only the fallback
+const cleanHandle = s => String(s||'').replace(/^[A-Za-z0-9]{2,5}\s+/, '') || String(s||'') || '?';
+
+function champArt(id) {
+  const label = champLabel(id), url = champIcon(id);
+  const ini = esc(String(id||'?').slice(0,2).toUpperCase());
+  if (!url) return `<span class="pwrap champ" title="${esc(label)}"><span class="ini" style="display:flex">${ini}</span></span>`;
+  return `<span class="pwrap champ" title="${esc(label)}"><img src="${esc(url)}" alt="${esc(label)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ini">${ini}</span></span>`;
+}
+
+function teamBoardHTML(side, meta, frame, roster, info, winnerId, teamId) {
+  const name = info.name || (side === 'blue' ? 'Blue side' : 'Red side');
+  const won  = !!winnerId && winnerId === teamId;
+  const stat = {};
+  for (const p of frame.participants || []) stat[p.participantId] = p;
+  const players = (meta.participantMetadata || []).map(pm => {
+    const st = stat[pm.participantId] || {};
+    const handle = rosterHandle(roster[pm.esportsPlayerId]) || cleanHandle(pm.summonerName);
+    return `<div class="splayer">
+      ${champArt(pm.championId)}
+      <div class="pinfo">
+        <div class="pname">${esc(handle)}</div>
+        <div class="psub"><span class="role">${esc(roleLabel(pm.role))}</span> · ${esc(champLabel(pm.championId))}</div>
+      </div>
+      <div class="pkda">${st.kills??0}<span class="kdsl">/</span>${st.deaths??0}<span class="kdsl">/</span>${st.assists??0}</div>
+      <div class="pcs">Lv ${st.level??'–'} · ${st.creepScore??0} CS · ${goldFmt(st.totalGold)}</div>
+    </div>`;
+  }).join('');
+  return `<div class="steam${won?' won':''}">
+    <div class="steam-hd">
+      <span class="side ${side}" title="${side==='blue'?'Blue side — picked first':'Red side — picked second'}">${side==='blue'?'BLUE':'RED'}</span>
+      ${logoHTML(name)}<span class="nm">${esc(name)}</span>
+      ${winnerId ? `<span class="res-tag ${won?'w':'l'}">${won?'WIN':'LOSS'}</span>` : ''}
+    </div>
+    <div class="steam-obj">
+      <span><b>${frame.totalKills??0}</b> kills</span><span><b>${goldFmt(frame.totalGold)}</b> gold</span>
+      <span><b>${frame.towers??0}</b> towers</span><span><b>${(frame.dragons||[]).length}</b> drakes</span><span><b>${frame.barons??0}</b> barons</span>
+    </div>
+    ${players}
+  </div>`;
+}
+
+/* A game the feed hasn't closed out is a snapshot, not a result. It only
+   sometimes emits a 'finished' frame, so what really settles it is the clock:
+   frames arrive every ten seconds while a game is live, so a window that
+   stopped producing them long ago is a game that is over, whatever its last
+   frame called itself. */
+const frameEnded = f => !!f && (f.gameState === 'finished' || Date.now() - Date.parse(f.rfc460Timestamp) > 10*60e3);
+
+/* `order` is the pair of team ids in the same left-to-right order as the series
+   row above, so a team keeps its column from game to game however the sides
+   swap — the BLUE/RED chip carries the side instead. */
+/* the draft, when tools/drafts.mjs has scraped one for this game */
+function bansHTML(gameId, blueName, redName, order) {
+  const d = DRAFTS[gameId];
+  if (!d || !d.b) return '';
+  const [blue, red] = d.b.split('|').map(s => s.split(',').filter(Boolean));
+  const side = (list, team) => `<div class="banrow"><span class="bant">${esc(team||'')}</span>
+    ${list.map(c => `<span class="banc" title="${esc(champLabel(c))} — banned">
+      <img src="${esc(champIcon(c))}" alt="${esc(champLabel(c))}" loading="lazy" onerror="this.style.visibility='hidden'"></span>`).join('')}</div>`;
+  // follow the row's column order so the bans sit under the right team
+  const first = order && order.length === 2 && tinfoName(order[0]) === redName;
+  return `<div class="bans"><div class="banlbl">Bans</div><div class="banset">
+    ${first ? side(red, redName) + side(blue, blueName) : side(blue, blueName) + side(red, redName)}
+  </div></div>`;
+}
+let TINFO_NAMES = {};
+const tinfoName = id => TINFO_NAMES[id] || '';
+
+/* a game Riot's feed lost, rebuilt from what gol.gg carried */
+function salvagedBoardHTML(game, entry, winnerId, order, tinfo) {
+  const x = entry && entry.x;
+  const head = `<div class="sgame-no">Game ${game.number}</div>`;
+  if (!x) return '';
+  const idOf = nm => (Object.keys(tinfo).find(k => nk(tinfo[k].name) === nk(nm)) || '');
+  const blueId = idOf(x.bt), redId = idOf(x.rt);
+  const block = (side, name, s, teamId) => {
+    const won = !!winnerId && winnerId === teamId;
+    const rows = (s.p || []).map(p => `<div class="splayer">
+      ${champArt(p[1])}
+      <div class="pinfo"><div class="pname">${esc(p[0])}</div>
+        <div class="psub"><span class="role">${esc(roleLabel(p[2]))}</span> · ${esc(champLabel(p[1]))}</div></div>
+      <div class="pkda">${p[3]}<span class="kdsl">/</span>${p[4]}<span class="kdsl">/</span>${p[5]}</div>
+      <div class="pcs">Lv ${p[6]} · ${p[7]} CS · ${goldFmt(p[8])}</div>
+    </div>`).join('');
+    return `<div class="steam${won?' won':''}">
+      <div class="steam-hd"><span class="side ${side}">${side==='blue'?'BLUE':'RED'}</span>
+        ${logoHTML(name)}<span class="nm">${esc(name)}</span>
+        ${winnerId ? `<span class="res-tag ${won?'w':'l'}">${won?'WIN':'LOSS'}</span>` : ''}</div>
+      <div class="steam-obj"><span><b>${s.k??0}</b> kills</span><span><b>${goldFmt(s.g)}</b> gold</span></div>
+      ${rows}</div>`;
+  };
+  const boards = { [blueId]: () => block('blue', x.bt, x.b, blueId), [redId]: () => block('red', x.rt, x.r, redId) };
+  const cols = (order && boards[order[0]] && boards[order[1]])
+    ? [boards[order[0]](), boards[order[1]]()] : [boards[blueId](), boards[redId]()];
+  return `<div class="sgame">
+    <div class="sgame-hd">${head}<div class="sgame-meta">
+      <span class="fpick">${esc(x.bt)} first pick</span>
+      <span>${(x.b.k??0)}–${(x.r.k??0)} kills</span>
+      <span class="viagg">rebuilt from gol.gg — Riot's feed lost this game</span>
+    </div></div>
+    ${bansHTML(game.id, x.bt, x.rt, order)}
+    <div class="sgrid">${cols.join('')}</div>
+  </div>`;
+}
+
+function gameBoardHTML(game, win, rosterOf, tinfo, winnerId, order) {
+  const gm = win && win.gameMetadata;
+  const last = win && win.frames && win.frames[win.frames.length-1];
+  const head = `<div class="sgame-no">Game ${game.number}</div>`;
+  const nameOf = id => (tinfo[id] && tinfo[id].name) || 'that side';
+
+  if (!gm || !last || !last.blueTeam) {
+    // roughly one game in a hundred is simply absent from Riot's feed. If the
+    // scraper caught it on gol.gg we can still draw the whole board; otherwise
+    // say so, and name the winner when the scoreline gives it away
+    const salvaged = salvagedBoardHTML(game, DRAFTS[game.id], winnerId, order, tinfo);
+    if (salvaged) return salvaged;
+    return `<div class="sgame"><div class="sgame-hd">${head}<div class="sgame-meta">
+      ${winnerId ? `<span class="wonby">${esc(nameOf(winnerId))} won this game</span>` : ''}
+      <span>Riot's stats feed carries no data for it — line-ups and scores aren't recoverable</span>
+    </div></div></div>`;
+  }
+  const ended = frameEnded(last);
+  const patch = String(gm.patchVersion||'').split('.').slice(0,2).join('.');
+  const blueId = gm.blueTeamMetadata?.esportsTeamId, redId = gm.redTeamMetadata?.esportsTeamId;
+  const board = {
+    [blueId]: () => teamBoardHTML('blue', gm.blueTeamMetadata, last.blueTeam, rosterOf[blueId]||{}, tinfo[blueId]||{}, winnerId, blueId),
+    [redId]:  () => teamBoardHTML('red',  gm.redTeamMetadata,  last.redTeam,  rosterOf[redId] ||{}, tinfo[redId] ||{}, winnerId, redId)
+  };
+  const cols = (order && order.length === 2 && board[order[0]] && board[order[1]])
+    ? [board[order[0]](), board[order[1]]()]
+    : [board[blueId](), board[redId]()];
+  return `<div class="sgame">
+    <div class="sgame-hd">${head}<div class="sgame-meta">
+      ${blueId ? `<span class="fpick" title="Blue side drafts first">${esc(nameOf(blueId))} first pick</span>` : ''}
+      ${ended ? '' : '<span class="ingame">still in play — live figures</span>'}
+      ${patch ? `<span>Patch ${esc(patch)}</span>` : ''}
+      <span>${last.blueTeam.totalKills??0}–${last.redTeam.totalKills??0} kills</span>
+      <span>${goldFmt((last.blueTeam.totalGold||0)+(last.redTeam.totalGold||0))} gold on the board</span>
+    </div></div>
+    ${bansHTML(game.id, nameOf(blueId), nameOf(redId), order)}
+    <div class="sgrid">${cols.join('')}</div>
+  </div>`;
+}
+
+const BAN_NOTE = 'Line-ups, champions and scores come straight from the LoL Esports live-stats feed. It publishes no pick/ban order — no endpoint on the API does — so the draft isn\'t shown.';
+
+async function toggleSeries(row, ev) {
+  const caret = row.querySelector('.drill');
+  const open = row.nextElementSibling && row.nextElementSibling.classList.contains('sdet');
+  if (open) {
+    row.nextElementSibling.remove();
+    row.classList.remove('open');
+    if (caret) caret.textContent = '▾ Games';
+    return;
+  }
+  if (row.dataset.loading) return;
+  const panel = el('div','sdet','<div class="sdet-msg">Loading the games…</div>');
+  row.classList.add('open');
+  row.dataset.loading = '1';
+  if (caret) caret.textContent = '▴ Games';
+  row.parentNode.insertBefore(panel, row.nextSibling);
+  try {
+    const [details] = await Promise.all([api('/getEventDetails', { id: ev.match.id }), loadChampDex()]);
+    const match = details.data?.event?.match || {};
+    const games = (match.games || []).filter(g => g.state === 'completed');
+    if (!games.length) { panel.innerHTML = `<div class="sdet-msg">No game data published for this series.</div>`; return; }
+    const tinfo = {};
+    for (const t of match.teams || []) if (t.id) tinfo[t.id] = t;
+    const wins = await Promise.all(games.map(g => gameWindow(g.id, ev.startTime).catch(() => null)));
+    const ids = new Set();
+    for (const w of wins) {
+      if (!w) continue;
+      ids.add(w.gameMetadata?.blueTeamMetadata?.esportsTeamId);
+      ids.add(w.gameMetadata?.redTeamMetadata?.esportsTeamId);
+    }
+    const rosterOf = {};
+    await Promise.all([...ids].filter(Boolean).map(async id => { rosterOf[id] = await loadRoster(id); }));
+    // Walk the row's own left-to-right team order and pick up each side's id and
+    // published game wins. That order fixes the columns below, so a team stays
+    // where the row above put it; the wins keep the per-game winners adding up
+    // to a scoreline the row can never contradict.
+    const key = t => String(t.code || t.name || '').toUpperCase();
+    const order = [], target = {};
+    for (const t of ev.match.teams || []) {
+      const m = (match.teams || []).find(x => key(x) === key(t));
+      if (!m || !m.id) continue;
+      order.push(m.id);
+      const g = t.result && t.result.gameWins;
+      target[m.id] = Number.isFinite(g) ? g : null;
+    }
+    const board = wins.map(w => {
+      const last = w && w.frames && w.frames[w.frames.length-1];
+      return { blueId: w?.gameMetadata?.blueTeamMetadata?.esportsTeamId,
+               redId:  w?.gameMetadata?.redTeamMetadata?.esportsTeamId,
+               margin: last ? frameMargin(last) : null,
+               ended:  frameEnded(last) };
+    });
+    TINFO_NAMES = {};
+    for (const [id, t] of Object.entries(tinfo)) TINFO_NAMES[id] = t.name || '';
+    const winners = assignGameWinners(board, order, target);
+    panel.innerHTML = games.map((g,i) => gameBoardHTML(g, wins[i], rosterOf, tinfo, winners[i], order)).join('')
+      + `<div class="hint">${BAN_NOTE}</div>`;
+  } catch(e) {
+    panel.innerHTML = `<div class="sdet-msg">Couldn't reach the stats feed for this series — try again in a moment.</div>`;
+  } finally {
+    delete row.dataset.loading;
   }
 }
 
@@ -2226,7 +2685,10 @@ function openHonour(idx) {
       `</div>`;
   }
 
-  if (d.slug && !d.upcoming) {
+  // a tournament still being played gets its record too, as long as it has
+  // actually started — `live` marks that, so an unplayed event can't pull last
+  // season's results out of the archive under this year's heading
+  if (d.slug && (!d.upcoming || d.live)) {
     html += `<div class="m-section"><div class="eyebrow">Full match record</div><div id="modalResults"><div class="loading">Fetching every series from the lolesports archive…</div></div></div>`;
   }
 
@@ -2242,7 +2704,7 @@ function openHonour(idx) {
   box.querySelector('.modal-close').addEventListener('click', closeModal);
   bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
   document.addEventListener('keydown', modalEsc);
-  if (d.slug && !d.upcoming) loadEventResults(d.slug);
+  if (d.slug && (!d.upcoming || d.live)) loadEventResults(d.slug);
 }
 function modalEsc(e){ if (e.key==='Escape') closeModal(); }
 function closeModal() {

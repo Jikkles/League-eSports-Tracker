@@ -18,6 +18,11 @@ Riot Games or any league.
   summary.
 - **Team profiles** — click any team to see its record, current form/streak, a model-estimated
   power rating, and every game it's played, live, or has coming up.
+- **Series boards** — click any finished series, anywhere it appears, to open it game by game:
+  both line-ups with champion portraits, each player's KDA, level, CS and gold, the team totals
+  for kills, gold, towers, drakes and barons, the ten bans, which team drafted first, and the
+  winner of each game. Teams hold the same column throughout, so sides are read off the
+  BLUE/RED chip rather than the layout.
 - **Playoff Simulator** — an interactive bracket predictor per region: set win probabilities (or
   let the model estimate them) and simulate the playoffs to see title odds.
 
@@ -30,6 +35,11 @@ Riot Games or any league.
   board, season storylines, playoff bracket formats) are hand-researched and stored as constants
   in the file, refreshed periodically from [Leaguepedia](https://lol.fandom.com) and
   [Liquipedia](https://liquipedia.net).
+- **Drafts** — the LoL Esports API publishes no pick/ban order, and about 1% of completed games
+  are missing from its live-stats feed altogether. [gol.gg](https://gol.gg) has both but sends no
+  CORS headers, so the page can't fetch it at runtime. `tools/drafts.mjs` scrapes it and bakes the
+  result into `index.html`; a GitHub Action re-runs it daily, so the site keeps itself current
+  with no manual step.
 - **State** — your saved playoff-bracket simulations and caches persist locally in your browser
   via `localStorage`. Nothing is sent to a server; there is no backend.
 
