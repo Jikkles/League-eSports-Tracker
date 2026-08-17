@@ -1,0 +1,27 @@
+version: 2
+
+# The repo has no package.json and is never getting one — the only versioned
+# dependencies here are the actions the workflows pin, and those were being
+# bumped by hand (see "Bring the workflow actions up to current majors"). This
+# does that job instead, as a PR that health.yml and smoke.yml then vet.
+#
+# Nothing here reaches index.html: playwright is installed with --no-save at run
+# time and stays unmanaged on purpose.
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: Bump
+    labels:
+      - dependencies
+    groups:
+      # One PR a month for the routine patch/minor drift, so it is a single
+      # review rather than five. Majors stay separate — those are the ones that
+      # actually change behaviour and deserve reading.
+      actions:
+        patterns: ['*']
+        update-types: [minor, patch]
