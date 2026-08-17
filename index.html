@@ -444,7 +444,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .tab .lgw{width:26px;height:26px}
 
 /* ---- today overview strip ---- */
-#page-home{max-width:1420px;margin:0 auto}   /* keep the board dense on wide screens */
+/* the home board runs to the same width as a region page — a narrower cap here
+   made the whole layout jump inwards when you came back to All */
 #page-home .panel{padding:16px 18px;margin-bottom:16px}
 .ov-row{display:grid;grid-template-columns:minmax(240px,1fr) 2.6fr;gap:14px;margin-bottom:16px}
 .ov-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px 18px;display:flex;flex-direction:column}
@@ -578,7 +579,10 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 /* ---- next up + recent games, half the board each ---- */
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
 .duo>.panel{display:flex;flex-direction:column}
-.duo .nxt{grid-template-columns:86px 66px minmax(0,1fr) 78px;gap:10px;padding:9px 4px}
+/* the meta column is sized for the top-10 clash badge (111px), not just for
+   "BEST OF 3" — every row shares the template, so a fixed width is what keeps
+   the matchups lined up down the list */
+.duo .nxt{grid-template-columns:86px 66px minmax(0,1fr) 112px;gap:10px;padding:9px 4px}
 .duo .nxt .n-when{padding-left:4px}
 .duo .nxt .n-time,.duo .nxt .n-date{font-size:21px;letter-spacing:-.5px}
 .duo .nxt .n-rg{flex-direction:column;gap:4px;padding:3px 6px;text-align:center}
@@ -1627,7 +1631,7 @@ function formCells(form, name) {
 /* the board always shows everything; the nav's All chip is the way back to it */
 let nextExpanded = false, storiesExpanded = true, recentExpanded = false;
 let boardRegion = '';          // '' = every region, else a REGIONS slug
-const BOARD_ROWS = 4;          // fixtures / results shown before expanding
+const BOARD_ROWS = 5;          // fixtures / results shown before expanding
 
 /* Both lists keep a constant height: whatever the filter leaves out is made up
    with blank slots, so switching region never shifts the page around. */
