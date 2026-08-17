@@ -1,0 +1,79 @@
+name: Staleness canary
+
+# check.mjs asks whether the page parses, api-canary.yml whether the API answers,
+# smoke.yml whether the page renders. None of them asks whether the data baked
+# into index.html is still true — and that is the one that goes wrong quietly,
+# because a stale constant renders perfectly. A split rolls over and the page
+# spends a fortnight labelling this split's games with last split's name.
+#
+# So compare the baked-in constants against the live API and gol.gg once a day
+# and raise an issue when they have drifted apart. 08:00 UTC, behind the drafts
+# refresh (06:00) and the API canary (07:00), so the day's data has settled and
+# the three never contend.
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+    inputs:
+      max-age:
+        description: Days before the power-rankings mirror counts as stale
+        required: false
+        default: '21'
+
+concurrency:
+  group: stale
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  TITLE: 'Staleness: the baked-in data has drifted'
+  LABEL: stale-data
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Compare the baked-in data against the live sources
+        id: probe
+        run: |
+          # not piped into tee: a pipeline reports tee's status, which is always 0
+          if node tools/stale.mjs --report stale-report.md \
+               --max-age "${{ inputs.max-age || '21' }}" > stale-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat stale-log.txt
+          {
+            echo '```'
+            cat stale-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report
+        uses: ./.github/actions/report-issue
+        with:
+          healthy: ${{ steps.probe.outputs.healthy }}
+          label: ${{ env.LABEL }}
+          title: ${{ env.TITLE }}
+          body-file: stale-report.md
+          color: D93F0B
+          description: Raised automatically when index.html's baked-in data no longer matches the live sources
+          token: ${{ github.token }}
+
+      # Deliberately not a failure: nothing is broken, the data is just old, and
+      # a permanently red badge is a badge nobody reads. The issue is the signal.
+      - name: Summarise
+        if: steps.probe.outputs.healthy == 'false'
+        run: echo "Baked-in data has drifted — see the stale-data issue." >> "$GITHUB_STEP_SUMMARY"
