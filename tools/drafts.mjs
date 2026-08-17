@@ -15,6 +15,13 @@
  *
  *   node tools/drafts.mjs            # update index.html in place
  *   node tools/drafts.mjs --dry-run  # report what would change, write nothing
+ *   node tools/drafts.mjs --prune    # also drop games from previous splits
+ *
+ * gol.gg addresses tournaments by name, and those names change every split.
+ * Rather than hardcoding them, the name is discovered from gol.gg's own
+ * tournament list (see tools/golgg.mjs) with the previous name kept only as a
+ * hint for the log. A boundary now costs nothing; it used to cost a failed run
+ * and a manual hunt through page titles.
  *
  * No dependencies, no build step. Plain node 18+ for global fetch.
  */
@@ -22,6 +29,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { discoverTournament } from './golgg.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const INDEX = join(HERE, '..', 'index.html');
@@ -33,16 +41,18 @@ const GOLGG = 'https://gol.gg';
 const UA = 'LeagueEsportsTracker/1.0 (+https://github.com/Jikkles/League-eSports-Tracker)';
 
 const DRY = process.argv.includes('--dry-run');
+const PRUNE = process.argv.includes('--prune');
 const POLITE_MS = 1100;          // gol.gg is a small Patreon-funded site; don't hammer it
 const MAX_NEW_GAMES = 400;       // a runaway run shouldn't scrape the whole site
 
-/* gol.gg names its tournaments its own way. If one of these stops matching, the
-   run fails loudly rather than quietly writing nothing. */
-const LEAGUES = {
-  lec: { id: '98767991302996019', golgg: 'LEC 2026 Summer Season' },
-  lck: { id: '98767991310872058', golgg: 'LCK 2026 Rounds 3-4' },
-  lpl: { id: '98767991314006698', golgg: 'LPL 2026 Split 3' },
-  lcs: { id: '98767991299243165', golgg: 'LCS 2026 Summer' },
+/* `golgg` is the name last seen on gol.gg, kept as documentation and as a
+   fallback if the discovery endpoint is down — not as the address itself. The
+   live name comes from tools/golgg.mjs on every run. */
+export const LEAGUES = {
+  lec: { id: '98767991302996019', name: 'LEC', golgg: 'LEC 2026 Summer Season' },
+  lck: { id: '98767991310872058', name: 'LCK', golgg: 'LCK 2026 Rounds 3-4' },
+  lpl: { id: '98767991314006698', name: 'LPL', golgg: 'LPL 2026 Split 3' },
+  lcs: { id: '98767991299243165', name: 'LCS', golgg: 'LCS 2026 Summer' },
 };
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -185,7 +195,7 @@ ${END}`;
 }
 
 /* ---- main ----------------------------------------------------------------- */
-(async () => {
+async function main() {
   const html = readFileSync(INDEX, 'utf8');
   if (!html.includes(START)) {
     console.error(`index.html has no ${START} marker — add it before running this.`);
@@ -195,8 +205,22 @@ ${END}`;
   const before = Object.keys(drafts).length;
   console.log(`existing entries: ${before}`);
 
-  let added = 0, fullAdded = 0, budget = MAX_NEW_GAMES;
+  let added = 0, fullAdded = 0, removed = 0, budget = MAX_NEW_GAMES;
   const problems = [];
+
+  // getEventDetails gets asked for the same series twice when --prune is on:
+  // once to enumerate the split, once to scrape it. Ask Riot once.
+  const detailCache = new Map();
+  const getDetail = async matchId => {
+    if (!detailCache.has(matchId)) detailCache.set(matchId, await apiJSON('/getEventDetails', { id: matchId }));
+    return detailCache.get(matchId);
+  };
+
+  // Every game id Riot places in the current split, built only when pruning —
+  // it is the authority on what belongs, so it must not depend on whether
+  // gol.gg happened to match a series.
+  const splitGameIds = new Set();
+  let enumerationComplete = PRUNE;
 
   for (const [slug, cfg] of Object.entries(LEAGUES)) {
     // the split we care about is whatever tournament is running now
@@ -206,16 +230,44 @@ ${END}`;
       const now = Date.now();
       const cur = tours.find(t => Date.parse(t.startDate) <= now && now <= Date.parse(t.endDate) + 86400e3);
       if (cur?.startDate) since = Date.parse(cur.startDate);
-    } catch (e) { problems.push(`${slug}: tournament lookup failed (${e.message})`); }
+    } catch (e) { problems.push(`${slug}: tournament lookup failed (${e.message})`); enumerationComplete = false; }
 
     const sched = await apiJSON('/getSchedule', { leagueId: cfg.id });
     const events = (sched.data.schedule.events || []).filter(e =>
       e.state === 'completed' && Date.parse(e.startTime) >= since &&
       (e.match?.teams || []).some(t => t.result?.outcome === 'win'));
 
-    const list = await golggMatchlist(cfg.golgg);
+    // ask gol.gg what it is calling this split today rather than trusting a
+    // name baked in at the last boundary
+    let tournament = cfg.golgg;
+    try {
+      const found = await discoverTournament(cfg.name, new Date(since).getUTCFullYear());
+      if (!found) {
+        problems.push(`${slug}: gol.gg lists no ${cfg.name} tournament for this season — falling back to "${cfg.golgg}"`);
+      } else {
+        tournament = found.name;
+        if (found.name !== cfg.golgg)
+          console.log(`${slug}: gol.gg now calls this "${found.name}" (was "${cfg.golgg}") — update LEAGUES to keep the log honest`);
+      }
+    } catch (e) {
+      problems.push(`${slug}: tournament discovery failed (${e.message}) — falling back to "${cfg.golgg}"`);
+    }
+
+    if (PRUNE) {
+      for (const ev of events) {
+        try {
+          const d = await getDetail(ev.match.id);
+          for (const g of d.data?.event?.match?.games || []) splitGameIds.add(String(g.id));
+        } catch (e) {
+          problems.push(`${slug}: could not enumerate games for match ${ev.match.id} (${e.message})`);
+          enumerationComplete = false;
+        }
+      }
+    }
+
+    const list = await golggMatchlist(tournament);
     await sleep(POLITE_MS);
-    if (!list.length) { problems.push(`${slug}: gol.gg tournament "${cfg.golgg}" returned no played matches — name probably changed`); continue; }
+    if (!list.length) { problems.push(`${slug}: gol.gg tournament "${tournament}" returned no played matches`); continue; }
 
     let matched = 0, missed = 0;
     for (const ev of events) {
@@ -227,7 +279,7 @@ ${END}`;
       if (cands.length !== 1) { missed++; continue; }
       matched++;
 
-      const detail = await apiJSON('/getEventDetails', { id: ev.match.id });
+      const detail = await getDetail(ev.match.id);
       const riotGames = (detail.data?.event?.match?.games || []).filter(g => g.state === 'completed');
       if (!riotGames.length) continue;
       // nothing to do if every game of this series is already recorded
@@ -282,15 +334,41 @@ ${END}`;
     console.log(`${slug}: ${events.length} series, matched ${matched}, unmatched ${missed}`);
   }
 
-  console.log(`\nnew games: ${added} (${fullAdded} with full scoreboards)  total: ${Object.keys(drafts).length}`);
+  /* ---- pruning ------------------------------------------------------------
+     DRAFTS is scoped to the current split, but nothing ever removed the last
+     one — the block just grew until someone noticed the size budget. Dropping
+     anything Riot no longer places in the split is what resets it at a
+     boundary. Only ever done on an explicit --prune, and only when every
+     league enumerated cleanly: a half-built id set would delete the split it
+     failed to read. */
+  if (PRUNE) {
+    if (!enumerationComplete) {
+      problems.push('prune skipped — the split could not be enumerated completely, and a partial list would delete live games');
+    } else if (!splitGameIds.size) {
+      problems.push('prune skipped — no games found in the current split at all');
+    } else {
+      for (const id of Object.keys(drafts)) {
+        if (!splitGameIds.has(String(id))) { delete drafts[id]; removed++; }
+      }
+      console.log(`prune: dropped ${removed} game(s) from outside the current split`);
+    }
+  }
+
+  console.log(`\nnew games: ${added} (${fullAdded} with full scoreboards)  removed: ${removed}  total: ${Object.keys(drafts).length}`);
   if (problems.length) {
     console.log('\nproblems:');
     problems.forEach(p => console.log('  ' + p));
   }
   if (DRY) { console.log('\n--dry-run: index.html untouched'); return; }
-  if (!added) { console.log('nothing new; index.html untouched'); return; }
+  if (!added && !removed) { console.log('nothing new; index.html untouched'); return; }
 
   const i = html.indexOf(START), j = html.indexOf(END) + END.length;
   writeFileSync(INDEX, html.slice(0, i) + render(drafts) + html.slice(j));
   console.log('index.html updated');
-})().catch(e => { console.error(e); process.exit(1); });
+}
+
+/* Importable for its LEAGUES map (tools/stale.mjs reads it) without kicking off
+   a scrape as a side effect. */
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch(e => { console.error(e); process.exit(1); });
+}

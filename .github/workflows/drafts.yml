@@ -11,6 +11,12 @@ on:
   schedule:
     - cron: '0 6 * * *'
   workflow_dispatch:
+    inputs:
+      prune:
+        description: Also drop games from previous splits (run this after a split rollover)
+        type: boolean
+        required: false
+        default: false
 
 # never let two runs fight over the same file
 concurrency:
@@ -19,6 +25,7 @@ concurrency:
 
 permissions:
   contents: write
+  issues: write        # to raise a failed scrape rather than leave it in the Actions tab
 
 jobs:
   refresh:
@@ -31,20 +38,61 @@ jobs:
         with:
           node-version: '20'
 
+      # The tournament name is discovered from gol.gg at runtime, so a split
+      # rollover no longer breaks this. Pruning stays manual: it deletes, and a
+      # daily job should not delete on a hunch.
       - name: Scrape gol.gg and patch index.html
-        run: node tools/drafts.mjs
-
-      - name: Check the page still parses
+        id: scrape
         run: |
-          node -e "
-            const fs = require('fs');
-            const html = fs.readFileSync('index.html', 'utf8');
-            const m = html.match(/<script>([\s\S]*?)<\/script>/);
-            if (!m) { console.error('no inline script found'); process.exit(1); }
-            fs.writeFileSync('_check.js', m[1]);
-          "
-          node --check _check.js
-          rm _check.js
+          if node tools/drafts.mjs ${{ inputs.prune && '--prune' || '' }} > drafts-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat drafts-log.txt
+          {
+            echo '```'
+            cat drafts-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write the report
+        if: steps.scrape.outputs.healthy == 'false'
+        run: |
+          {
+            echo "The daily drafts refresh failed, so [index.html](../blob/main/index.html) is no longer picking up new picks/bans."
+            echo
+            echo "Nothing on the page is broken — it renders what it already has, and simply carries no draft for games played since. gol.gg being briefly unreachable is the usual cause and clears on its own."
+            echo
+            echo '```'
+            cat drafts-log.txt
+            echo '```'
+            echo
+            echo "Reproduce locally with \`node tools/drafts.mjs --dry-run\`."
+            echo
+            echo "<sub>Posted by [drafts.yml](../blob/main/.github/workflows/drafts.yml). Updated in place on each run, and closed automatically once a scrape succeeds.</sub>"
+          } > drafts-report.md
+
+      - name: Report
+        uses: ./.github/actions/report-issue
+        with:
+          healthy: ${{ steps.scrape.outputs.healthy }}
+          label: drafts-failing
+          title: 'Drafts: the gol.gg refresh is failing'
+          body-file: drafts-report.md
+          color: FBCA04
+          description: Raised automatically when the daily pick/ban scrape cannot complete
+          token: ${{ github.token }}
+
+      - name: Stop here if the scrape failed
+        if: steps.scrape.outputs.healthy == 'false'
+        run: exit 1
+
+      # tools/check.mjs supersedes the hand-rolled parse check that used to live
+      # here: it validates the rewritten DRAFTS block as JSON, not just as syntax,
+      # which is the failure mode a bad write actually produces.
+      - name: Check the page still parses
+        run: node tools/check.mjs
 
       - name: Commit if anything changed
         run: |
@@ -55,5 +103,5 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Refresh drafts from gol.gg"
+          git commit -m "${{ inputs.prune && 'Refresh drafts from gol.gg and prune the previous split' || 'Refresh drafts from gol.gg' }}"
           git push
