@@ -1,0 +1,94 @@
+name: Deploy check
+
+# GitHub Pages rebuilds on every push to main, and nothing in this repo ever
+# looked at the result. When a rebuild does not happen — a Pages incident, a
+# changed setting, a build queued behind another — every check stays green while
+# the live page serves the previous version indefinitely. That combination, all
+# green and quietly stale, is the one no other job here would catch.
+#
+# So after each push to main, wait for the rebuild and prove the deployed bytes
+# are the ones just pushed. Also runs daily, because a deploy can be rolled back
+# or a settings change can strand the site long after the push that built it.
+
+on:
+  push:
+    branches: [main]
+    paths: ['index.html']
+  schedule:
+    - cron: '45 8 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: deployed
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  TITLE: 'Deploy: GitHub Pages is serving a stale build'
+  LABEL: deploy-stale
+
+jobs:
+  deployed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      # A push waits for the rebuild; a scheduled run should already be live and
+      # only needs one look, so it fails fast rather than sitting for 8 minutes.
+      - name: Check the live site against this commit
+        id: probe
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then TIMEOUT=480; else TIMEOUT=60; fi
+          if node tools/deployed.mjs --timeout "$TIMEOUT" > deployed-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat deployed-log.txt
+          {
+            echo '```'
+            cat deployed-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write the report
+        if: steps.probe.outputs.healthy == 'false'
+        run: |
+          {
+            echo "GitHub Pages is not serving the current \`main\`. The repo is green, every other check passes, and <https://jikkles.github.io/League-eSports-Tracker/> is showing an older build."
+            echo
+            echo "Checked against commit \`${{ github.sha }}\`."
+            echo
+            echo '```'
+            cat deployed-log.txt
+            echo '```'
+            echo
+            echo "Where to look: **Settings → Pages** for the source branch and the last build, the repository's deployment history, and <https://www.githubstatus.com> for an incident."
+            echo
+            echo "Reproduce locally with \`node tools/deployed.mjs\`."
+            echo
+            echo "<sub>Posted by [deployed.yml](../blob/main/.github/workflows/deployed.yml). Updated in place on each run, and closed automatically once the live site catches up.</sub>"
+          } > deployed-report.md
+
+      - name: Report
+        uses: ./.github/actions/report-issue
+        with:
+          healthy: ${{ steps.probe.outputs.healthy }}
+          label: ${{ env.LABEL }}
+          title: ${{ env.TITLE }}
+          body-file: deployed-report.md
+          color: 5319E7
+          description: Raised automatically when the deployed Pages site does not match main
+          token: ${{ github.token }}
+
+      - name: Fail the run if the deploy has not landed
+        if: steps.probe.outputs.healthy == 'false'
+        run: exit 1
