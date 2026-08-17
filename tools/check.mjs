@@ -20,6 +20,18 @@
  *   - no duplicate element IDs, which silently break getElementById wiring
  *   - index.html is still the only file the browser loads
  *   - the file has not blown past its size budget (a warning, not a failure)
+ *   - the baked-in data constants are structurally sound: every REGIONS entry
+ *     points at a real FORMATS wiring, every bracket reference resolves to a
+ *     match that exists, every seed is used exactly once, and HONOURS /
+ *     POWER_RANKINGS / STORYLINES carry the fields the render code reads
+ *
+ * That last group matters because those constants are patched by hand (and,
+ * increasingly, by bots) against a page with no runtime type checking. A
+ * bracket wired to a match id that does not exist parses perfectly and then
+ * renders a blank playoff tab.
+ *
+ * This checks *shape*, never *truth* — whether the data is still current is
+ * tools/stale.mjs's question, because answering it needs the network.
  *
  *   node tools/check.mjs           # exit 1 on any failure
  *   node tools/check.mjs --strict  # also exit 1 on warnings
@@ -31,6 +43,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Script } from 'node:vm';
+import { extractConstants, DATA_CONSTANTS } from './constants.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -144,6 +157,206 @@ if (bytes > SIZE_BUDGET) {
        'Most of the growth is DRAFTS; it resets at the split boundary.');
 } else {
   console.log(`  size:   ${kb} KB of a ${(SIZE_BUDGET / 1024).toFixed(0)} KB budget`);
+}
+
+/* ---- the baked-in data constants --------------------------------------- */
+
+/* Only worth attempting if the script parsed at all — otherwise every constant
+   "fails" and buries the one real error above. */
+if (m && !fails.length) {
+  let C = null;
+  try {
+    const { values, missing } = extractConstants(src, DATA_CONSTANTS);
+    if (missing.length) {
+      fail(`Baked-in constant${missing.length > 1 ? 's' : ''} not found: ${missing.join(', ')}`,
+           'The render code reads these by name; a rename takes the matching tab down.');
+    }
+    C = values;
+  } catch (e) {
+    fail('A baked-in data constant could not be read.', e.message);
+  }
+
+  if (C) {
+    const { REGIONS, HONOURS, STORYLINES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
+
+    /* -- FORMATS: the playoff bracket wirings ------------------------------ */
+    if (FORMATS) {
+      for (const [key, f] of Object.entries(FORMATS)) {
+        const at = `FORMATS.${key}`;
+        if (!Array.isArray(f.matches) || !f.matches.length) { fail(`${at} has no matches array.`); continue; }
+        if (!Number.isInteger(f.seeds) || f.seeds < 2) fail(`${at}.seeds is ${f.seeds}; expected an integer of 2 or more.`);
+        if (!Number.isInteger(f.cols) || f.cols < 1) fail(`${at}.cols is ${f.cols}; expected a positive integer.`);
+
+        const ids = f.matches.map(x => x.id);
+        const dupeIds = ids.filter((x, i) => ids.indexOf(x) !== i);
+        if (dupeIds.length) fail(`${at} reuses match id${dupeIds.length > 1 ? 's' : ''}: ${[...new Set(dupeIds)].join(', ')}`,
+                                 'The sim resolves matches by id, so a duplicate silently drops one.');
+
+        const known = new Set(ids);
+        const seedsUsed = [];
+        const winnerRefs = new Map();
+
+        for (const mt of f.matches) {
+          const where = `${at} ${mt.id || '(no id)'}`;
+          if (!mt.id) fail(`${where} has no id.`);
+          if (!mt.g) fail(`${where} has no round label (g).`);
+          if (!Number.isInteger(mt.col) || mt.col < 1 || mt.col > f.cols)
+            fail(`${where} sits at col ${mt.col}, outside 1..${f.cols}.`);
+          if (!Number.isInteger(mt.row) || mt.row < 0)
+            fail(`${where} has row ${mt.row}; expected 0 or more.`);
+          if (!Array.isArray(mt.s) || mt.s.length !== 2) {
+            fail(`${where} has ${mt.s?.length ?? 'no'} sources; every match needs exactly 2.`);
+            continue;
+          }
+          for (const s of mt.s) {
+            const [kind, ref] = String(s).split(':');
+            if (kind === 'seed') {
+              const n = Number(ref);
+              if (!Number.isInteger(n) || n < 1 || n > f.seeds)
+                fail(`${where} references ${s}, outside the 1..${f.seeds} seed range.`);
+              else seedsUsed.push(n);
+            } else if (kind === 'w' || kind === 'l') {
+              if (!known.has(ref)) fail(`${where} references ${s}, but no match ${ref} exists.`,
+                                        'An unresolvable reference renders the bracket blank from that node on.');
+              else if (ref === mt.id) fail(`${where} references itself (${s}).`);
+              else if (kind === 'w') winnerRefs.set(ref, (winnerRefs.get(ref) || 0) + 1);
+            } else {
+              fail(`${where} has source "${s}"; expected seed:/w:/l:.`);
+            }
+          }
+        }
+
+        // every seed enters the bracket exactly once
+        const missingSeeds = [];
+        for (let n = 1; n <= f.seeds; n++) {
+          const used = seedsUsed.filter(x => x === n).length;
+          if (used !== 1) missingSeeds.push(`${n} (used ${used}×)`);
+        }
+        if (missingSeeds.length)
+          fail(`${at} does not place every seed exactly once: ${missingSeeds.join(', ')}`,
+               `The format claims ${f.seeds} seeds, so each of 1..${f.seeds} must appear in exactly one match.`);
+
+        // every match feeds its winner onward, except the single final
+        const terminal = ids.filter(id => !winnerRefs.has(id));
+        if (terminal.length > 1)
+          fail(`${at} has ${terminal.length} matches whose winner goes nowhere: ${terminal.join(', ')}`,
+               'Only the final should be terminal; the rest are orphaned branches.');
+        for (const [id, n] of winnerRefs)
+          if (n > 1) fail(`${at} sends the winner of ${id} to ${n} different matches.`);
+      }
+    }
+
+    /* -- REGIONS ----------------------------------------------------------- */
+    if (REGIONS) {
+      const formatKeys = new Set(Object.keys(FORMATS || {}));
+      for (const [slug, r] of Object.entries(REGIONS)) {
+        const at = `REGIONS.${slug}`;
+        for (const field of ['name', 'full', 'slug', 'splitLabel', 'wiki', 'liqui'])
+          if (!r[field]) fail(`${at}.${field} is missing.`);
+        if (r.slug && r.slug !== slug) fail(`${at}.slug is "${r.slug}" but the key is "${slug}".`);
+        if (!Number.isInteger(r.defaultGames) || r.defaultGames < 1)
+          fail(`${at}.defaultGames is ${r.defaultGames}; expected a positive integer.`);
+        if (!r.defFormat) fail(`${at}.defFormat is missing.`);
+        else if (formatKeys.size && !formatKeys.has(r.defFormat))
+          fail(`${at}.defFormat is "${r.defFormat}", which is not a key of FORMATS.`,
+               `Known formats: ${[...formatKeys].join(', ')}. The playoff tab renders empty without a match.`);
+
+        const cutSets = [
+          ...(r.cuts ? [['cuts', r.cuts]] : []),
+          ...Object.entries(r.groupCuts || {}).map(([g, c]) => [`groupCuts.${g}`, c]),
+        ];
+        if (!cutSets.length) fail(`${at} declares neither cuts nor groupCuts.`);
+        for (const [label, cuts] of cutSets) {
+          if (!Array.isArray(cuts) || !cuts.length) { fail(`${at}.${label} is not a non-empty array.`); continue; }
+          for (const c of cuts) {
+            if (!Number.isInteger(c.after) || c.after < 1)
+              fail(`${at}.${label} has after=${c.after}; expected a positive integer.`);
+            if (!['po', 'pi'].includes(c.kind))
+              fail(`${at}.${label} has kind="${c.kind}"; expected "po" or "pi".`);
+          }
+        }
+      }
+    }
+
+    /* -- POWER_RANKINGS ---------------------------------------------------- */
+    if (POWER_RANKINGS) {
+      const regionCodes = new Set(Object.values(REGIONS || {}).map(r => r.name));
+      if (!Array.isArray(POWER_RANKINGS) || !POWER_RANKINGS.length) {
+        fail('POWER_RANKINGS is empty.');
+      } else {
+        let prev = Infinity;
+        POWER_RANKINGS.forEach((p, i) => {
+          const at = `POWER_RANKINGS[${i}]`;
+          if (!p.t) fail(`${at} has no team name.`);
+          if (typeof p.pts !== 'number') fail(`${at} (${p.t}) has non-numeric pts.`);
+          else { if (p.pts > prev) fail(`${at} (${p.t}) has ${p.pts} pts, above the entry before it.`,
+                                        'The board renders in array order, so it must already be sorted.'); prev = p.pts; }
+          if (typeof p.move !== 'number') fail(`${at} (${p.t}) has non-numeric move.`);
+          if (!/^\d+-\d+$/.test(String(p.wl || ''))) fail(`${at} (${p.t}) has wl="${p.wl}"; expected "W-L".`);
+          // a region outside the tracked four is fine on a *global* board, but a
+          // typo in one of the four is not, so only flag near-misses
+          if (p.r && regionCodes.size && !regionCodes.has(p.r) &&
+              [...regionCodes].some(c => c.toLowerCase() === String(p.r).toLowerCase()))
+            fail(`${at} (${p.t}) has r="${p.r}"; expected "${[...regionCodes].find(c => c.toLowerCase() === String(p.r).toLowerCase())}".`);
+        });
+      }
+    }
+
+    if (POWER_RANKINGS_ASOF !== undefined && Number.isNaN(Date.parse(POWER_RANKINGS_ASOF)))
+      fail(`POWER_RANKINGS_ASOF is "${POWER_RANKINGS_ASOF}", which does not parse as a date.`);
+
+    /* -- HONOURS ----------------------------------------------------------- */
+    if (Array.isArray(HONOURS)) {
+      HONOURS.forEach((h, i) => {
+        const at = `HONOURS[${i}]${h.ev ? ` (${h.ev})` : ''}`;
+        for (const field of ['date', 'ev'])
+          if (!h[field]) fail(`${at}.${field} is missing.`);
+        if (h.done && !h.champ) fail(`${at} is marked done but has no champion.`);
+        if (!h.d) return;
+        if (h.d.podium !== undefined) {
+          if (!Array.isArray(h.d.podium)) fail(`${at}.d.podium is not an array.`);
+          else for (const row of h.d.podium)
+            if (!Array.isArray(row) || row.length !== 2)
+              fail(`${at}.d.podium has a row with ${row?.length ?? 'no'} cells; expected [team, note].`);
+        }
+        for (const [bi, b] of (h.d.brackets || []).entries()) {
+          if (!Array.isArray(b.matches)) { fail(`${at}.d.brackets[${bi}] has no matches array.`); continue; }
+          for (const mt of b.matches) {
+            const where = `${at}.d.brackets[${bi}] "${mt.g || '?'}"`;
+            if (!Number.isInteger(mt.col) || !Number.isInteger(mt.row))
+              fail(`${where} is missing an integer col/row.`);
+            if (mt.a === undefined || mt.b === undefined) fail(`${where} is missing a team.`);
+            // A null score is deliberate: some series never had one published, and
+            // the winner rides on w: instead. What must not happen is a row with
+            // neither, which renders as a match nobody won.
+            const scored = s => s === undefined || s === null || typeof s === 'number';
+            if (!scored(mt.sa)) fail(`${where} has a non-numeric score for ${mt.a}.`);
+            if (!scored(mt.sb)) fail(`${where} has a non-numeric score for ${mt.b}.`);
+            if (typeof mt.sa !== 'number' && typeof mt.sb !== 'number' && mt.w !== 0 && mt.w !== 1)
+              fail(`${where} has no scores and no w:0/w:1 to say who won.`);
+          }
+        }
+      });
+    }
+
+    /* -- STORYLINES -------------------------------------------------------- */
+    if (Array.isArray(STORYLINES)) {
+      STORYLINES.forEach((s, i) => {
+        for (const field of ['icon', 'title', 'sub'])
+          if (!s[field]) fail(`STORYLINES[${i}]${s.title ? ` (${s.title})` : ''}.${field} is missing.`);
+      });
+    }
+
+    if (!fails.length) {
+      const counts = [
+        REGIONS && `${Object.keys(REGIONS).length} regions`,
+        FORMATS && `${Object.keys(FORMATS).length} bracket formats`,
+        HONOURS && `${HONOURS.length} honours`,
+        POWER_RANKINGS && `${POWER_RANKINGS.length} ranked teams`,
+      ].filter(Boolean);
+      console.log(`  data:   ${counts.join(', ')} — all wiring resolves`);
+    }
+  }
 }
 
 /* ---- report ------------------------------------------------------------ */
