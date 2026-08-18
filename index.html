@@ -3612,11 +3612,18 @@ function buildSimCtx(slug) {
     if (cache[k]) return cache[k];
     const pr = POWER_RANKINGS.find(x => nk(x.t)===k);
     const r = rec[k];
-    const wp = r ? r.pct : null;
+    const games = r ? r.w + r.l : 0;
+    // regress small samples toward .500 (worth ~3 wins/3 losses of prior) so a
+    // handful of series early in a split can't swing the base as hard as a
+    // settled record does — raw pct is kept separately for the form check below
+    const wp = r ? (r.w + 3) / (games + 6) : null;
     const base = pr ? pr.pts : (wp!=null ? 1140 + 260*wp : 1200);
     const splitAdj = wp!=null ? (wp-0.5)*80 : 0;
     const f = form[k];
-    const formAdj = f ? (f.w5 - f.n5/2) * 14 : 0;
+    // only credit "form" once the last-5 window is actually a subset of a
+    // longer record — early on it *is* the whole record, so scoring it again
+    // on top of splitAdj double-counts the same handful of results
+    const formAdj = (f && r && games > f.n5) ? (f.w5/f.n5 - r.pct) * 50 : 0;
     return cache[k] = { r: base+splitAdj+formAdj, base, splitAdj, formAdj, gpr:!!pr, wp, streak: f?f.streak:'' };
   };
   return simProbCtx[slug] = { rating, h2h };
