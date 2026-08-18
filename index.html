@@ -1791,9 +1791,22 @@ async function api(path, params={}) {
 }
 
 let allLeagues = lsJSON(LS('allLeagues'), {}); // every slug -> id
+
+/* Skipping the lookup used to mean counting to four, which was wrong in two
+   directions: a fifth region could never satisfy the count, and nor could the
+   logo tally the moment a league shipped without an `image`. Since refreshAll()
+   calls this every minute, "never satisfied" meant re-fetching /getLeagues every
+   minute, for the life of the tab. So the ids are keyed to the set of regions
+   they were fetched for — adding one invalidates the cache exactly once — and a
+   missing logo is allowed to retry once a session rather than on every tick. */
+const REGION_SLUGS = Object.keys(REGIONS);
+let leaguesResolvedFor = lsRead(LS('leaguesFor')) || '';
+let leaguesTried = false;
 async function resolveLeagues() {
-  if (leagueIds && Object.keys(leagueIds).length === 4 && Object.keys(allLeagues).length
-      && Object.keys(leagueLogos).length === 4) return leagueIds;
+  const want = REGION_SLUGS.join(',');
+  if (leagueIds && Object.keys(allLeagues).length && leaguesResolvedFor === want
+      && (leaguesTried || REGION_SLUGS.every(s => leagueLogos[s]))) return leagueIds;
+  leaguesTried = true;
   const data = await api('/getLeagues');
   const out = {};
   for (const lg of data.data.leagues) {
@@ -1809,6 +1822,8 @@ async function resolveLeagues() {
     lsWrite(LS('leagueIds'), JSON.stringify(out));
     lsWrite(LS('allLeagues'), JSON.stringify(allLeagues));
     lsWrite(LS('leagueLogos'), JSON.stringify(leagueLogos));
+    // only a lookup that named every region counts as covering this set
+    if (REGION_SLUGS.every(s => out[s])) { leaguesResolvedFor = want; lsWrite(LS('leaguesFor'), want); }
     renderLeagueChrome();
   }
   return leagueIds;
