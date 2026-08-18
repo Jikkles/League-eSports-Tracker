@@ -89,11 +89,11 @@ header{border-bottom:1px solid var(--line);background:#0C0C0C;position:sticky;to
 
 /* ============ TABS ============ */
 nav{max-width:1900px;margin:0 auto;display:flex;gap:4px;padding:0 20px}
-.tab{position:relative;font-family:var(--body);font-weight:700;font-size:14px;letter-spacing:1.6px;text-transform:uppercase;color:var(--dim);
-  background:transparent;border:none;padding:11px 18px;margin:4px 0 12px;border-radius:var(--radius);
+.tab{position:relative;font-family:var(--body);font-weight:700;font-size:26px;letter-spacing:1.8px;text-transform:uppercase;color:var(--dim);
+  background:transparent;border:none;padding:16px 26px;margin:6px 0 16px;border-radius:var(--radius);
   transition:color .12s ease,background .12s ease}
 /* hover: raised dark chip with a cyan rule sitting just beneath it */
-.tab::after{content:'';position:absolute;left:0;right:0;bottom:-7px;height:3px;border-radius:2px;background:transparent;transition:background .12s ease}
+.tab::after{content:'';position:absolute;left:0;right:0;bottom:-9px;height:4px;border-radius:2px;background:transparent;transition:background .12s ease}
 .tab:hover{color:#FFFFFF;background:#1E1E1E}
 .tab:hover::after{background:var(--cyan)}
 .tab.active{color:#FFFFFF}
@@ -153,7 +153,7 @@ main{min-width:0}
   .logo{font-size:19px}.logo small{display:none}.logo-mark{width:24px;height:24px}
   nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   nav::-webkit-scrollbar{display:none}
-  .tab{font-size:12px;padding:10px 12px;letter-spacing:1px;flex:none}
+  .tab{font-size:18px;padding:12px 16px;letter-spacing:1.1px;flex:none}
   .two-col{grid-template-columns:1fr}
   .modal{width:100vw;padding:20px 14px;border-radius:0;min-height:100vh}
   .modal-bg{padding:0}
@@ -546,17 +546,17 @@ footer{border-top:1px solid var(--line);background:#080808;margin-top:24px}
 
 /* ---- nav: view filters + region tabs ---- */
 nav{align-items:center;flex-wrap:wrap;gap:2px}
-.nav-div{width:1px;height:26px;background:var(--line);margin:0 14px}
-.fchip{position:relative;font-family:var(--body);font-weight:700;font-size:13.5px;letter-spacing:1.7px;text-transform:uppercase;
-  color:var(--dim);background:transparent;border:none;padding:11px 15px;margin:4px 0 12px;border-radius:var(--radius);
+.nav-div{width:1px;height:40px;background:var(--line);margin:0 18px}
+.fchip{position:relative;font-family:var(--body);font-weight:700;font-size:24px;letter-spacing:1.9px;text-transform:uppercase;
+  color:var(--dim);background:transparent;border:none;padding:16px 22px;margin:6px 0 16px;border-radius:var(--radius);
   transition:color .12s ease,background .12s ease}
-.fchip::after{content:'';position:absolute;left:0;right:0;bottom:-7px;height:3px;border-radius:2px;background:transparent;transition:background .12s ease}
+.fchip::after{content:'';position:absolute;left:0;right:0;bottom:-9px;height:4px;border-radius:2px;background:transparent;transition:background .12s ease}
 .fchip:hover{color:#FFFFFF;background:#1E1E1E}
 .fchip:hover::after{background:var(--cyan)}
 .fchip.active{color:#FFFFFF}
 .fchip.active::after{background:var(--cyan)}
-.tab{display:inline-flex;align-items:center;gap:9px}
-.tab .lgw{width:26px;height:26px}
+.tab{display:inline-flex;align-items:center;gap:12px}
+.tab .lgw{width:42px;height:42px}
 
 /* ---- today overview strip ---- */
 /* the home board runs to the same width as a region page — a narrower cap here
@@ -834,8 +834,9 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .hdr-clock{text-align:left}
   .hdr-time{font-size:22px}
   nav{flex-wrap:nowrap}                       /* one scrolling strip, not three rows */
-  .fchip{font-size:12px;padding:10px 11px;letter-spacing:1.2px;flex:none}
-  .nav-div{margin:0 8px}
+  .fchip{font-size:17px;padding:12px 14px;letter-spacing:1.2px;flex:none}
+  .nav-div{margin:0 10px;height:32px}
+  .tab .lgw{width:30px;height:30px}
   .ov-regions{grid-template-columns:1fr 1fr}
   .ov-nums{gap:16px}
   .ov-n b{font-size:29px}
