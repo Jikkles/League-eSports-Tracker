@@ -1,0 +1,72 @@
+name: Link rot
+
+# REGIONS carries a wiki, Liquipedia, stream and VOD link per region, and every
+# HONOURS entry carries two more — all hand-written against wikis that rename a
+# page every split. stale.mjs only inspects the *year* in those URLs, so a link
+# naming the right year and the wrong split reads as current right up until a
+# user clicks it and gets a 404. Nothing else in the repo ever fetches them.
+#
+# Weekly rather than daily: wiki pages do not move on a daily cadence, and both
+# wikis are volunteer-run. Wednesdays 08:15 UTC, clear of the daily jobs.
+
+on:
+  schedule:
+    - cron: '15 8 * * 3'
+  workflow_dispatch:
+
+concurrency:
+  group: links
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  TITLE: 'Link rot: a baked-in link no longer resolves'
+  LABEL: links-dead
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Resolve every baked-in link
+        id: probe
+        run: |
+          # not piped into tee: a pipeline reports tee's status, which is always 0
+          if node tools/links.mjs --report links-report.md > links-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat links-log.txt
+          {
+            echo '```'
+            cat links-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report
+        uses: ./.github/actions/report-issue
+        with:
+          healthy: ${{ steps.probe.outputs.healthy }}
+          label: ${{ env.LABEL }}
+          title: ${{ env.TITLE }}
+          body-file: links-report.md
+          color: D93F0B
+          description: Raised automatically when a link baked into index.html stops resolving
+          token: ${{ github.token }}
+
+      # Deliberately not a failure, matching stale.yml: a dead link is a data
+      # problem rather than a broken build, and a permanently red badge is a
+      # badge nobody reads. The issue is the signal.
+      - name: Summarise
+        if: steps.probe.outputs.healthy == 'false'
+        run: echo "A baked-in link is dead — see the links-dead issue." >> "$GITHUB_STEP_SUMMARY"

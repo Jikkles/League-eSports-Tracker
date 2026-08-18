@@ -17,10 +17,15 @@
  *   node tools/api-canary.mjs                 # human-readable, exit 1 on failure
  *   node tools/api-canary.mjs --report out.md # also write a markdown report
  *
+ * It also looks at the CORS proxy fallback the page keeps for networks that
+ * block the direct call. That one only ever warns — see the long note above the
+ * check for why a datacentre cannot honestly grade those services.
+ *
  * Deliberately NOT failures, because they are normal:
  *   - getLive returning zero events (nothing is on air right now)
  *   - a league between splits having no current tournament (falls back to the
  *     most recent one, exactly as the page does)
+ *   - anything the CORS proxy check finds. It reports; it never fails.
  *
  * No dependencies, no build step. Plain node 18+ for global fetch.
  */
@@ -42,6 +47,10 @@ const reportPath = process.argv.includes('--report')
 const results = [];
 const ok = (name, note) => results.push({ name, ok: true, note });
 const bad = (name, why) => results.push({ name, ok: false, why });
+/* Degraded but not broken — something redundant has gone, so the page still
+   works and nobody should be woken up. Shows in the run summary and in the
+   issue if one is open for another reason; never opens one by itself. */
+const warn = (name, why) => results.push({ name, ok: true, warn: true, why });
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -235,20 +244,100 @@ if (Object.keys(leagueIds).length !== SLUGS.length) {
 
     return `match ${id} · ${games.length} games`;
   });
+
+  /* ---- the CORS proxy fallback ------------------------------------------- */
+
+  /* The page calls the API directly when it can and through these public
+     proxies when it can't — see PROXIES in index.html. Nothing tested them
+     until now, and both are free third-party services that can vanish without
+     notice.
+
+     This check never fails the run, and that is deliberate rather than timid.
+     Two things came out of building it:
+
+       - The API sends permissive CORS. A page opened straight off the disk
+         (file://, null origin) reaches it directly — verified in headless
+         chromium. So the proxies are not the transport for file:// that the
+         comment in index.html suggests; they are the last resort for a network
+         that blocks the direct call outright — a captive portal, a corporate
+         filter, some in-app webviews. None of which CI can stage.
+
+       - corsproxy.io answers any server-side request with 403 and
+         "Server-side requests are not allowed on your plan", whatever headers
+         you send. That is a policy about who is calling, not a statement that
+         the service is down, and from here the two are indistinguishable.
+
+     So a red result would mean "could not be verified from a datacentre",
+     which is not the same as "broken for users", and an issue nobody can
+     action or close is worse than no issue at all. This reports what it saw
+     and leaves the judgement to a human. */
+
+  const PROXIES = ['https://corsproxy.io/?url=', 'https://api.codetabs.com/v1/proxy?quest='];
+  const proxyHost = p => { try { return new URL(p).hostname; } catch { return p; } };
+
+  {
+    const name = 'CORS proxy fallback';
+    const url = new URL(API + '/getLeagues');
+    url.searchParams.set('hl', HL);
+
+    const alive = [], blocked = [], down = [];
+    for (const prefix of PROXIES) {
+      try {
+        const res = await fetch(prefix + encodeURIComponent(url.toString()), {
+          headers: { 'x-api-key': API_KEY, 'User-Agent': UA },
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
+        // "not from a server, you don't" — says nothing about browser traffic
+        if (res.status === 403 || res.status === 401) {
+          blocked.push(`${proxyHost(prefix)} (HTTP ${res.status})`);
+          await sleep(500);
+          continue;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const out = await res.json();
+        // the same envelope check apiOnce makes: a proxy that is refusing us
+        // answers 200 with its own error body, and taken as success it would
+        // pin the page to a dead transport
+        if (!out || typeof out.data !== 'object' || out.data === null)
+          throw new Error(out?.error ? String(out.error).slice(0, 80) : 'answered without a data object');
+        if (!Array.isArray(out.data.leagues) || !out.data.leagues.length)
+          throw new Error('data.leagues did not survive the proxy');
+        alive.push(proxyHost(prefix));
+      } catch (e) {
+        down.push(`${proxyHost(prefix)} (${e.message})`);
+      }
+      await sleep(500);
+    }
+
+    const parts = [
+      alive.length ? `reachable: ${alive.join(', ')}` : null,
+      blocked.length ? `refuses server-side callers, so unverified from here: ${blocked.join('; ')}` : null,
+      down.length ? `did not answer: ${down.join('; ')}` : null,
+    ].filter(Boolean);
+
+    if (alive.length === PROXIES.length)
+      ok(name, `all ${PROXIES.length} reachable`);
+    else if (!alive.length && !blocked.length)
+      warn(name, `no proxy answered — ${parts.join(' · ')}. The direct call still works, so the page is fine for almost everyone, but the last-resort transport looks gone. Worth replacing PROXIES in index.html.`);
+    else
+      warn(name, `${parts.join(' · ')}.`);
+  }
 }
 
 /* ---- report ------------------------------------------------------------- */
 
 const failed = results.filter(r => !r.ok);
+const warned = results.filter(r => r.ok && r.warn);
 const stamp = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
 
 for (const r of results) {
-  console.log(r.ok ? `  ok   ${r.name}${r.note ? ` — ${r.note}` : ''}`
-                   : `  FAIL ${r.name} — ${r.why}`);
+  if (!r.ok) console.log(`  FAIL ${r.name} — ${r.why}`);
+  else if (r.warn) console.log(`  warn ${r.name} — ${r.why}`);
+  else console.log(`  ok   ${r.name}${r.note ? ` — ${r.note}` : ''}`);
 }
 console.log(failed.length
-  ? `\n${failed.length} of ${results.length} checks failed.`
-  : `\nAll ${results.length} checks passed.`);
+  ? `\n${failed.length} of ${results.length} checks failed${warned.length ? `, ${warned.length} degraded` : ''}.`
+  : `\nAll ${results.length} checks passed${warned.length ? `, ${warned.length} degraded` : ''}.`);
 
 if (reportPath) {
   const lines = [
@@ -260,7 +349,7 @@ if (reportPath) {
     ``,
     `| | check | detail |`,
     `|---|---|---|`,
-    ...results.map(r => `| ${r.ok ? '✅' : '❌'} | \`${r.name}\` | ${r.ok ? (r.note || '') : r.why} |`),
+    ...results.map(r => `| ${!r.ok ? '❌' : r.warn ? '⚠️' : '✅'} | \`${r.name}\` | ${r.ok ? (r.warn ? r.why : r.note || '') : r.why} |`),
     ``,
     `Reproduce locally with \`node tools/api-canary.mjs\`.`,
     ``,

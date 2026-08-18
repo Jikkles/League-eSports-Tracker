@@ -54,6 +54,13 @@ const INDEX = join(ROOT, 'index.html');
 
 const STRICT = process.argv.includes('--strict');
 const SIZE_BUDGET = 400 * 1024;   // DRAFTS grows all split; shout before it gets silly
+/* The budget above only warns, and it is a warning nobody sees unless they read
+   the log — health.yml does not pass --strict, so nothing has ever stopped the
+   file growing quietly past it forever. This is the line that actually stops
+   it: far enough above the budget that a full split of DRAFTS growth is a nudge
+   rather than a wall, close enough that a single-file page never turns into a
+   megabyte download on someone's phone. Prune DRAFTS, or raise it on purpose. */
+const SIZE_CEILING = 480 * 1024;
 
 const fails = [];
 const warns = [];
@@ -191,8 +198,11 @@ if (stray.length) {
 
 const bytes = Buffer.byteLength(html, 'utf8');
 const kb = (bytes / 1024).toFixed(0);
-if (bytes > SIZE_BUDGET) {
-  warn(`index.html is ${kb} KB, past the ${(SIZE_BUDGET / 1024).toFixed(0)} KB budget.`,
+if (bytes > SIZE_CEILING) {
+  fail(`index.html is ${kb} KB, past the ${(SIZE_CEILING / 1024).toFixed(0)} KB hard ceiling.`,
+       'Run `node tools/drafts.mjs --prune` to drop previous splits, or raise SIZE_CEILING deliberately.');
+} else if (bytes > SIZE_BUDGET) {
+  warn(`index.html is ${kb} KB, past the ${(SIZE_BUDGET / 1024).toFixed(0)} KB budget (ceiling ${(SIZE_CEILING / 1024).toFixed(0)} KB).`,
        'Most of the growth is DRAFTS; it resets at the split boundary.');
 } else {
   console.log(`  size:   ${kb} KB of a ${(SIZE_BUDGET / 1024).toFixed(0)} KB budget`);
