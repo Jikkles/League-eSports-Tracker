@@ -26,7 +26,13 @@
      colour reserved for live state, league identity and team logos */
   --bg:#000000; --bg2:#0A0A0A; --panel:#111111; --panel2:#181818; --line:#242424; --line2:#333333;
   --gold:#FFFFFF; --gold-dim:#3A3A3A; --cyan:#0BC6E3; --cyan-lo:#33D6EF; --teal:#0BC6E3;
-  --text:#FFFFFF; --dim:#8E8E8E; --faint:#6A6A6A;
+  /* Three tiers of type on the near-black panels. --faint was #6A6A6A, which
+     lands at 3.2:1 on the darkest panel — under the 4.5:1 WCAG AA wants for
+     body text, and the source of every contrast finding axe reported. Lifting
+     it alone would have put it 4 hex points from --dim and collapsed the two
+     tiers into one, so --dim moves up with it to keep the step visible.
+     Worst case (on #1A1A1A): dim 7.6:1, faint 5.0:1. */
+  --text:#FFFFFF; --dim:#ABABAB; --faint:#8A8A8A;
   --live:#E8394A; --win:#31C46F; --loss:#E8394A;
   --lec:#00C8C8; --lck:#C8D2E0; --lpl:#FF4B3E; --lcs:#4C7DFF; --intl:#FFFFFF;
   --hover:rgba(255,255,255,.06); --radius:8px; --pill:999px;
@@ -37,6 +43,12 @@ html{scrollbar-color:#3A3A3A var(--bg)}
 body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.5;min-height:100vh;}
 a{color:var(--cyan);text-decoration:none}
 a:hover{color:var(--cyan-lo);text-decoration:underline}
+/* A link sitting inline in a run of text has to be tellable from that text by
+   something other than colour (WCAG 1.4.1): cyan on --dim is only 1.59:1, so
+   colour alone leaves it invisible to a red-green colour-blind reader. Links
+   that are their own block — nav tabs, crests, buttons — are unambiguous
+   already and keep the clean underline-free look. */
+.p-sub a{text-decoration:underline}
 button{font-family:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .noscript{margin:40px auto;max-width:640px;padding:20px 22px;border:1px solid var(--line2);border-left:3px solid var(--cyan);background:var(--panel);border-radius:var(--radius);color:var(--dim);font-size:14px}
@@ -770,7 +782,10 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   overflow:hidden;text-overflow:ellipsis;max-width:170px}
 .hn .ch .tn.pend{font-family:var(--mono);font-size:11px;font-weight:400;letter-spacing:1.2px;
   text-transform:uppercase;color:var(--faint)}
-.hn.pending{opacity:.75}
+/* .9, not .75: the fade is what marks a tournament as not yet played, but at
+   .75 it dragged --faint text down to an effective #6c6c6c on the panel — 3.6:1,
+   back under AA. .9 still reads as pending and clears the line at 4.65:1. */
+.hn.pending{opacity:.9}
 .hn .lg{width:40px;height:40px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}
 .hn .lg img{max-width:100%;max-height:100%;object-fit:contain}
 
@@ -1045,7 +1060,7 @@ function lsJSON(key, fallback) {
 const REGIONS = {
   lec:{ name:'LEC', full:'League of Legends EMEA Championship', color:'var(--lec)', slug:'lec',
         yt:'https://www.youtube.com/@LEC/live', twitch:'https://www.twitch.tv/lec', vods:'https://www.youtube.com/@LEC/videos',
-        wiki:'https://lol.fandom.com/wiki/LEC/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LEC/2026',
+        wiki:'https://lol.fandom.com/wiki/LEC/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LEC/2026/Summer',
         splitLabel:'Summer 2026', defaultGames:9, defFormat:'de6',
         cuts:[{after:6, kind:'po'}] },   // single table, top 6 -> playoffs
   lck:{ name:'LCK', full:'League of Legends Champions Korea', color:'var(--lck)', slug:'lck',
@@ -1060,7 +1075,7 @@ const REGIONS = {
         bili:'https://live.bilibili.com/lol', yt:'https://www.youtube.com/@LPL_English/live', vods:'https://www.youtube.com/@LPL_English/streams',
         twitch:'https://www.twitch.tv/lplenglish',   // the LPL's own English cast
 
-        wiki:'https://lol.fandom.com/wiki/LPL/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026',
+        wiki:'https://lol.fandom.com/wiki/LPL/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026/Split_3',
         splitLabel:'Split 3 2026', defaultGames:14, defFormat:'de10',
         // Ascend: 1-6 -> playoffs, 7-8 -> Knights Rivals play-in. Nirvana: 1-2 -> play-in, rest out
         groupCuts:{ ascend:[{after:6, kind:'po'}], nirvana:[{after:2, kind:'pi'}] } },
@@ -1090,7 +1105,7 @@ const HONOURS = [
          {g:'Lower Round 3', col:4,row:2, a:'Dplus KIA',sa:3, b:'T1',sb:2},
          {g:'Lower Final', col:5,row:2, a:'BNK FearX',sa:3, b:'Dplus KIA',sb:0},
          {g:'Grand Final · Hong Kong', col:5,row:1, a:'Gen.G',sa:3, b:'BNK FearX',sb:0}]}],
-       wiki:'https://lol.fandom.com/wiki/LCK_Cup_2026', liqui:'https://liquipedia.net/leagueoflegends/LCK/2026/Cup' }},
+       wiki:'https://lol.fandom.com/wiki/LCK/2026_Season/Cup', liqui:'https://liquipedia.net/leagueoflegends/LCK/2026/Cup' }},
   {date:'Jan–Mar', ev:'LCS Lock-In', champ:'LYON', detail:'def. Cloud9 KIA 3–1 in the final · MVP: Inspired · the LCS returns after the LTA', done:true,
    d:{ dates:'24 Jan – 1 Mar 2026', host:'Riot Games Arena, Los Angeles',
        fmt:'The LCS\'s opening event of its comeback season: 8 teams in two groups, top six into a double-elim playoff — seeds 1–2 per group upper, the rest lower. LYON dropped into the lower bracket out of groups and won four straight elimination series to take the title.',
@@ -2774,7 +2789,11 @@ function renderRecent() {
   }
   strip.classList.toggle('long', recentExpanded);
   strip.innerHTML = '';
-  if (!done.length) { padRows(strip, 0, false, 'No completed matches in the fetched window.'); return; }
+  // same distinction the fixtures board draws: an empty window and an
+  // unreachable API look identical here otherwise
+  if (!done.length) { padRows(strip, 0, false, apiOk===false
+    ? 'API unreachable — results will appear once it responds.'
+    : 'No completed matches in the fetched window.'); return; }
   for (const {slug, ev} of done) {
     const R = REGIONS[slug], t = ev.match.teams, a = t[0]||{}, b = t[1]||{};
     const aw = a.result?.gameWins ?? 0, bw = b.result?.gameWins ?? 0;
@@ -4110,8 +4129,15 @@ async function refreshAll(deep=true) {
     ok = true; lastGoodAt = Date.now();
     if (deep) lastDeepAt = lastGoodAt;
   } catch (e) {
-    setStatus(false, 'Offline — showing cached data');
+    // Restore the cache *before* deciding what to say about it. "Showing cached
+    // data" is a lie on a first visit — there is nothing cached to show, and the
+    // boards render empty underneath a line claiming otherwise, which is the
+    // worst version of this screen: it looks like the site has no content rather
+    // than like the feed is down. #lastRefresh and the fixtures board already
+    // draw this distinction; the status line is the one that did not.
     scheduleCache = lsJSON(LS('schedCache'), {});
+    const cached = Object.values(scheduleCache).some(evs => Array.isArray(evs) && evs.length);
+    setStatus(false, cached ? 'Offline — showing cached data' : 'Offline — no data yet');
   }
   renderLeagueChrome();
   // one bad region must not stop the home board from rendering

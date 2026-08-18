@@ -43,16 +43,17 @@ Riot Games or any league.
 - **State** — your saved playoff-bracket simulations and caches persist locally in your browser
   via `localStorage`. Nothing is sent to a server; there is no backend.
 - **Keeping itself honest** — because there's no build step, a broken hand-edit would otherwise
-  go straight to the live site, and the unofficial API can move without warning. Five checks run
+  go straight to the live site, and the unofficial API can move without warning. Six checks run
   on their own, each asking a different question:
 
   | | question it answers |
   |---|---|
   | `tools/check.mjs` | does the page parse, and is the baked-in data structurally sound? |
   | `tools/api-canary.mjs` | does the unofficial API still answer in the shape the page reads? |
-  | `tools/smoke.mjs` | does the page actually render, in a real headless browser? |
+  | `tools/smoke.mjs` | does the page actually render, in a real headless browser — on a phone, for a screen reader, and with the API pulled out from under it? |
   | `tools/stale.mjs` | is the hand-researched data still true, or has the season moved on? |
   | `tools/deployed.mjs` | is the live site serving the commit that was just pushed? |
+  | `tools/links.mjs` | do the wiki and stream links baked into the page still go anywhere? |
 
   Each raises a single GitHub issue when it fails, updates that issue in place rather than
   piling up duplicates, and closes it automatically once the problem clears. `stale.mjs` is

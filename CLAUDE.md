@@ -20,7 +20,8 @@ Deployed via GitHub Pages straight from this repo.
 - **Verify every edit** with `node tools/check.mjs`. It parses the inline `<script>`
   and checks the invariants that break the page silently: the `nexusdesk_` prefix, the
   DRAFTS markers and their JSON, duplicate element IDs, stray browser files at the root,
-  the file-size budget, and the structure of the baked-in data constants — every
+  the file-size budget (400 KB warns, 480 KB fails — `SIZE_BUDGET` / `SIZE_CEILING`),
+  and the structure of the baked-in data constants — every
   `defFormat` resolving to a real `FORMATS` key, every `w:`/`l:` bracket reference
   resolving to a match that exists, every seed placed exactly once, and the fields
   `HONOURS` / `POWER_RANKINGS` / `STORYLINES` are read by. It checks *shape*, never
@@ -29,9 +30,15 @@ Deployed via GitHub Pages straight from this repo.
   CI rather than reaching Pages.
 - **For anything that touches rendering**, also run `node tools/smoke.mjs` — it opens the
   real page in a browser and is the only check that catches a parse-clean edit which
-  throws on first render. It needs playwright, installed *without* a package.json:
+  throws on first render. It also re-runs the nav at a 390px phone viewport looking for
+  anything that drags the page sideways, sweeps the home board and a league tab with
+  axe, and blocks the API outright to check the offline path — the empty-state messages,
+  the cached-data fallback, and that a first visit during an outage says it has no data
+  rather than claiming to show a cache it does not have. It needs playwright and axe-core, installed *without* a package.json — **both in
+  one command**, because with no package.json npm treats `node_modules` as the entire
+  dependency tree and a second `--no-save` install silently removes the first:
   ```
-  npm install --no-save playwright && npx playwright install chromium
+  npm install --no-save playwright axe-core && npx playwright install chromium
   ```
   `--headed` watches it happen, `--shot out.png` saves a full-page screenshot.
   `node_modules/` is gitignored; the repo still has no package.json and must not grow one.
@@ -94,7 +101,8 @@ kept only as documentation and as a fallback when that endpoint is unreachable �
 honest, but nothing is broken in the meantime.
 
 **Pruning is manual and deliberate.** DRAFTS is scoped to the current split, but nothing
-removes the previous one — it just grows against the 400 KB budget. `--prune` enumerates
+removes the previous one — it just grows against the 400 KB budget, and past 480 KB
+`check.mjs` stops warning and starts failing. `--prune` enumerates
 every game Riot places in the current split and drops everything else. It only ever runs
 on an explicit flag (or the `prune` input on the workflow's manual dispatch), and it
 refuses to delete anything if enumeration was incomplete, since a partial list would
@@ -109,6 +117,7 @@ These run without anyone asking:
 - `.github/workflows/drafts.yml` — `tools/drafts.mjs` daily at 06:00 UTC, commits changes
 - `.github/workflows/api-canary.yml` — `tools/api-canary.mjs` daily at 07:00 UTC
 - `.github/workflows/stale.yml` — `tools/stale.mjs` daily at 08:00 UTC
+- `.github/workflows/links.yml` — `tools/links.mjs` weekly, Wednesdays at 08:15 UTC
 - `.github/workflows/deployed.yml` — `tools/deployed.mjs` after each push to `main`, and daily at 08:45 UTC
 - `.github/workflows/research.yml` — weekly data-refresh PR, Mondays at 09:00 UTC
   (**inert until an `ANTHROPIC_API_KEY` secret exists**; it skips with a note rather than failing)
@@ -124,11 +133,17 @@ The checks answer different questions and none of them substitutes for another:
 | `smoke.mjs` | does the page actually *render*? |
 | `stale.mjs` | is the baked-in data still *true*? |
 | `deployed.mjs` | is the live site serving *this* build? |
+| `links.mjs` | do the links baked into the page still *resolve*? |
 
 `smoke.mjs` serves the repo over http, opens it in headless chromium against a cold
 profile (so, empty localStorage: the first-visit path), and checks the nav, home board,
 all four league tabs, standings rows and bracket wiring, failing on any uncaught
-exception or console error.
+exception or console error. It then narrows to a 390px viewport, runs axe, and finally
+blocks the API to exercise the offline path.
+
+That last group is the only check in the repo that does **not** need the network — it
+blocks the API deliberately — so it keeps working during exactly the upstream outage
+that turns the rest of the file red.
 
 Because it needs the live API, a genuine upstream outage turns the smoke run red; the
 canary issue is the explanation when that happens.
@@ -137,7 +152,7 @@ canary issue is the explanation when that happens.
 that opens one labelled issue per check, updates it in place on subsequent runs, and
 closes it once the check passes again — so a multi-day problem is one issue, not a pile,
 and a recovery needs no cleanup. Each check owns a label: `api-canary`, `stale-data`,
-`smoke-failing`, `drafts-failing`, `deploy-stale`. Scheduled jobs report through it;
+`smoke-failing`, `drafts-failing`, `deploy-stale`, `links-dead`. Scheduled jobs report through it;
 push and PR runs deliberately don't, because a red check is already in front of whoever
 caused it.
 

@@ -3,7 +3,10 @@ name: Smoke test
 # health.yml proves the script parses and api-canary.yml proves the API answers.
 # Neither proves the page works. This opens it in a real browser against live
 # data and checks it renders: nav, home board, all four league tabs, standings
-# rows, bracket wiring, and nothing thrown along the way.
+# rows, bracket wiring, and nothing thrown along the way. It then narrows to a
+# 390px phone viewport looking for anything that drags the page sideways, and
+# runs axe over the home board and a league tab so the modals' dialog semantics
+# cannot quietly regress.
 #
 # It runs on push and PR as the regression gate, and again daily — a payload
 # the canary is happy with can still be one the render code chokes on.
@@ -47,10 +50,13 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ env.PLAYWRIGHT_VERSION }}
 
-      # --no-save keeps the repo free of a package.json, per the ground rules
-      - name: Install playwright
+      # --no-save keeps the repo free of a package.json, per the ground rules.
+      # Both packages go in ONE command on purpose: with no package.json to read
+      # npm treats node_modules as the entire dependency tree, so a second
+      # `npm install --no-save x` uninstalls whatever the first one put there.
+      - name: Install playwright and axe-core
         run: |
-          npm install --no-save playwright@"$PLAYWRIGHT_VERSION"
+          npm install --no-save playwright@"$PLAYWRIGHT_VERSION" axe-core
           npx playwright install --with-deps chromium
 
       - name: Open the page and check it renders
@@ -93,7 +99,7 @@ jobs:
             cat smoke-log.txt
             echo '```'
             echo
-            echo "Reproduce locally with \`npm install --no-save playwright && npx playwright install chromium\`, then \`node tools/smoke.mjs --headed\`."
+            echo "Reproduce locally with \`npm install --no-save playwright axe-core && npx playwright install chromium\`, then \`node tools/smoke.mjs --headed\`."
             echo
             echo "<sub>Posted by [smoke.yml](../blob/main/.github/workflows/smoke.yml). Updated in place on each run, and closed automatically once the page renders again.</sub>"
           } > smoke-report.md
