@@ -10,9 +10,15 @@
 <meta name="apple-mobile-web-app-title" content="LoL Tracker">
 <meta name="format-detection" content="telephone=no">
 <title>League Esports Tracker · Season 2026</title>
+<meta name="description" content="Schedules, live games, standings, power rankings, honours and a playoff bracket predictor for the LEC, LCK, LPL and LCS. Unofficial single-page fan tool.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="League Esports Tracker">
+<meta property="og:description" content="LEC, LCK, LPL and LCS — schedules, live games, standings, power rankings, honours and a playoff bracket predictor.">
+<meta name="twitter:card" content="summary">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHBhdGggZD0iTTMyIDQgTDU2LjMgMTggTDU2LjMgNDYgTDMyIDYwIEw3LjcgNDYgTDcuNyAxOCBaIiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xNCAzMiBMMjIgMzIgTDI3IDEzIEwzNCA1MSBMMzkgMzIgTDUwIDMyIiBmaWxsPSJub25lIiBzdHJva2U9IiMwQkM2RTMiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHBhdGggZD0iTTMyIDQgTDU2LjMgMTggTDU2LjMgNDYgTDMyIDYwIEw3LjcgNDYgTDcuNyAxOCBaIiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xNCAzMiBMMjIgMzIgTDI3IDEzIEwzNCA1MSBMMzkgMzIgTDUwIDMyIiBmaWxsPSJub25lIiBzdHJva2U9IiMwQkM2RTMiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -33,6 +39,8 @@ a{color:var(--cyan);text-decoration:none}
 a:hover{color:var(--cyan-lo);text-decoration:underline}
 button{font-family:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.noscript{margin:40px auto;max-width:640px;padding:20px 22px;border:1px solid var(--line2);border-left:3px solid var(--cyan);background:var(--panel);border-radius:var(--radius);color:var(--dim);font-size:14px}
+.noscript strong{display:block;margin-bottom:8px;color:var(--text);font-size:16px}
 
 /* ============ HEADER ============ */
 header{border-bottom:1px solid var(--line);background:#0C0C0C;position:sticky;top:0;z-index:50}
@@ -838,6 +846,17 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 </head>
 <body>
 
+<noscript>
+  <div class="noscript">
+    <strong>League Esports Tracker needs JavaScript.</strong>
+    Every table on this page — schedules, live games, standings, the bracket predictor — is
+    built in the browser, so with scripting blocked there is nothing here to show. In the
+    meantime: <a href="https://lolesports.com/">lolesports.com</a> ·
+    <a href="https://lol.fandom.com/wiki/Leaguepedia">Leaguepedia</a> ·
+    <a href="https://liquipedia.net/leagueoflegends/Main_Page">Liquipedia</a>
+  </div>
+</noscript>
+
 <header>
   <div class="hdr-top">
     <div class="logo">
@@ -1008,6 +1027,20 @@ const API = 'https://esports-api.lolesports.com/persisted/gw';
 const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z'; // public key shipped in the lolesports web client
 const HL = 'en-GB';
 const LS = k => 'nexusdesk_' + k;
+
+/* localStorage is not always there to be read. A browser set to block site data
+   throws on the very first access, and an entry truncated by a quota kill or a
+   tab closed mid-write throws on parse. Both of those happen before the first
+   render, where an exception leaves a black page that reloading cannot fix —
+   so every read goes through these, and a value we cannot use is simply treated
+   as absent, which puts us on the same path as a first visit. */
+function lsRead(key) { try { return localStorage.getItem(key); } catch { return null; } }
+function lsWrite(key, val) { try { localStorage.setItem(key, val); } catch { /* full or blocked: the cache is a nicety */ } }
+function lsJSON(key, fallback) {
+  const raw = lsRead(key);
+  if (raw === null) return fallback;
+  try { const v = JSON.parse(raw); return v === null ? fallback : v; } catch { return fallback; }
+}
 
 const REGIONS = {
   lec:{ name:'LEC', full:'League of Legends EMEA Championship', color:'var(--lec)', slug:'lec',
@@ -1589,7 +1622,7 @@ const DRAFTS = {
 /* DRAFTS:end */
 
 /* -------- state -------- */
-let leagueIds = JSON.parse(localStorage.getItem(LS('leagueIds')) || 'null'); // {lec:id,...}
+let leagueIds = lsJSON(LS('leagueIds'), null); // {lec:id,...}
 let scheduleCache = {};  // slug -> events[]
 let liveEvents = [];
 /* when the live feed last answered. It is only evidence of what is on air while
@@ -1605,7 +1638,7 @@ const el = (tag, cls, html) => { const e = document.createElement(tag); if(cls) 
 const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* -------- team logos (harvested from API, cached locally) -------- */
-let teamLogos = JSON.parse(localStorage.getItem(LS('logos')) || '{}'); // normalised name -> url
+let teamLogos = lsJSON(LS('logos'), {}); // normalised name -> url
 const nk = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 
 function addLogo(name, code, url) {
@@ -1619,12 +1652,12 @@ function harvestLogos(events) {
     for (const t of ev.match?.teams||[]) addLogo(t.name, t.code, t.image);
 }
 async function fetchAllTeams() {
-  const last = +localStorage.getItem(LS('teamsFetched')) || 0;
+  const last = +lsRead(LS('teamsFetched')) || 0;
   if (Date.now() - last < 7*24*3600e3 && Object.keys(teamLogos).length > 40) return;
   try {
     const data = await api('/getTeams');
     for (const t of data.data.teams||[]) addLogo(t.name, t.code, t.image);
-    localStorage.setItem(LS('teamsFetched'), String(Date.now()));
+    lsWrite(LS('teamsFetched'), String(Date.now()));
   } catch(e){}
 }
 const LOGO_ALIAS = { 'agal':'anyoneslegend', 'teamsecretwhales':'secretwhales', 'relovedeepcrossgaming':'deepcrossgaming', 'geng':'gengesports', 'gengesports':'geng', 'jdgaming':'jdg', 'jdg':'jdgaming', 'cloud9kia':'cloud9' };
@@ -1658,7 +1691,7 @@ function crestInner(name) {
 function crestHTML(name, cls) { return `<span class="${cls}">${crestInner(name)}</span>`; }
 
 /* -------- region crests (from the API's league images, cached) -------- */
-let leagueLogos = JSON.parse(localStorage.getItem(LS('leagueLogos')) || '{}');   // slug -> url
+let leagueLogos = lsJSON(LS('leagueLogos'), {});   // slug -> url
 function leagueLogoHTML(slug) {
   const url = leagueLogos[slug];
   const nm = esc((REGIONS[slug]?.name || slug).toUpperCase().slice(0,3));
@@ -1678,8 +1711,18 @@ function renderLeagueChrome() {
    is blocked before it leaves the device — the proxy route rescues that case.
    The working transport is remembered so later calls skip the dead ones.      */
 const PROXIES = ['', 'https://corsproxy.io/?url=', 'https://api.codetabs.com/v1/proxy?quest='];
-let transport = Math.min(PROXIES.length-1, Math.max(0, +localStorage.getItem(LS('transport')) || 0));
-let transportAt = +localStorage.getItem(LS('transportAt')) || 0;
+
+/* A stalled request is not the same as a failed one. A proxy that goes dark, or
+   a captive portal that accepts the socket and then says nothing, leaves fetch
+   pending for as long as the OS allows — and the fallbacks below only advance
+   when a route rejects, so with no deadline the page waits on "connecting…"
+   instead of trying the next one. Old engines without AbortSignal.timeout get
+   the previous behaviour rather than an exception. */
+const NET_TIMEOUT = 10000;
+const netSignal = () => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout)
+  ? AbortSignal.timeout(NET_TIMEOUT) : undefined;
+let transport = Math.min(PROXIES.length-1, Math.max(0, +lsRead(LS('transport')) || 0));
+let transportAt = +lsRead(LS('transportAt')) || 0;
 let lastApiError = '';
 
 /* A proxy picked up during one bad network used to be carried around for good,
@@ -1692,15 +1735,15 @@ const preferredTransport = () =>
   (transport && Date.now() - transportAt > TRANSPORT_RETRY) ? 0 : transport;
 function rememberTransport(i) {
   transportAt = Date.now();
-  localStorage.setItem(LS('transportAt'), String(transportAt));
+  lsWrite(LS('transportAt'), String(transportAt));
   if (i === transport) return;
   transport = i;
-  localStorage.setItem(LS('transport'), String(i));
+  lsWrite(LS('transport'), String(i));
 }
 
 async function apiOnce(url, prefix) {
   const target = prefix ? prefix + encodeURIComponent(url.toString()) : url.toString();
-  const res = await fetch(target, { headers: { 'x-api-key': API_KEY }, cache: 'no-store' });
+  const res = await fetch(target, { headers: { 'x-api-key': API_KEY }, cache: 'no-store', signal: netSignal() });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const out = await res.json();
   // a CORS proxy that is refusing us answers 200 with its own error envelope;
@@ -1731,7 +1774,7 @@ async function api(path, params={}) {
   throw err || new Error('network error');
 }
 
-let allLeagues = JSON.parse(localStorage.getItem(LS('allLeagues')) || '{}'); // every slug -> id
+let allLeagues = lsJSON(LS('allLeagues'), {}); // every slug -> id
 async function resolveLeagues() {
   if (leagueIds && Object.keys(leagueIds).length === 4 && Object.keys(allLeagues).length
       && Object.keys(leagueLogos).length === 4) return leagueIds;
@@ -1747,9 +1790,9 @@ async function resolveLeagues() {
   }
   if (Object.keys(out).length) {
     leagueIds = out;
-    localStorage.setItem(LS('leagueIds'), JSON.stringify(out));
-    localStorage.setItem(LS('allLeagues'), JSON.stringify(allLeagues));
-    localStorage.setItem(LS('leagueLogos'), JSON.stringify(leagueLogos));
+    lsWrite(LS('leagueIds'), JSON.stringify(out));
+    lsWrite(LS('allLeagues'), JSON.stringify(allLeagues));
+    lsWrite(LS('leagueLogos'), JSON.stringify(leagueLogos));
     renderLeagueChrome();
   }
   return leagueIds;
@@ -1786,7 +1829,7 @@ async function fetchLive() {
 }
 
 /* -------- official standings -------- */
-let standingsCache = JSON.parse(localStorage.getItem(LS('standings')) || '{}'); // slug -> [{ordinal,name,code,wins,losses}]
+let standingsCache = lsJSON(LS('standings'), {}); // slug -> [{ordinal,name,code,wins,losses}]
 
 async function fetchStandings(slug) {
   const id = leagueIds?.[slug];
@@ -1842,7 +1885,7 @@ async function fetchStandings(slug) {
     }
     if (rows.length) {
       standingsCache[slug] = { tourn: (cur.slug || '') + (merged ? ' \u00B7 groups combined' : ''), start: cur.startDate || '', rows };
-      localStorage.setItem(LS('standings'), JSON.stringify(standingsCache));
+      lsWrite(LS('standings'), JSON.stringify(standingsCache));
     }
     return standingsCache[slug];
   } catch(e) { return null; }
@@ -1980,8 +2023,8 @@ const FEED = 'https://feed.lolesports.com/livestats/v1';
 const DDRAGON = 'https://ddragon.leagueoflegends.com';
 const DEX_TTL = 7*24*3600e3;
 
-let rosters  = JSON.parse(localStorage.getItem(LS('rosters'))  || '{}');  // teamId -> {at, p:{playerId:[handle,photo]}}
-let champDex = JSON.parse(localStorage.getItem(LS('champdex')) || '{}');  // {v, at, n:{ddragonKey:name}}
+let rosters  = lsJSON(LS('rosters'),  {});  // teamId -> {at, p:{playerId:[handle,photo]}}
+let champDex = lsJSON(LS('champdex'), {});  // {v, at, n:{ddragonKey:name}}
 
 /* The stats feed takes no api key and accepts only a couple of request headers,
    so it gets a bare fetch. Both it and Data Dragon send `Allow-Origin: *`, so
@@ -1992,7 +2035,7 @@ let champDex = JSON.parse(localStorage.getItem(LS('champdex')) || '{}');  // {v,
    which no amount of proxying will change. */
 async function plainJSON(url) {
   try {
-    const res = await fetch(url, { cache:'no-store' });
+    const res = await fetch(url, { cache:'no-store', signal: netSignal() });
     if (res.ok) return await res.json();
     throw Object.assign(new Error('HTTP ' + res.status), { reached:true });
   } catch (e) {
@@ -2001,7 +2044,7 @@ async function plainJSON(url) {
   let err = null;
   for (const prefix of PROXIES.filter(Boolean)) {
     try {
-      const res = await fetch(prefix + encodeURIComponent(url), { cache:'no-store' });
+      const res = await fetch(prefix + encodeURIComponent(url), { cache:'no-store', signal: netSignal() });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return await res.json();
     } catch (e) { err = e; }
@@ -2023,7 +2066,7 @@ async function loadChampDex() {
     for (const [key, c] of Object.entries(data.data||{})) n[key] = c.name;
     if (!Object.keys(n).length) throw new Error('empty dex');
     champDex = { v, at: Date.now(), n };
-    localStorage.setItem(LS('champdex'), JSON.stringify(champDex));
+    lsWrite(LS('champdex'), JSON.stringify(champDex));
   } catch(e) { /* keep whatever we already had */ }
 }
 const champIcon  = id => (champDex.v && id) ? `${DDRAGON}/cdn/${champDex.v}/img/champion/${encodeURIComponent(id)}.png` : '';
@@ -2049,7 +2092,7 @@ async function loadRoster(teamId) {
       if (pl.id && pl.summonerName) p[pl.id] = pl.summonerName;
     if (Object.keys(rosters).length > 120) rosters = {};   // keep the cache from creeping
     rosters[teamId] = { at: Date.now(), p };
-    localStorage.setItem(LS('rosters'), JSON.stringify(rosters));
+    lsWrite(LS('rosters'), JSON.stringify(rosters));
     return p;
   } catch(e) { return (hit && hit.p) || {}; }
 }
@@ -3181,10 +3224,10 @@ async function loadEventResults(slug) {
       events = (prev.data.schedule.events||[]).concat(events);
       older = prev.data.schedule.pages?.older;
     }
-    localStorage.setItem(cacheKey, JSON.stringify(events));
+    lsWrite(cacheKey, JSON.stringify(events));
     render(events);
   } catch (e) {
-    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    const cached = lsJSON(cacheKey, null);
     if (cached) render(cached);
     else { const box = target(); if (box) box.innerHTML = '<div class="loading">Couldn\'t reach the archive — key results above still stand, and Liquipedia has every series.</div>'; }
   }
@@ -3592,13 +3635,13 @@ const simSelChip = {};    // slug -> selected chip name
 
 function simLoad(slug) {
   if (!simState[slug]) {
-    simState[slug] = JSON.parse(localStorage.getItem(LS('sim_'+slug)) || 'null')
+    simState[slug] = lsJSON(LS('sim_'+slug), null)
       || { format: REGIONS[slug].defFormat, seeds:{}, winners:{}, pool:[] };
     if (!FORMATS[simState[slug].format]) simState[slug].format = REGIONS[slug].defFormat;
   }
   return simState[slug];
 }
-function simSave(slug) { localStorage.setItem(LS('sim_'+slug), JSON.stringify(simState[slug])); }
+function simSave(slug) { lsWrite(LS('sim_'+slug), JSON.stringify(simState[slug])); }
 
 /* resolve who occupies each slot given seeds + winners; prune stale winners */
 function simResolve(slug) {
@@ -3928,7 +3971,7 @@ function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id==='page-'+name));
   document.querySelectorAll('.fchip').forEach(c => c.classList.toggle('active', name === 'home'));
-  localStorage.setItem(LS('tab'), name);
+  lsWrite(LS('tab'), name);
   // the bracket wiring is measured, so it can only be drawn once the page is visible
   if (REGIONS[name]) drawSimWires(name);
   window.scrollTo({top:0, behavior:'smooth'});
@@ -4004,7 +4047,7 @@ function openApiHelp() {
   document.body.style.overflow = 'hidden';
   box.querySelector('#apiRetry').addEventListener('click', () => { closeModal(); refreshAll(true); });
   box.querySelector('#apiReset').addEventListener('click', () => {
-    transport = 0; localStorage.setItem(LS('transport'), '0'); closeModal(); refreshAll(true);
+    transport = 0; lsWrite(LS('transport'), '0'); closeModal(); refreshAll(true);
   });
   box.querySelector('.modal-close').addEventListener('click', closeModal);
   bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
@@ -4029,13 +4072,13 @@ async function refreshAll(deep=true) {
     if (deep) await Promise.allSettled(Object.keys(REGIONS).map(fetchStandings));
     for (const evs of Object.values(scheduleCache)) harvestLogos(evs);
     harvestLogos(liveEvents);
-    localStorage.setItem(LS('logos'), JSON.stringify(teamLogos));
+    lsWrite(LS('logos'), JSON.stringify(teamLogos));
     setStatus(true, 'Data updates in real time');
-    localStorage.setItem(LS('schedCache'), JSON.stringify(scheduleCache));
+    lsWrite(LS('schedCache'), JSON.stringify(scheduleCache));
     ok = true; lastGoodAt = Date.now();
   } catch (e) {
     setStatus(false, 'Offline — showing cached data');
-    scheduleCache = JSON.parse(localStorage.getItem(LS('schedCache')) || '{}');
+    scheduleCache = lsJSON(LS('schedCache'), {});
   }
   renderLeagueChrome();
   // one bad region must not stop the home board from rendering
@@ -4061,7 +4104,7 @@ for (const slug of Object.keys(REGIONS)) buildRegionPage(slug);
 renderLeagueChrome();
 renderHome();
 renderTicker();
-switchTab(localStorage.getItem(LS('tab')) || 'home');
+switchTab(lsRead(LS('tab')) || 'home');
 refreshAll(true);
 tickClocks();
 setInterval(tickClocks, 1000);                     // header clock + live match timers
