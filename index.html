@@ -1724,6 +1724,7 @@ const netSignal = () => (typeof AbortSignal !== 'undefined' && AbortSignal.timeo
 let transport = Math.min(PROXIES.length-1, Math.max(0, +lsRead(LS('transport')) || 0));
 let transportAt = +lsRead(LS('transportAt')) || 0;
 let lastApiError = '';
+let lastDeepAt = 0;   // when the schedule was last fully refreshed, for the visibility check at the bottom
 
 /* A proxy picked up during one bad network used to be carried around for good,
    because the retry order started at the remembered transport and so never
@@ -3967,14 +3968,26 @@ function renderRanks() {
 /* =====================================================================
    TABS + REFRESH LOOP
 ===================================================================== */
+/* the stylesheet honours prefers-reduced-motion in three places; the one
+   animation driven from script has to ask on its own behalf */
+const reducedMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/* .active is a colour, and colour is nothing to a screen reader: without
+   aria-current these are four identically shaped buttons with no way to tell
+   which one you are standing on */
+const markCurrent = (elm, on) => {
+  elm.classList.toggle('active', on);
+  if (on) elm.setAttribute('aria-current', 'page'); else elm.removeAttribute('aria-current');
+};
+
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.tab').forEach(t => markCurrent(t, t.dataset.tab===name));
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id==='page-'+name));
-  document.querySelectorAll('.fchip').forEach(c => c.classList.toggle('active', name === 'home'));
+  document.querySelectorAll('.fchip').forEach(c => markCurrent(c, name === 'home'));
   lsWrite(LS('tab'), name);
   // the bracket wiring is measured, so it can only be drawn once the page is visible
   if (REGIONS[name]) drawSimWires(name);
-  window.scrollTo({top:0, behavior:'smooth'});
+  window.scrollTo({top:0, behavior: reducedMotion() ? 'auto' : 'smooth'});
 }
 
 /* boxes move when the column widths do, so the wiring is re-measured after a
@@ -4076,6 +4089,7 @@ async function refreshAll(deep=true) {
     setStatus(true, 'Data updates in real time');
     lsWrite(LS('schedCache'), JSON.stringify(scheduleCache));
     ok = true; lastGoodAt = Date.now();
+    if (deep) lastDeepAt = lastGoodAt;
   } catch (e) {
     setStatus(false, 'Offline — showing cached data');
     scheduleCache = lsJSON(LS('schedCache'), {});
@@ -4108,8 +4122,29 @@ switchTab(lsRead(LS('tab')) || 'home');
 refreshAll(true);
 tickClocks();
 setInterval(tickClocks, 1000);                     // header clock + live match timers
-setInterval(() => refreshAll(false), 60_000);      // live check every minute
-setInterval(() => refreshAll(true), 5*60_000);     // full schedule every 5 min
+
+/* Polling stops while the tab is in the background. Nobody is reading a board
+   they cannot see, and the lolesports API is unofficial and reached with a key
+   lifted from Riot's web client — a tab left open overnight spending several
+   hundred requests on nobody is how a key like that gets rotated. gol.gg is
+   already given this courtesy in tools/drafts.mjs; this is the same manners
+   applied to the API the page leans on hardest.
+
+   Coming back is quicker than it used to be rather than slower: the return
+   refreshes at once instead of waiting out the rest of the minute, and it
+   refreshes deep if the tab was away long enough for the schedule to have
+   moved. */
+const tick = deep => { if (!document.hidden) refreshAll(deep); };
+setInterval(() => tick(false), 60_000);            // live check every minute
+setInterval(() => tick(true), 5*60_000);           // full schedule every 5 min
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  tickClocks();                                    // background ticks are throttled, so the clock came back stale
+  refreshAll(Date.now() - lastDeepAt > 5*60_000);
+});
+/* a reconnect is worth a look now rather than up to a minute from now */
+window.addEventListener('online', () => { if (!document.hidden) refreshAll(true); });
 </script>
 </body>
 </html>
