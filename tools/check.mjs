@@ -14,6 +14,9 @@
  *   - the inline <script> exists, is the only one, and parses
  *   - the localStorage prefix is still nexusdesk_ (renaming it silently wipes
  *     every user's saved brackets, caches and settings)
+ *   - localStorage is only ever reached through the lsRead/lsWrite helpers,
+ *     which is what keeps a blocked or corrupt store from throwing before
+ *     the page has rendered anything
  *   - the DRAFTS:generated / DRAFTS:end markers are intact and the block
  *     between them is still valid JSON (tools/drafts.mjs rewrites it wholesale
  *     and a malformed write would take the whole script down)
@@ -97,6 +100,42 @@ const src = m ? m[1] : '';
 if (!/const\s+LS\s*=\s*k\s*=>\s*['"]nexusdesk_['"]/.test(src)) {
   fail('The LS() localStorage prefix is no longer nexusdesk_.',
        'Renaming it wipes every existing user\'s saved brackets, caches and settings.');
+}
+
+/* ---- localStorage only through the helpers ----------------------------- */
+
+/* Touching localStorage directly is how the page used to die above the fold: a
+ * browser set to block site data throws on the very first access, and an entry
+ * truncated by a quota kill throws on parse — both before the first render,
+ * where an exception leaves a black page that reloading cannot fix. lsRead /
+ * lsWrite / lsJSON absorb that and fall back to a first-visit state, but only
+ * for as long as everything actually goes through them. One hand-edit reaching
+ * for localStorage.getItem puts the black page back for whoever's store is
+ * broken, and nobody else ever sees it. */
+
+for (const fn of ['lsRead', 'lsWrite', 'lsJSON']) {
+  if (!src.includes('function ' + fn + '(')) {
+    fail(`The ${fn}() localStorage helper is gone.`,
+         'Reads and writes go through it so a blocked or corrupt store cannot throw before the first render.');
+  }
+}
+
+const NL = String.fromCharCode(10);
+// comments talk about localStorage constantly; blank them out but keep the
+// line count intact so anything found still points at the right line
+const codeOnly = src.replace(/\/\*[\s\S]*?\*\//g, c => c.replace(/[^\n]/g, ' '));
+const scriptLine0 = m ? html.slice(0, m.index).split(NL).length : 0;
+const rawStorage = codeOnly.split(NL)
+  .map((text, i) => ({ line: scriptLine0 + i, text: text.trim() }))
+  .filter(({ text }) => text.includes('localStorage')
+                     && !text.startsWith('//')
+                     // the two helper bodies are the one place it belongs
+                     && !text.startsWith('function lsRead(')
+                     && !text.startsWith('function lsWrite('));
+
+if (rawStorage.length) {
+  fail(`localStorage is reached directly in ${rawStorage.length} place${rawStorage.length > 1 ? 's' : ''}, outside lsRead()/lsWrite().`,
+       rawStorage.map(({ line, text }) => `index.html:${line}  ${text.slice(0, 76)}`).join(NL + '    '));
 }
 
 /* ---- the generated DRAFTS block ---------------------------------------- */

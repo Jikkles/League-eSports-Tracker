@@ -3075,20 +3075,54 @@ function openHonour(idx) {
   </div>`;
 
   box.innerHTML = html;
+  mountModal(bg, box, h.ev);
+  if (d.slug && (!d.upcoming || d.live)) loadEventResults(d.slug);
+}
+/* Four openers were each repeating the same mount-and-wire lines, and none of
+   them told the browser what they were: no role, so a screen reader read the
+   dialog as one more div in a page it could still wander; focus never moved
+   into it, so a keyboard user tabbed through the overlay into the board behind;
+   and closing dropped focus at the top of the document rather than back on the
+   row that had been clicked. Doing it in one place means doing it once. */
+let modalReturn = null;   // whatever had focus before the dialog opened
+function mountModal(bg, box, label) {
+  modalReturn = document.activeElement;
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  if (label) box.setAttribute('aria-label', String(label));
+  box.tabIndex = -1;
   bg.appendChild(box);
   document.body.appendChild(bg);
   document.body.style.overflow = 'hidden';
-  box.querySelector('.modal-close').addEventListener('click', closeModal);
+  box.querySelector('.modal-close')?.addEventListener('click', closeModal);
   bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
-  document.addEventListener('keydown', modalEsc);
-  if (d.slug && (!d.upcoming || d.live)) loadEventResults(d.slug);
+  document.addEventListener('keydown', modalKeys);
+  box.focus();
 }
-function modalEsc(e){ if (e.key==='Escape') closeModal(); }
+
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])';
+function modalKeys(e) {
+  if (e.key === 'Escape') { closeModal(); return; }
+  if (e.key !== 'Tab') return;
+  // aria-modal tells a screen reader the rest of the page is inert; Tab has to
+  // agree with it, or a keyboard user walks straight out of the dialog
+  const box = document.querySelector('#tModal .modal');
+  if (!box) return;
+  const f = [...box.querySelectorAll(FOCUSABLE)].filter(n => n.offsetParent !== null);
+  if (!f.length) { e.preventDefault(); box.focus(); return; }
+  const first = f[0], last = f[f.length - 1], on = document.activeElement;
+  if (e.shiftKey && (on === first || on === box)) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && on === last) { e.preventDefault(); first.focus(); }
+}
+
 function closeModal() {
   const m = document.getElementById('tModal');
   if (m) m.remove();
   document.body.style.overflow = '';
-  document.removeEventListener('keydown', modalEsc);
+  document.removeEventListener('keydown', modalKeys);
+  // back to the row that opened it, not the top of the document
+  if (modalReturn && document.contains(modalReturn)) modalReturn.focus();
+  modalReturn = null;
 }
 
 /* -------- full remaining schedule for a region's current split -------- */
@@ -3118,9 +3152,7 @@ function openScheduleModal(slug) {
     <div class="m-links"><a class="btn small" href="${R.liqui}" target="_blank" rel="noopener">Full calendar on Liquipedia \u2197</a>
       <a class="btn small" href="${R.wiki}" target="_blank" rel="noopener">Leaguepedia \u2197</a></div>
     <div class="hint" style="margin-top:8px">Fixtures the lolesports API has published \u2014 later weeks may not be scheduled yet.</div>`;
-  bg.appendChild(box);
-  document.body.appendChild(bg);
-  document.body.style.overflow = 'hidden';
+  mountModal(bg, box, `${R.name} — remaining schedule`);
   const host = box.querySelector('#schedAll');
   let lastDay = '', lastBlock = '';
   for (const ev of events) {
@@ -3136,9 +3168,6 @@ function openScheduleModal(slug) {
     }
     host.appendChild(row);
   }
-  box.querySelector('.modal-close').addEventListener('click', closeModal);
-  bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
-  document.addEventListener('keydown', modalEsc);
 }
 
 /* -------- team detail modal: every fetched game this split -------- */
@@ -3175,9 +3204,7 @@ function openTeamModal(slug, name) {
     <div class="m-section"><div class="eyebrow">Played this split</div><div id="tmPlayed">${played.length ? '' : '<div class="loading">No completed games in the fetched window yet.</div>'}</div></div>
     <div class="m-links"><a class="btn small" href="${R.liqui}" target="_blank" rel="noopener">Full split on Liquipedia \u2197</a></div>
     <div class="hint" style="margin-top:8px">Current split only (from ${standingsCache[slug]?.start ? esc(standingsCache[slug].start.slice(0,10)) : 'the fetched window'}) \u2014 the earliest weeks of a long split can fall outside the fetched schedule pages.</div>`;
-  bg.appendChild(box);
-  document.body.appendChild(bg);
-  document.body.style.overflow = 'hidden';
+  mountModal(bg, box, name);
   live.forEach(ev => box.querySelector('#tmLive').appendChild(matchRow(ev)));
   up.forEach(ev => box.querySelector('#tmUp').appendChild(matchRow(ev)));
   played.forEach(ev => {
@@ -3192,9 +3219,6 @@ function openTeamModal(slug, name) {
     }
     box.querySelector('#tmPlayed').appendChild(row);
   });
-  box.querySelector('.modal-close').addEventListener('click', closeModal);
-  bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
-  document.addEventListener('keydown', modalEsc);
 }
 
 async function loadEventResults(slug) {
@@ -4055,16 +4079,11 @@ function openApiHelp() {
     </div>
     <div class="m-links"><button class="btn small" id="apiRetry">Retry now</button>
       <button class="btn small" id="apiReset">Reset transport &amp; retry</button></div>`;
-  bg.appendChild(box);
-  document.body.appendChild(bg);
-  document.body.style.overflow = 'hidden';
+  mountModal(bg, box, 'Connection details');
   box.querySelector('#apiRetry').addEventListener('click', () => { closeModal(); refreshAll(true); });
   box.querySelector('#apiReset').addEventListener('click', () => {
     transport = 0; lsWrite(LS('transport'), '0'); closeModal(); refreshAll(true);
   });
-  box.querySelector('.modal-close').addEventListener('click', closeModal);
-  bg.addEventListener('click', e => { if (e.target === bg) closeModal(); });
-  document.addEventListener('keydown', modalEsc);
 }
 
 let lastGoodAt = 0;                 // when a refresh last actually came back
