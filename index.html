@@ -644,6 +644,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .lc-alt[data-brand="youtube"]:hover{background:#FF0000;border-color:#FF0000;color:#fff}
 .lc-alt[data-brand="bilibili"]{color:#FB7299;border-color:rgba(251,114,153,.5)}
 .lc-alt[data-brand="bilibili"]:hover{background:#FB7299;border-color:#FB7299;color:#21000B}
+.lc-alt[data-brand="huya"]{color:#FFB24D;border-color:rgba(255,150,0,.5)}
+.lc-alt[data-brand="huya"]:hover{background:#FF9600;border-color:#FF9600;color:#2A1600}
 .lc-alt[data-brand="chzzk"]{color:#00FFA3;border-color:rgba(0,255,163,.45)}
 .lc-alt[data-brand="chzzk"]:hover{background:#00FFA3;border-color:#00FFA3;color:#00291B}
 .lc-alt[data-brand="afreecatv"]{color:#7E96EE;border-color:rgba(59,94,219,.55)}
@@ -1074,8 +1076,10 @@ const REGIONS = {
         // Legend: 1-4 -> playoffs, 5 -> play-in. Rise: 1-3 -> play-in, 4-5 out
         groupCuts:{ legend:[{after:4, kind:'po'}], rise:[{after:3, kind:'pi'}] } },
   lpl:{ name:'LPL', full:'League of Legends Pro League', color:'var(--lpl)', slug:'lpl',
-        bili:'https://live.bilibili.com/lol', yt:'https://www.youtube.com/@LPL_English/live', vods:'https://www.youtube.com/@LPL_English/streams',
-        twitch:'https://www.twitch.tv/lplenglish',   // the LPL's own English cast
+        // Huya carries the LPL's own broadcast, so it leads wherever the
+        // league links out to somewhere to watch
+        huya:'https://www.huya.com/lpl', twitch:'https://www.twitch.tv/lplenglish',   // the LPL's own English cast
+        yt:'https://www.youtube.com/@LPL_English/live', vods:'https://www.youtube.com/@LPL_English/streams',
 
         wiki:'https://lol.fandom.com/wiki/LPL/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026/Split_3',
         splitLabel:'Split 3 2026', defaultGames:14, defFormat:'de10',
@@ -1979,7 +1983,7 @@ function matchRow(ev, phase) {
   const a = t[0]||{}, b = t[1]||{};
   // a row's state comes from the same phase the boards use rather than from
   // ev.state alone, so a broadcast the live feed never carries — every LPL
-  // game, which streams on Bilibili — still reads as live here
+  // game, which streams on Huya — still reads as live here
   const ph = phase || evPhase(ev, liveMatchIds());
   const live = ph === 'live' || ph === 'onair';
   const assumed = ph === 'onair';        // on air by the clock; no score published
@@ -2567,7 +2571,7 @@ function matchFinished(ev) {
 }
 
 /* The /getLive feed does not carry every broadcast — the LPL, whose streams
-   live on Bilibili, never appears in it. So a fixture that is past its start
+   live on Huya, never appears in it. So a fixture that is past its start
    time with no published winner is taken to be on air until a series could
    plausibly have finished; after that it is a result we are still waiting on. */
 const LIVE_WINDOW_MS = 4*3600e3;
@@ -2666,7 +2670,7 @@ function liveCard(ev, cols, opts) {
   const gameNo = Math.min(bo || 99, played + 1);
   // the API's own stream first, then the league's own channels as alternates —
   // several leagues also broadcast where the live feed never lists it (the LPL
-  // on Bilibili, the LCK on YouTube)
+  // on Huya, the LCK on YouTube)
   const { lead, alts } = watchLinks(ev, slug);
   let acts = '';
   if (lead) acts += `<a class="btn-watchlive sm" data-brand="${esc(brandKey(lead.name))}" href="${lead.url}" target="_blank" rel="noopener">Watch on ${esc(lead.name)}</a>`;
@@ -3324,10 +3328,13 @@ function watchLinks(ev, slug) {
   const R = REGIONS[slug] || REGIONS[(ev.league?.slug||'').toLowerCase()];
   const s = bestStream(ev);
   const alts = [];
+  if (R?.huya   && s?.provider !== 'huya')     alts.push(['Huya', R.huya]);
   if (R?.twitch && s?.provider !== 'twitch')   alts.push(['Twitch', R.twitch]);
   if (R?.yt     && s?.provider !== 'youtube')  alts.push(['YouTube', R.yt]);
-  if (R?.bili   && s?.provider !== 'bilibili') alts.push(['Bilibili', R.bili]);
-  let lead = s ? { url: s.url, name: s.name } : null;
+  // where a region names a Huya channel (the LPL) that is the league's home
+  // broadcast and the live feed never carries it, so it leads over the feed's
+  // own pick — which the region's Twitch and YouTube links cover anyway
+  let lead = (s && (!R?.huya || s.provider === 'huya')) ? { url: s.url, name: s.name } : null;
   if (!lead && alts.length) { const [name, url] = alts.shift(); lead = { url, name }; }
   return { lead, alts };
 }
@@ -3338,10 +3345,11 @@ function renderWatch(slug, live) {
   if (!box) return;
   links.innerHTML = '';
   const addLink = (label, href) => { const a = el('a','btn small', label); a.href = href; a.target='_blank'; a.rel='noopener'; links.appendChild(a); };
-  if (R.yt) addLink('YouTube live ↗', R.yt);
-  if (R.vods) addLink('Past matches on YouTube ↗', R.vods);
-  if (R.twitch) addLink('Twitch ↗', R.twitch);
-  if (R.bili) addLink('Bilibili ↗', R.bili);
+  // Huya first where the league broadcasts there, then Twitch, then YouTube
+  const chans = R.huya
+    ? [['Huya live ↗', R.huya], ['Twitch ↗', R.twitch], ['YouTube live ↗', R.yt], ['Past matches on YouTube ↗', R.vods]]
+    : [['YouTube live ↗', R.yt], ['Past matches on YouTube ↗', R.vods], ['Twitch ↗', R.twitch]];
+  chans.forEach(([label, href]) => { if (href) addLink(label, href); });
 
   if (live) {
     const liveEv = live.ev || live;          // tolerate a bare event too
