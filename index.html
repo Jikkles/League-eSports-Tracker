@@ -458,6 +458,67 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 /* top-10 clash badge */
 .big-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--body);font-size:10px;font-weight:700;letter-spacing:.6px;color:#001014;background:var(--cyan);border:1px solid var(--cyan);padding:2px 9px;border-radius:var(--pill);text-transform:uppercase;white-space:nowrap}
 
+/* playoff race: odds table, scenario locks, and the per-team read-out */
+.race-wrap{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
+@media (max-width:900px){.race-wrap{grid-template-columns:1fr}}
+.race-side{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:10px;max-height:430px;overflow-y:auto}
+.race-tbl{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.race-fix-head{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:8px}
+.tbl-race td{font-size:15px;padding:8px;font-weight:600}
+.tbl-race th{white-space:nowrap}
+.tbl-race .rank-cell{width:34px}
+tr.race-row{cursor:pointer}
+tr.race-row:hover td{background:var(--hover)}
+tr.race-row.sel td{background:rgba(11,198,227,.10)}
+tr.race-row:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+.race-odds{min-width:96px}
+.race-num{font-family:var(--mono);font-size:13px;color:var(--text)}
+.race-odds .bar-wrap{background:#1F1F1F;height:4px;margin-top:4px}
+.race-odds .bar{background:var(--cyan)}
+.race-chip{font-family:var(--mono);font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;padding:3px 7px;border-radius:var(--pill);white-space:nowrap;border:1px solid var(--line2);color:var(--dim)}
+.race-chip.in{color:var(--win);border-color:rgba(49,196,111,.5);background:rgba(49,196,111,.10)}
+.race-chip.out{color:var(--loss);border-color:rgba(232,57,74,.5);background:rgba(232,57,74,.10)}
+.race-chip.live{color:var(--cyan);border-color:rgba(11,198,227,.45)}
+.race-day{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--faint);text-transform:uppercase;margin:10px 0 5px}
+.race-day:first-child{margin-top:0}
+.race-fx{display:grid;grid-template-columns:1fr 14px 1fr;gap:4px;align-items:center;margin-bottom:5px}
+.race-fx .race-v{font-family:var(--mono);font-size:10px;color:var(--faint);text-align:center}
+.rfx-pick{display:flex;align-items:center;gap:5px;width:100%;background:#141414;border:1px solid var(--line);color:var(--text);font-family:var(--body);font-weight:600;font-size:12px;padding:5px 7px;border-radius:var(--radius);cursor:pointer;text-align:left;transition:background .12s ease,border-color .12s ease}
+.rfx-pick:hover{background:#222222;border-color:var(--line2)}
+.rfx-pick i{margin-left:auto;font-style:normal;font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.rfx-pick.on{background:rgba(11,198,227,.14);border-color:var(--cyan)}
+.rfx-pick.on i{color:var(--cyan-lo)}
+.rfx-pick .tlogo,.rfx-pick .tmono{width:16px;height:16px}
+.race-fx.locked .rfx-pick:not(.on){opacity:.45}
+.race-hint,.race-note{font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--faint)}
+.race-note{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.race-focus{margin-top:14px}
+.rf-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:17px;font-weight:700;margin-bottom:8px}
+.rf-head .rf-rec{font-family:var(--mono);font-size:11px;color:var(--dim);font-weight:400}
+.rf-head .rf-big{margin-left:auto;font-family:var(--disp);font-size:26px;font-weight:800;color:var(--cyan)}
+.rf-list{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+.rf-list li{background:var(--panel2);border-left:2px solid var(--line2);border-radius:0 var(--radius) var(--radius) 0;padding:8px 11px;font-size:13.5px;line-height:1.5}
+.rf-list li.good{border-left-color:var(--win)}
+.rf-list li.bad{border-left-color:var(--loss)}
+.rf-list li.warn{border-left-color:#E0A63A}
+.rf-list li.own{border-left-color:var(--cyan)}
+.rf-list li.root{border-left-color:var(--line2);color:var(--dim)}
+.rf-list li.root b{color:var(--text)}
+.rf-list b.ok{color:var(--win)}
+.rf-list b.no{color:var(--loss)}
+.rf-list li.root i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+@media (max-width:640px){
+  .race-side{max-height:none}
+  .tbl-race td{font-size:13px;padding:7px 4px}
+  .tbl-race .race-odds{min-width:62px}
+  /* the panel clips what it cannot fit, and a clipped "Eliminated" chip is a
+     lie by truncation — drop the column the standings table already carries */
+  .tbl-race .gl{display:none}
+  .race-chip{font-size:8.5px;padding:3px 5px}
+  .rf-head{font-size:15px}
+  .rf-head .rf-big{font-size:22px}
+}
+
 /* playoff cutline + form dots */
 tr.cutline td{border-bottom:2px solid var(--cyan)}
 tr.cutline-pi td{border-bottom:2px dashed var(--line2)}
@@ -3014,6 +3075,25 @@ function buildRegionPage(slug) {
     <div id="table-${slug}"><div class="loading">Loading…</div></div>`;
   page.appendChild(st);
 
+  // playoff race: qualification odds + scenarios
+  const race = el('div','panel rg'); race.style.setProperty('--rg', R.color);
+  race.innerHTML = `<div class="p-head"><div class="p-title">Playoff Race</div>
+      <span class="p-sub" id="raceSub-${slug}"></span>
+      <div class="right">
+        <button class="btn small" id="raceClear-${slug}">Clear scenario</button>
+        <button class="btn small" id="raceSeed-${slug}" title="Seed the bracket below from this projection">Send to simulator</button>
+      </div></div>
+    <div class="race-wrap">
+      <div class="race-tbl" id="raceTable-${slug}"><div class="loading">Loading…</div></div>
+      <div class="race-side">
+        <div class="race-fix-head">Games left · click a side to lock it</div>
+        <div id="raceFix-${slug}"></div>
+      </div>
+    </div>
+    <div class="race-focus" id="raceFocus-${slug}"></div>
+    <div class="race-note" id="raceNote-${slug}"></div>`;
+  page.appendChild(race);
+
   // playoff simulator
   const sim = el('div','panel rg'); sim.style.setProperty('--rg', R.color);
   sim.innerHTML = `<div class="p-head"><div class="p-title">Playoff Simulator</div>
@@ -3055,6 +3135,7 @@ function buildRegionPage(slug) {
 
   renderWatch(slug, null);
   initSim(slug);
+  initRace(slug);
 }
 
 function regionHonourFilter(slug, h) {
@@ -3469,6 +3550,17 @@ function nextEventFor(slug) {
 }
 
 /* -------- fill schedule/results/table -------- */
+/* cut config for a group name, matched loosely against REGIONS[].groupCuts.
+   Shared by the standings table and the race panel, so the line one draws and
+   the line the other measures qualification against cannot drift apart. */
+function cutsForGroup(R, gname) {
+  if (!R.groupCuts) return R.cuts || null;
+  const k = nk(gname || '');
+  if (!k) return null;
+  for (const [key, cuts] of Object.entries(R.groupCuts)) if (k.includes(key)) return cuts;
+  return null;   // unrecognised group -> draw no line rather than a wrong one
+}
+
 function renderRegionData(slug) {
   const events = scheduleCache[slug] || [];
   // bucket by the same phases the home board uses, so a match that is on air
@@ -3514,14 +3606,7 @@ function renderRegionData(slug) {
   const R2 = REGIONS[slug];
   const HEAD = '<table class="tbl-big"><tr><th></th><th>Team</th><th class="num">W</th><th class="num">L</th><th class="num">Win%</th><th>Form</th><th class="num">Strk</th><th class="num" title="Games left in the regular season">GL</th></tr>';
 
-  /* cut config for a group name, matched loosely against REGIONS[].groupCuts */
-  const cutsFor = gname => {
-    if (!R2.groupCuts) return R2.cuts || null;
-    const k = nk(gname||'');
-    if (!k) return null;
-    for (const [key, cuts] of Object.entries(R2.groupCuts)) if (k.includes(key)) return cuts;
-    return null;   // unrecognised group -> draw no line rather than a wrong one
-  };
+  const cutsFor = gname => cutsForGroup(R2, gname);
   const cutClass = (cuts, rank, total) => {
     if (!cuts || rank >= total) return '';           // never mark the last row
     const c = cuts.find(c => c.after === rank);
@@ -3694,8 +3779,9 @@ function buildSimCtx(slug) {
   };
   return simProbCtx[slug] = { rating, h2h };
 }
-function bo5(p) { const q = 1-p; return p*p*p*(1 + 3*q + 6*q*q); }
-function matchProb(slug, a, b) {
+/* Bo5 is the bracket's default; the race panel asks for Bo3 and Bo1 too */
+function matchProb(slug, a, b) { return matchProbBo(slug, a, b, 5); }
+function matchProbBo(slug, a, b, bo) {
   const ctx = simProbCtx[slug] || buildSimCtx(slug);
   const ra = ctx.rating(a), rb = ctx.rating(b);
   const ka = nk(a), kb = nk(b);
@@ -3709,7 +3795,7 @@ function matchProb(slug, a, b) {
   }
   const d = ra.r - rb.r + h;
   const pGame = 1/(1+Math.pow(10, -d/400));
-  const p = Math.min(.99, Math.max(.01, bo5(pGame)));
+  const p = Math.min(.99, Math.max(.01, seriesProb(pGame, bo || 5)));
   return { p, ra, rb, hStr };
 }
 function probTitle(a, b, pr) {
@@ -4098,6 +4184,575 @@ function renderRanks() {
   $('#rkNote').textContent = 'Mirrors the official lolesports Global Power Rankings · as of ' + POWER_RANKINGS_ASOF;
 }
 
+
+/* =====================================================================
+   PLAYOFF RACE — who is in, who is out, and what has to happen
+   The simulator below answers "if these six make it, who wins it?". This
+   answers the question that comes first: who makes it at all.
+
+   Every remaining regular-season game is a coin with two sides, so a split
+   with n games left has 2^n possible endings. Late in a split that number is
+   small — the LEC's last fortnight is around two thousand — which means the
+   honest answer is not a simulation at all: enumerate every ending, weigh
+   each by the model's probability, and the odds are exact. Only when 2^n
+   blows past RACE_EXACT_MAX does this fall back to sampling, and the panel
+   says so when it does.
+
+   The distinction matters for the question people actually ask. "How likely
+   is MKOI to make it" is a question sampling can answer. "Is MKOI out if it
+   loses to TH" is a combinatorial one, and sampling can only ever answer
+   that with "we didn't happen to see it".
+===================================================================== */
+const RACE_EXACT_MAX = 1 << 16;   // enumerate every ending up to 65,536 of them
+const RACE_DEEP_MAX  = 1 << 12;   // ...and hunt for minimal scenarios up to 4,096
+const RACE_ITERS     = 20000;     // sampled seasons past that
+const RACE_MAX_COND  = 4;         // scenarios listed per question
+/* playoff games ride in the same schedule feed. The quota check in raceCtx is
+   the real filter; this only catches leagues with no defaultGames to count. */
+const RACE_BLOCK_RX = /playoff|play-?in|final|bracket|tiebreak|knockout|gauntlet/i;
+
+const raceState = {};   // slug -> {locks:{matchId:'a'|'b'}, focus:name}
+const raceCache = {};   // slug -> {sig, state} — the enumeration is not free
+
+function raceLoad(slug) {
+  if (!raceState[slug]) {
+    const s = lsJSON(LS('race_' + slug), null) || {};
+    raceState[slug] = { locks: s.locks || {}, focus: s.focus || '' };
+  }
+  return raceState[slug];
+}
+function raceSave(slug) { lsWrite(LS('race_' + slug), JSON.stringify(raceState[slug])); }
+
+/* Probability of taking a series given a per-game edge. bo5() was this with
+   the length hardcoded; regular-season games are Bo3, so the length is now
+   the caller's business. */
+function seriesProb(p, bo) {
+  const need = Math.max(1, Math.ceil((bo || 1) / 2));
+  const q = 1 - p;
+  let s = 0, c = 1;
+  for (let k = 0; k < need; k++) { s += c * Math.pow(q, k); c = c * (need + k) / (k + 1); }
+  return Math.pow(p, need) * s;
+}
+
+/* ---------- the table, the fixtures, and the line being raced for ---------- */
+function raceCtx(slug) {
+  const R = REGIONS[slug];
+  const std = standingsCache[slug];
+  const spEvents = splitEvents(slug);
+  const teams = [];
+  if (std && std.rows && std.rows.length) {
+    // the official ordinal is the authority on where a team stands *today* —
+    // this panel only ever computes where they could stand at the end
+    for (const r of std.rows) teams.push({ name:r.name, group:r.group || '', w:r.wins|0, l:r.losses|0,
+                                           code:r.code || '', ord:(r.group ? r.gordinal : r.ordinal) || 0 });
+  } else {
+    for (const r of (computeRecords(spEvents) || [])) teams.push({ name:r.name, group:'', w:r.w, l:r.l, code:'', ord:0 });
+  }
+  if (teams.length < 3) return null;
+  const idx = {};
+  teams.forEach((t, i) => { t.i = i; t.k = nk(t.name); idx[t.k] = i; });
+  const n = teams.length;
+
+  /* head-to-head from this split's completed games — the first tiebreak in
+     every one of these leagues' rulebooks */
+  const h2h = new Int8Array(n * n);
+  for (const ev of spEvents) {
+    if (ev.state !== 'completed' || (ev.match?.teams || []).length !== 2) continue;
+    const a = ev.match.teams[0], b = ev.match.teams[1];
+    const ia = idx[nk(a.name || '')], ib = idx[nk(b.name || '')];
+    if (ia == null || ib == null) continue;
+    if (a.result?.outcome === 'win') h2h[ia * n + ib]++;
+    else if (b.result?.outcome === 'win') h2h[ib * n + ia]++;
+  }
+
+  /* Remaining regular-season games. The bracket sits in the same feed, so it
+     is kept out by quota rather than by reading block names: a team gets
+     REGIONS[].defaultGames regular-season games and no more, and once its
+     allowance is spent, every later fixture it appears in is a playoff game. */
+  const quota = teams.map(t => R.defaultGames ? Math.max(0, R.defaultGames - t.w - t.l) : Infinity);
+  const fixtures = [];
+  for (const ev of remainingFixtures(slug)) {
+    if (RACE_BLOCK_RX.test(ev.blockName || '')) continue;
+    const a = ev.match.teams[0], b = ev.match.teams[1];
+    const ia = idx[nk(a.name || '')], ib = idx[nk(b.name || '')];
+    if (ia == null || ib == null || ia === ib) continue;
+    if (!(quota[ia] > 0 && quota[ib] > 0)) continue;
+    quota[ia]--; quota[ib]--;
+    fixtures.push({ id: String(ev.match.id || (ev.startTime + '-' + ia + '-' + ib)),
+                    a: ia, b: ib, when: ev.startTime, bo: ev.match?.strategy?.count || 3 });
+  }
+  teams.forEach(t => { t.left = fixtures.filter(f => f.a === t.i || f.b === t.i).length; });
+
+  /* one race per group: LCK Legend/Rise and LPL Ascend/Nirvana qualify inside
+     their group, so a merged rank would measure against the wrong line */
+  const groups = [...new Set(teams.map(t => t.group))].map(g => {
+    const cuts = cutsForGroup(R, g) || [];
+    const c = cuts.find(x => x.kind === 'po') || cuts.find(x => x.kind === 'pi') || null;
+    return { name:g, cut: c ? c.after : 0, kind: c ? c.kind : '',
+             members: teams.filter(t => t.group === g).map(t => t.i) };
+  });
+  return { slug, R, teams, n, idx, h2h, fixtures, groups };
+}
+
+/* Final table for one hypothetical ending. Ties go to head-to-head within the
+   tied cluster — every one of these leagues breaks them there first. What
+   head-to-head cannot split is left as a *band* of shared positions rather
+   than guessed at: the leagues settle those on rules this page has no data to
+   apply (the LEC goes to head-to-head game win %, then strength of victory),
+   so a team in a band straddling the cut counts as a fractional qualifier and
+   the panel reports how much of its number hangs on that. */
+function raceRank(C, g, wins, played, loss) {
+  /* Wins settle it inside a finished table, where everyone has played the same
+     number of games. `loss` is for the unfinished one — ranking a 3-3 above a
+     3-5 mid-split — and is left out of the projections, where it cannot differ. */
+  const key = t => wins[t] * 1000 - (loss ? loss[t] : 0);
+  const order = g.members.slice().sort((x, y) =>
+    key(y) - key(x) || C.teams[x].name.localeCompare(C.teams[y].name));
+  const out = {};
+  let pos = 1, i = 0;
+  while (i < order.length) {
+    let j = i;
+    while (j + 1 < order.length && key(order[j + 1]) === key(order[i])) j++;
+    const cluster = order.slice(i, j + 1);
+    if (cluster.length === 1) {
+      out[cluster[0]] = { lo: pos, hi: pos };
+    } else {
+      const set = new Set(cluster);
+      const hw = {};
+      for (const t of cluster) {
+        let h = 0;
+        for (const o of cluster) if (o !== t) h += C.h2h[t * C.n + o];
+        for (const p of played) if (p.w === t && set.has(p.l)) h++;
+        hw[t] = h;
+      }
+      cluster.sort((x, y) => hw[y] - hw[x]);
+      let k = 0, p2 = pos;
+      while (k < cluster.length) {
+        let m = k;
+        while (m + 1 < cluster.length && hw[cluster[m + 1]] === hw[cluster[k]]) m++;
+        const band = { lo: p2, hi: p2 + (m - k) };
+        for (let z = k; z <= m; z++) out[cluster[z]] = band;
+        p2 += m - k + 1; k = m + 1;
+      }
+    }
+    pos += cluster.length; i = j + 1;
+  }
+  return out;
+}
+
+/* ---------- the enumeration ---------- */
+function raceRun(slug) {
+  const S = raceLoad(slug);
+  const C = raceCtx(slug);
+  if (!C) return null;
+  const ids = new Set(C.fixtures.map(f => f.id));
+  let dropped = false;
+  for (const k of Object.keys(S.locks)) if (!ids.has(k)) { delete S.locks[k]; dropped = true; }
+  if (dropped) raceSave(slug);
+
+  const sig = JSON.stringify([C.teams.map(t => t.name + t.w + '-' + t.l),
+                              C.fixtures.map(f => f.id), S.locks]);
+  if (raceCache[slug] && raceCache[slug].sig === sig) return raceCache[slug].state;
+
+  const locked = [], free = [];
+  for (const f of C.fixtures) (S.locks[f.id] ? locked : free).push(f);
+  const n = free.length;
+  const exact = n <= 20 && Math.pow(2, n) <= RACE_EXACT_MAX;
+  const combos = exact ? Math.pow(2, n) : RACE_ITERS;
+  const deep = exact && combos <= RACE_DEEP_MAX;
+
+  buildSimCtx(slug);
+  const pA = free.map(f => matchProbBo(slug, C.teams[f.a].name, C.teams[f.b].name, f.bo).p);
+
+  const baseWins = new Int16Array(C.n), basePlayed = [];
+  C.teams.forEach(t => { baseWins[t.i] = t.w; });
+  for (const f of locked) {
+    const aw = S.locks[f.id] === 'a';
+    const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
+    baseWins[w]++; basePlayed.push({ w, l });
+  }
+
+  const acc = C.teams.map(() => ({
+    pIn:0, pTie:0, best:99, worst:0, cIn:0, cSure:0,
+    pos: new Float64Array(C.n + 2),
+    cond: free.map(() => [{ w:0, inw:0 }, { w:0, inw:0 }])
+  }));
+  /* 0 = missed out, 1 = level on the cut with the tiebreak unresolved, 2 = in */
+  const okAll = deep ? C.teams.map(() => new Uint8Array(combos)) : null;
+
+  const wins = new Int16Array(C.n);
+  const played = [];
+  /* which side took each game this time round. The exact path could read this
+     off the iteration counter's bits, but the sampled path cannot: a split with
+     32 or more games left overruns what a JS bitwise shift can address, and the
+     silent wrap would file results under the wrong game. */
+  const sides = new Uint8Array(Math.max(1, n));
+  let totalW = 0;
+  for (let it = 0; it < combos; it++) {
+    let weight = 1;
+    wins.set(baseWins);
+    played.length = 0;
+    for (const p of basePlayed) played.push(p);
+    for (let b = 0; b < n; b++) {
+      let aw;
+      if (exact) { aw = !((it >> b) & 1); weight *= aw ? pA[b] : 1 - pA[b]; }
+      else aw = Math.random() < pA[b];
+      sides[b] = aw ? 0 : 1;
+      const f = free[b];
+      const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
+      wins[w]++; played.push({ w, l });
+    }
+    totalW += weight;
+    for (const g of C.groups) {
+      const band = raceRank(C, g, wins, played);
+      for (const ti of g.members) {
+        const bd = band[ti], size = bd.hi - bd.lo + 1;
+        const qual = g.cut ? Math.max(0, Math.min(size, g.cut - bd.lo + 1)) : 0;
+        const share = g.cut ? qual / size : 0;
+        const A = acc[ti];
+        A.pIn += weight * share;
+        if (qual > 0 && qual < size) A.pTie += weight;
+        if (bd.lo < A.best) A.best = bd.lo;
+        if (bd.hi > A.worst) A.worst = bd.hi;
+        for (let p = bd.lo; p <= bd.hi; p++) A.pos[p] += weight / size;
+        if (share > 0) A.cIn++;
+        if (share === 1) A.cSure++;
+        if (okAll) okAll[ti][it] = share === 1 ? 2 : (share > 0 ? 1 : 0);
+        for (let b = 0; b < n; b++) {
+          const c = A.cond[b][sides[b]];
+          c.w += weight; c.inw += weight * share;
+        }
+      }
+    }
+  }
+  for (const A of acc) {
+    A.pIn /= totalW; A.pTie /= totalW;
+    for (let p = 0; p < A.pos.length; p++) A.pos[p] /= totalW;
+    for (const pair of A.cond) for (const c of pair) { c.inw = c.w ? c.inw / c.w : 0; c.w /= totalW; }
+    if (A.best === 99) A.best = 0;
+  }
+  const state = { slug, C, free, locked, locks: S.locks, exact, deep, combos, acc, okAll, pA };
+  raceCache[slug] = { sig, state };
+  return state;
+}
+
+/* Smallest sets of results that settle it. A condition is a set of games with
+   a side picked in each; it *guarantees* qualification when no enumerated
+   ending consistent with it leaves the team short, and *ends* it when no
+   ending consistent with it gets the team in. Exact path only — with a sampled
+   model, "there is no ending where X" is not a sentence you are entitled to. */
+function raceConditions(state, ti, want, maxSize) {
+  if (!state.deep) return [];
+  const ok = state.okAll[ti], n = state.free.length, combos = state.combos;
+  const found = [];
+  const implied = (sel, val) => found.some(c => (sel & c.sel) === c.sel && (val & c.sel) === c.val);
+  const test = (sel, val) => {
+    for (let it = 0; it < combos; it++) {
+      if ((it & sel) !== val) continue;
+      if (want ? ok[it] !== 2 : ok[it] !== 0) return false;
+    }
+    return true;
+  };
+  const pick = [];
+  const walk = (start, size) => {
+    if (found.length >= RACE_MAX_COND) return;
+    if (!size) {
+      let sel = 0;
+      for (const b of pick) sel |= 1 << b;
+      for (let v = 0; v < (1 << pick.length); v++) {
+        let val = 0;
+        pick.forEach((b, i) => { if ((v >> i) & 1) val |= 1 << b; });
+        if (implied(sel, val)) continue;
+        if (test(sel, val)) found.push({ sel, val, size: pick.length });
+        if (found.length >= RACE_MAX_COND) return;
+      }
+      return;
+    }
+    for (let b = start; b <= n - size; b++) { pick.push(b); walk(b + 1, size - 1); pick.pop(); }
+  };
+  for (let size = 1; size <= maxSize && found.length < RACE_MAX_COND; size++) walk(0, size);
+  /* a scenario the team has a hand in beats one it can only watch */
+  const own = c => {
+    let k = 0;
+    for (let b = 0; b < n; b++)
+      if (((c.sel >> b) & 1) && (state.free[b].a === ti || state.free[b].b === ti)) k++;
+    return k;
+  };
+  return found.sort((x, y) => x.size - y.size || own(y) - own(x));
+}
+
+/* a condition as words: "MKOI beat TH and FNC beat NAVI" */
+function raceCondText(state, cond) {
+  const parts = [];
+  for (let b = 0; b < state.free.length; b++) {
+    if (!((cond.sel >> b) & 1)) continue;
+    const f = state.free[b], aw = !((cond.val >> b) & 1);
+    const w = state.C.teams[aw ? f.a : f.b].name, l = state.C.teams[aw ? f.b : f.a].name;
+    parts.push('<b>' + esc(raceShort(w)) + '</b> beat ' + esc(raceShort(l)));
+  }
+  return parts.join(' and ');
+}
+const raceShort = name => String(name || '').replace(/\s+(Esports|eSports|Gaming|Team|Club)$/i, '').trim()
+  || String(name || '');
+const racePct = p => p >= 0.9995 ? '100%' : p <= 0.0005 ? '0%'
+  : p > 0.995 ? '>99%' : p < 0.005 ? '<1%' : Math.round(p * 100) + '%';
+/* 100% belongs to teams that are actually through, not to rounding: a team
+   still able to miss out reads ">99%", however thin the path is */
+const raceOdds = (A, st) => st.key === 'in' ? '100%' : st.key === 'out' ? '0%'
+  : racePct(Math.min(0.9994, Math.max(0.0006, A.pIn)));
+function raceOrd(k) { const s = ['th','st','nd','rd'], v = k % 100; return k + (s[(v - 20) % 10] || s[v] || s[0]); }
+
+/* =====================================================================
+   PLAYOFF RACE — rendering
+===================================================================== */
+function renderRace(slug) {
+  const tblBox = $('#raceTable-' + slug);
+  if (!tblBox) return;
+  const fixBox = $('#raceFix-' + slug), focusBox = $('#raceFocus-' + slug),
+        sub = $('#raceSub-' + slug), note = $('#raceNote-' + slug);
+  let state = null;
+  try { state = raceRun(slug); }
+  catch (e) { console.error('race failed for ' + slug, e); }
+  if (!state) {
+    tblBox.innerHTML = '<div class="loading">The race board fills in once the standings load.</div>';
+    fixBox.innerHTML = ''; focusBox.innerHTML = ''; note.textContent = '';
+    if (sub) sub.textContent = '';
+    return;
+  }
+  const C = state.C, S = raceLoad(slug);
+  const cutG = C.groups.filter(g => g.cut);
+  const nLeft = C.fixtures.length;
+
+  if (sub) {
+    const line = cutG.length
+      ? cutG.map(g => (C.groups.length > 1 && g.name ? raceShort(g.name) + ': ' : '') + 'top ' + g.cut
+                      + (g.kind === 'pi' ? ' reach the play-in' : ' make playoffs')).join(' · ')
+      : 'no qualification cut is configured for this league';
+    sub.textContent = line;
+  }
+  note.innerHTML = !nLeft
+    ? 'The regular season is over — this is the final table.'
+    : (state.exact
+        ? 'Exact: every one of the ' + state.combos.toLocaleString() + ' ways the remaining '
+          + state.free.length + ' game' + (state.free.length === 1 ? '' : 's')
+          + ' can go, weighed by the same model the simulator uses. '
+        : 'Sampled: ' + RACE_ITERS.toLocaleString() + ' simulated endings — too many games left ('
+          + state.free.length + ') to enumerate them all, so "impossible" here means "never seen". ')
+      + 'Ties are split on head-to-head; anything head-to-head cannot split is shown as a shared position, because the rules that settle those (game win %, strength of victory) need data this page does not have.';
+
+  /* ---- the table ---- */
+  const nowWins = new Int16Array(C.n), nowLoss = new Int16Array(C.n);
+  C.teams.forEach(t => { nowWins[t.i] = t.w; nowLoss[t.i] = t.l; });
+  const HEAD = '<table class="tbl-race"><tr><th class="num">#</th><th>Team</th><th class="num">W–L</th>'
+    + '<th class="num gl" title="Games left in the regular season">GL</th>'
+    + '<th class="num" title="Best and worst finish still mathematically available">Range</th>'
+    + '<th>Odds</th><th></th></tr>';
+  let html = '';
+  for (const g of C.groups) {
+    /* where they stand today: the official ordinal where the API gave us one,
+       our own count of the fetched games where it did not */
+    const band = raceRank(C, g, nowWins, [], nowLoss);
+    const at = ti => C.teams[ti].ord || band[ti].lo;
+    const rows = g.members.slice().sort((x, y) => at(x) - at(y)
+      || C.teams[x].name.localeCompare(C.teams[y].name));
+    if (C.groups.length > 1) html += '<div class="grp-head">' + esc(g.name || 'Table') + '</div>';
+    html += HEAD;
+    rows.forEach((ti, i) => {
+      const t = C.teams[ti], A = state.acc[ti];
+      const shared = rows.some(o => o !== ti && at(o) === at(ti));
+      const cut = g.cut && i + 1 === g.cut && i + 1 < rows.length;
+      const st = raceStatus(state, ti, g);
+      const range = A.best ? (A.best === A.worst ? raceOrd(A.best) : raceOrd(A.best) + '–' + raceOrd(A.worst)) : '—';
+      html += '<tr class="race-row' + (cut ? ' cutline' : '')
+        + (nk(S.focus) === t.k ? ' sel' : '') + '" data-t="' + esc(t.name) + '" tabindex="0"'
+        + ' title="What ' + esc(t.name) + ' needs">'
+        + '<td class="num rank-cell">' + at(ti) + (shared ? '=' : '') + '</td>'
+        + '<td>' + logoHTML(t.name) + esc(raceShort(t.name)) + '</td>'
+        + '<td class="num">' + t.w + '–' + t.l + '</td>'
+        + '<td class="num gl">' + t.left + '</td>'
+        + '<td class="num">' + range + '</td>'
+        + '<td class="race-odds"><span class="race-num">' + (g.cut ? raceOdds(A, st) : '—') + '</span>'
+        + '<span class="bar-wrap"><span class="bar" style="width:' + (g.cut ? Math.round(A.pIn * 100) : 0) + '%"></span></span></td>'
+        + '<td>' + st.chip + '</td></tr>';
+    });
+    html += '</table>';
+  }
+  tblBox.innerHTML = html;
+  tblBox.querySelectorAll('tr.race-row').forEach(row => {
+    const go = () => { S.focus = (nk(S.focus) === nk(row.dataset.t)) ? '' : row.dataset.t; raceSave(slug); renderRace(slug); };
+    row.addEventListener('click', go);
+    row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+
+  /* ---- remaining games, click a side to lock it ---- */
+  if (!nLeft) {
+    fixBox.innerHTML = '<div class="race-hint">No regular-season games left to play.</div>';
+  } else {
+    let fh = '';
+    let lastDay = '';
+    for (const f of C.fixtures) {
+      const d = new Date(f.when).toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short' });
+      if (d !== lastDay) { fh += '<div class="race-day">' + esc(d) + '</div>'; lastDay = d; }
+      const lock = S.locks[f.id] || '';
+      const fi = state.free.indexOf(state.free.find(x => x.id === f.id));
+      const p = fi >= 0 ? state.pA[fi] : null;
+      const side = (which, ti) => '<button class="rfx-pick' + (lock === which ? ' on' : '')
+        + '" data-f="' + esc(f.id) + '" data-s="' + which + '" title="Lock this result and recalculate">'
+        + logoHTML(C.teams[ti].name) + '<span>' + esc(raceTag(C.teams[ti])) + '</span>'
+        + (p != null ? '<i>' + Math.round((which === 'a' ? p : 1 - p) * 100) + '%</i>' : '') + '</button>';
+      fh += '<div class="race-fx' + (lock ? ' locked' : '') + '">' + side('a', f.a)
+        + '<span class="race-v">v</span>' + side('b', f.b) + '</div>';
+    }
+    fixBox.innerHTML = fh;
+    fixBox.querySelectorAll('.rfx-pick').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.f, s = b.dataset.s;
+      if (S.locks[id] === s) delete S.locks[id]; else S.locks[id] = s;
+      raceSave(slug); renderRace(slug);
+    }));
+  }
+  const clr = $('#raceClear-' + slug);
+  if (clr) clr.disabled = !Object.keys(S.locks).length;
+
+  /* ---- what one team needs ---- */
+  const ti = C.teams.findIndex(t => nk(t.name) === nk(S.focus));
+  focusBox.innerHTML = ti < 0
+    ? '<div class="race-hint">Pick a team above to see what has to happen for it.</div>'
+    : raceFocusHTML(state, ti);
+}
+
+/* short label for a team in tight space: the standings code, else initials */
+const raceTag = t => t.code
+  || String(t.name || '?').split(/\s+/).map(w => w[0] || '').join('').slice(0, 4).toUpperCase();
+
+function raceStatus(state, ti, g) {
+  const A = state.acc[ti];
+  if (!g.cut) return { key:'none', chip:'' };
+  const label = g.kind === 'pi' ? 'play-in' : 'playoffs';
+  if (A.cSure === state.combos)
+    return state.exact
+      ? { key:'in', chip:'<span class="race-chip in">Locked</span>',
+          line:'Through to the ' + label + ' whatever happens from here.' }
+      /* sampling can show a team surviving every ending it drew without that
+         being proof it survives every ending there is */
+      : { key:'near', chip:'<span class="race-chip in">Near-certain</span>',
+          line:'Through in all ' + state.combos.toLocaleString() + ' sampled endings — but sampling cannot prove there is no way out.' };
+  if (A.cIn === 0)
+    return { key:'out', chip:'<span class="race-chip out">' + (state.exact ? 'Eliminated' : 'No path seen') + '</span>',
+             line: state.exact
+               ? 'Mathematically out — there is no combination of remaining results that gets them into the ' + label + '.'
+               : 'Not once in ' + state.combos.toLocaleString() + ' sampled endings did they reach the ' + label + '.' };
+  return { key:'alive', chip:'<span class="race-chip live">Alive</span>' };
+}
+
+function raceFocusHTML(state, ti) {
+  const C = state.C, t = C.teams[ti], A = state.acc[ti];
+  const g = C.groups.find(x => x.members.includes(ti));
+  const label = g && g.kind === 'pi' ? 'the play-in' : 'the playoffs';
+  const st = raceStatus(state, ti, g);
+  const own = [], others = [];
+  state.free.forEach((f, b) => (f.a === ti || f.b === ti ? own : others).push(b));
+
+  let h = '<div class="rf-head">' + logoHTML(t.name) + '<b>' + esc(t.name) + '</b>'
+    + '<span class="rf-rec">' + t.w + '–' + t.l + ' · ' + t.left + ' to play</span>'
+    + (g && g.cut ? '<span class="rf-big">' + raceOdds(A, st) + '</span>' : '') + '</div>';
+  if (!g || !g.cut) return h + '<div class="race-hint">No qualification cut is configured for this table.</div>';
+
+  const bits = [];
+  if (st.line) bits.push('<li class="' + (st.key === 'out' ? 'bad' : 'good') + '">' + esc(st.line) + '</li>');
+  else {
+    bits.push('<li>Reaches ' + label + ' in <b>' + A.cIn.toLocaleString() + '</b> of '
+      + state.combos.toLocaleString() + (state.exact ? ' possible endings' : ' sampled endings')
+      + ' — finish as high as <b>' + raceOrd(A.best) + '</b>, as low as <b>' + raceOrd(A.worst) + '</b>.</li>');
+    if (A.pTie > 0.005)
+      bits.push('<li class="warn">' + racePct(A.pTie) + ' of endings leave them level on the cut line with the '
+        + 'tiebreak unresolved — those are counted as a share of a place, not a yes.</li>');
+  }
+
+  /* their own games, conditioned */
+  for (const b of own) {
+    const f = state.free[b], meIsA = f.a === ti, opp = C.teams[meIsA ? f.b : f.a];
+    const win = A.cond[b][meIsA ? 0 : 1], lose = A.cond[b][meIsA ? 1 : 0];
+    bits.push('<li class="own">v <b>' + esc(raceShort(opp.name)) + '</b> — win: <b class="ok">'
+      + racePct(win.inw) + '</b>, lose: <b class="' + (lose.inw < 0.005 ? 'no' : 'ok') + '">'
+      + racePct(lose.inw) + '</b>' + (lose.inw < 0.0005 ? ' (must-win)' : '') + '.</li>');
+  }
+  for (const f of state.locked) {
+    if (f.a !== ti && f.b !== ti) continue;
+    const won = state.locks[f.id] === (f.a === ti ? 'a' : 'b');
+    bits.push('<li class="own">v <b>' + esc(raceShort(C.teams[f.a === ti ? f.b : f.a].name))
+      + '</b> — locked as a ' + (won ? 'win' : 'loss') + ' in this scenario.</li>');
+  }
+
+  /* results that settle it, and results they cannot survive */
+  if (state.deep && st.key === 'alive') {
+    const sure = raceConditions(state, ti, true, 3);
+    const dead = raceConditions(state, ti, false, 2);
+    for (const c of sure) bits.push('<li class="good">If ' + raceCondText(state, c) + ' — <b>in</b>, whatever else happens.</li>');
+    for (const c of dead) bits.push('<li class="bad">If ' + raceCondText(state, c) + ' — <b>out</b>, whatever else happens.</li>');
+    if (!sure.length)
+      bits.push('<li>No set of three results puts them through for certain — even the best case is still waiting on the final day.</li>');
+  } else if (!state.deep && st.key === 'alive') {
+    bits.push('<li>Too many games left to name the scenarios exactly — lock a few results on the right and they will appear.</li>');
+  }
+
+  /* who to root for */
+  if (st.key === 'alive' && others.length) {
+    const swing = others.map(b => {
+      const f = state.free[b], d = A.cond[b][0].inw - A.cond[b][1].inw;
+      return { b, f, d, want: d >= 0 ? f.a : f.b, other: d >= 0 ? f.b : f.a, mag: Math.abs(d) };
+    }).filter(x => x.mag > 0.005).sort((x, y) => y.mag - x.mag).slice(0, 3);
+    if (swing.length) bits.push('<li class="root">Root for: ' + swing.map(x =>
+      '<b>' + esc(raceShort(C.teams[x.want].name)) + '</b> over ' + esc(raceShort(C.teams[x.other].name))
+      + ' <i>(+' + Math.round(x.mag * 100) + ')</i>').join(', ') + '</li>');
+  }
+  return h + '<ul class="rf-list">' + bits.join('') + '</ul>';
+}
+
+/* Hand the projected table to the simulator below: locked results stand, the
+   rest go to the model favourite, and the qualifiers seed the bracket. */
+function raceToSim(slug) {
+  const state = raceRun(slug);
+  if (!state) return;
+  const C = state.C, S = raceLoad(slug);
+  const wins = new Int16Array(C.n), played = [];
+  C.teams.forEach(t => { wins[t.i] = t.w; });
+  for (const f of state.locked) {
+    const aw = S.locks[f.id] === 'a';
+    const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
+    wins[w]++; played.push({ w, l });
+  }
+  state.free.forEach((f, b) => {
+    const aw = state.pA[b] >= 0.5;
+    const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
+    wins[w]++; played.push({ w, l });
+  });
+  const qual = [];
+  for (const g of C.groups) {
+    if (!g.cut) continue;
+    const band = raceRank(C, g, wins, played);
+    g.members.slice().sort((x, y) => band[x].lo - band[y].lo)
+      .filter(ti => band[ti].lo <= g.cut)
+      .forEach(ti => qual.push({ ti, wins: wins[ti], pos: band[ti].lo }));
+  }
+  if (!qual.length) return;
+  qual.sort((x, y) => x.pos - y.pos || y.wins - x.wins);
+  const Sim = simLoad(slug), F = FORMATS[Sim.format];
+  Sim.seeds = {}; Sim.winners = {};
+  qual.slice(0, F.seeds).forEach((q, i) => { Sim.seeds[i + 1] = C.teams[q.ti].name; });
+  simSave(slug); renderSim(slug);
+  const panel = $('#simBracket-' + slug);
+  if (panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block:'center' });
+}
+
+function initRace(slug) {
+  const clr = $('#raceClear-' + slug), seed = $('#raceSeed-' + slug);
+  if (clr) clr.addEventListener('click', () => {
+    raceLoad(slug).locks = {}; raceSave(slug); renderRace(slug);
+  });
+  if (seed) seed.addEventListener('click', () => raceToSim(slug));
+  renderRace(slug);
+}
+
 /* =====================================================================
    TABS + REFRESH LOOP
 ===================================================================== */
@@ -4236,6 +4891,7 @@ async function refreshAll(deep=true) {
       renderRegionData(slug);
       renderWatch(slug, findLiveFor(slug));
       renderSim(slug);
+      renderRace(slug);
     } catch (e) { console.error('render failed for ' + slug, e); }
   }
   renderHome();

@@ -23,8 +23,15 @@ Riot Games or any league.
   for kills, gold, towers, drakes and barons, the ten bans, which team drafted first, and the
   winner of each game. Teams hold the same column throughout, so sides are read off the
   BLUE/RED chip rather than the layout.
+- **Playoff Race** — the qualification calculator, per region: who is clinched, who is out, who
+  is still alive, each team's best and worst finish still available, and — for whichever team you
+  click — what actually has to happen. Which games are must-wins, which single results end it,
+  which other teams to root for. Lock any remaining result and the whole board recalculates
+  against that scenario. Late in a split it enumerates *every* remaining possibility rather than
+  sampling, so "eliminated" means eliminated, not "unlikely".
 - **Playoff Simulator** — an interactive bracket predictor per region: set win probabilities (or
-  let the model estimate them) and simulate the playoffs to see title odds.
+  let the model estimate them) and simulate the playoffs to see title odds. The race panel can
+  seed it directly from a projected final table.
 
 ## How it works
 

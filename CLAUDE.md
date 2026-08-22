@@ -1,7 +1,8 @@
 # League Esports Tracker
 
 A single-file, offline-capable dashboard tracking LoL esports (LEC, LCK, LPL, LCS) —
-schedules, live games, standings, power rankings, honours, playoff bracket predictor.
+schedules, live games, standings, power rankings, honours, playoff race odds, playoff
+bracket predictor.
 Deployed via GitHub Pages straight from this repo.
 
 ## Ground rules
@@ -73,6 +74,31 @@ Deployed via GitHub Pages straight from this repo.
   — a split that just started, a season link pointing at last year, a trophy the
   honours board may be missing). Start a data session here rather than guessing.
   Anything it reports comes with the constant to edit.
+
+## The playoff race panel
+
+`renderRace()` / `raceRun()` sit between the standings table and the simulator on each
+region page, and answer "who qualifies?" rather than "who wins the bracket?".
+
+- **Enumeration, not simulation, wherever possible.** With *n* regular-season games
+  left there are 2^n endings; up to `RACE_EXACT_MAX` every one is walked and weighted
+  by the model probability, so the counts ("in 832 of 2,048 endings") are exact and
+  words like *eliminated* and *clinched* are load-bearing. Past that it samples
+  `RACE_ITERS` seasons and the panel changes its wording to match — an impossibility
+  becomes "never seen". Never let sampled output claim mathematical certainty.
+- **Fixtures are separated from playoff games by quota**, not by block name: a team
+  gets `REGIONS[].defaultGames` regular-season games, and once its allowance is spent
+  every later fixture it appears in is a bracket game. Keep `defaultGames` current or
+  the panel silently races the wrong games.
+- **Cuts come from `cutsForGroup()`**, shared with the standings table so the line one
+  draws and the line the other measures against cannot drift apart. Grouped leagues
+  (LCK Legend/Rise, LPL Ascend/Nirvana) race inside their group.
+- **Ties are broken on head-to-head and stop there.** What head-to-head cannot split is
+  reported as a shared position and counted as a fraction of a place, because the rules
+  that settle it (LEC: head-to-head game win %, then strength of victory) need data the
+  page does not have. Do not invent a deeper tiebreak — the same rule as the constants.
+- Locked scenarios live in `nexusdesk_race_<slug>` and are keyed by match id, so a lock
+  on a game that has since been played is dropped rather than applied twice.
 
 ## Generated data: the DRAFTS block
 
