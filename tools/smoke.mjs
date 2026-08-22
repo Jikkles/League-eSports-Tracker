@@ -195,6 +195,48 @@ if (loaded) {
 
       return `${rows - 1} standings rows, ${wires} bracket wires`;
     });
+
+    /* The race board is computed rather than fetched, which makes its failure
+       mode quiet: a broken edit renders "the race board fills in once the
+       standings load" and throws nothing, so every other check here stays
+       green. The arithmetic is the real guard. Exactly `cut` teams qualify in
+       every ending — a team above the line counts 1, and a tied band straddling
+       it splits one place between its members — so a group's odds have to add
+       up to its number of places no matter what the ranking, the tiebreaks and
+       the fraction handling did on the way there. */
+    await check(`${slug}: playoff race adds up`, async () => {
+      const r = await page.evaluate(s => {
+        const st = raceRun(s);
+        if (!st) return { none: true };
+        return {
+          rows: document.querySelectorAll(`#raceTable-${s} tr.race-row`).length,
+          teams: st.C.teams.length,
+          fixtures: st.C.fixtures.length,
+          exact: st.exact,
+          chips: [...document.querySelectorAll(`#raceTable-${s} .race-chip`)].map(c => c.textContent),
+          groups: st.C.groups.filter(g => g.cut).map(g => ({
+            name: g.name,
+            places: Math.min(g.cut, g.members.length),
+            sum: g.members.reduce((a, ti) => a + st.acc[ti].pIn, 0),
+          })),
+        };
+      }, slug);
+
+      if (r.none) throw new Error('no table to race — the panel rendered its empty state');
+      if (r.rows !== r.teams) throw new Error(`${r.rows} race rows for ${r.teams} teams`);
+      if (!r.groups.length) throw new Error('no qualification cut resolved for this league');
+
+      const VOCAB = new Set(['Locked', 'Near-certain', 'Alive', 'Eliminated', 'No path seen']);
+      const odd = r.chips.filter(c => !VOCAB.has(c));
+      if (odd.length) throw new Error(`unexpected status chip: "${odd[0]}"`);
+
+      for (const g of r.groups)
+        if (Math.abs(g.sum - g.places) > 0.01)
+          throw new Error(`${g.name || 'table'}: odds sum to ${g.sum.toFixed(3)} for ${g.places} places`);
+
+      return `${r.rows} rows, ${r.fixtures} games left, ${r.exact ? 'exact' : 'sampled'}, `
+        + `odds sum to ${r.groups.map(g => g.places).join(' + ')}`;
+    });
   }
 
   await check('back to home', async () => {

@@ -164,7 +164,12 @@ The checks answer different questions and none of them substitutes for another:
 `smoke.mjs` serves the repo over http, opens it in headless chromium against a cold
 profile (so, empty localStorage: the first-visit path), and checks the nav, home board,
 all four league tabs, standings rows and bracket wiring, failing on any uncaught
-exception or console error. It then narrows to a 390px viewport, runs axe, and finally
+exception or console error.
+
+It also checks that **the race panel's odds add up**: exactly `cut` teams qualify in
+every ending, so a group's probabilities must sum to its number of places. That one is
+load-bearing — the race board is computed rather than fetched, so a broken edit renders
+its empty state and throws nothing, and every other check here would stay green. It then narrows to a 390px viewport, runs axe, and finally
 blocks the API to exercise the offline path.
 
 That last group is the only check in the repo that does **not** need the network — it
