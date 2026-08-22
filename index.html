@@ -500,7 +500,8 @@ tr.race-row:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
 .rf-list li{background:var(--panel2);border-left:2px solid var(--line2);border-radius:0 var(--radius) var(--radius) 0;padding:8px 11px;font-size:13.5px;line-height:1.5}
 .rf-list li.good{border-left-color:var(--win)}
 .rf-list li.bad{border-left-color:var(--loss)}
-.rf-list li.warn{border-left-color:#E0A63A}
+.rf-list li.warn{border-left-color:#E0A63A;color:var(--dim);font-size:12.5px}
+.rf-list li.warn b{color:var(--text)}
 .rf-list li.own{border-left-color:var(--cyan)}
 .rf-list li.root{border-left-color:var(--line2);color:var(--dim)}
 .rf-list li.root b{color:var(--text)}
@@ -4658,22 +4659,32 @@ function raceFocusHTML(state, ti) {
   if (!g || !g.cut) return h + '<div class="race-hint">No qualification cut is configured for this table.</div>';
 
   const bits = [];
+  const odds = raceOdds(A, st);
+  /* Two percentages about the same team, stacked, both large: the tiebreak
+     share got read as the qualification chance. It now says what it is not,
+     names the headline it qualifies, and waits until after the games the team
+     actually plays, so the eye meets the odds first. */
+  const tie = A.pTie > 0.005
+    ? '<li class="warn"><b>Tiebreak risk</b>, not a qualification chance: in ' + racePct(A.pTie)
+      + ' of endings they finish level on the cut line, where the rules that settle it need data this page '
+      + 'does not have. The <b>' + odds + '</b> above counts those as a share of a place, not a yes.</li>'
+    : '';
   if (st.line) bits.push('<li class="' + (st.key === 'out' ? 'bad' : 'good') + '">' + esc(st.line) + '</li>');
-  else {
+  else
     bits.push('<li>Reaches ' + label + ' in <b>' + A.cIn.toLocaleString() + '</b> of '
       + state.combos.toLocaleString() + (state.exact ? ' possible endings' : ' sampled endings')
-      + ' — finish as high as <b>' + raceOrd(A.best) + '</b>, as low as <b>' + raceOrd(A.worst) + '</b>.</li>');
-    if (A.pTie > 0.005)
-      bits.push('<li class="warn">' + racePct(A.pTie) + ' of endings leave them level on the cut line with the '
-        + 'tiebreak unresolved — those are counted as a share of a place, not a yes.</li>');
-  }
+      + ' — finish as high as <b>' + raceOrd(A.best) + '</b>, as low as <b>' + raceOrd(A.worst) + '</b>. '
+      + 'The <b>' + odds + '</b> weighs each ending by how likely it is; the count treats them all alike.</li>');
 
   /* their own games, conditioned */
   for (const b of own) {
     const f = state.free[b], meIsA = f.a === ti, opp = C.teams[meIsA ? f.b : f.a];
     const win = A.cond[b][meIsA ? 0 : 1], lose = A.cond[b][meIsA ? 1 : 0];
-    bits.push('<li class="own">v <b>' + esc(raceShort(opp.name)) + '</b> — win: <b class="ok">'
-      + racePct(win.inw) + '</b>, lose: <b class="' + (lose.inw < 0.005 ? 'no' : 'ok') + '">'
+    /* colour the number for what it is worth, not for which result it follows:
+       a 3% survival after a loss is not good news in green */
+    const tone = p => p < 0.05 ? 'no' : (p >= 0.5 ? 'ok' : '');
+    bits.push('<li class="own">v <b>' + esc(raceShort(opp.name)) + '</b> — win: <b class="' + tone(win.inw) + '">'
+      + racePct(win.inw) + '</b>, lose: <b class="' + tone(lose.inw) + '">'
       + racePct(lose.inw) + '</b>' + (lose.inw < 0.0005 ? ' (must-win)' : '') + '.</li>');
   }
   for (const f of state.locked) {
@@ -4682,6 +4693,7 @@ function raceFocusHTML(state, ti) {
     bits.push('<li class="own">v <b>' + esc(raceShort(C.teams[f.a === ti ? f.b : f.a].name))
       + '</b> — locked as a ' + (won ? 'win' : 'loss') + ' in this scenario.</li>');
   }
+  if (tie) bits.push(tie);
 
   /* results that settle it, and results they cannot survive */
   if (state.deep && st.key === 'alive') {
