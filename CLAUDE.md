@@ -93,10 +93,19 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
 - **Cuts come from `cutsForGroup()`**, shared with the standings table so the line one
   draws and the line the other measures against cannot drift apart. Grouped leagues
   (LCK Legend/Rise, LPL Ascend/Nirvana) race inside their group.
-- **Ties are broken on head-to-head and stop there.** What head-to-head cannot split is
-  reported as a shared position and counted as a fraction of a place, because the rules
-  that settle it (LEC: head-to-head game win %, then strength of victory) need data the
-  page does not have. Do not invent a deeper tiebreak — the same rule as the constants.
+- **Ties follow the published order as far as the data reaches, then stop.** The LEC's
+  rulebook (Liquipedia mirrors it) breaks them on head-to-head wins, then head-to-head
+  game win %, then strength of victory, then the Spring standings. `raceRank()` applies
+  the first, and `raceGamePct()` the second — each tiebreak measured among the teams
+  still level after the one before it, which is the standard reading. Rule 2 needs map
+  scores, so it only runs when every game between the tied teams has actually been
+  played: a hypothetical Bo3 has a winner but no score, and 2–0 and 2–1 are not the same
+  tiebreak. It declines rather than guessing, and the teams stay level.
+- **What neither can split is a shared band**, counted as a fraction of a place and
+  marked `=` in the Range column, because strength of victory has no definition this
+  repo has verified and the Spring standings are not baked in. Do not invent a deeper
+  tiebreak — the same rule as the constants. If you implement one, implement the
+  *published* one and only where real data backs it.
 - Locked scenarios live in `nexusdesk_race_<slug>` and are keyed by match id, so a lock
   on a game that has since been played is dropped rather than applied twice.
 
