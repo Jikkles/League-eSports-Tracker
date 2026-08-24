@@ -106,6 +106,13 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
   repo has verified and the Spring standings are not baked in. Do not invent a deeper
   tiebreak — the same rule as the constants. If you implement one, implement the
   *published* one and only where real data backs it.
+- **`raceCommon()` names what a miss needs**, because "Alive" alone reads as a
+  contradiction when a broadcast has just called the same team through. Riot's clinch
+  graphics run on wins — a team nobody can pass is safe — while this counts a lost
+  tiebreak as out, so a four-way tie for two places can separate the two answers. The
+  panel now prints the results every miss has in common ("they only miss out if all of:
+  …"), which makes that gap checkable rather than mysterious. Don't resolve such a
+  disagreement by softening the maths.
 - Locked scenarios live in `nexusdesk_race_<slug>` and are keyed by match id, so a lock
   on a game that has since been played is dropped rather than applied twice.
 

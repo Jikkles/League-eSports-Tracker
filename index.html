@@ -4579,6 +4579,32 @@ function raceConditions(state, ti, want, maxSize) {
   return found.sort((x, y) => x.size - y.size || own(y) - own(x));
 }
 
+/* What every ending of one kind has in common. "Alive" on its own invites the
+   question the broadcast graphics answer differently — a clinch check run on
+   wins alone calls a team safe the moment nobody can pass it, while a team can
+   still be tied and lose the tiebreak. This names the results a miss actually
+   needs, so the gap between the two answers is visible rather than mysterious.
+   Exact path only: it is a claim about every ending, not a sample of them. */
+function raceCommon(state, ti, want) {
+  if (!state.deep) return null;
+  const ok = state.okAll[ti], n = state.free.length;
+  const need = new Array(n).fill(-1);   // -1 unseen, 0/1 a side, 2 varies
+  let count = 0;
+  for (let it = 0; it < state.combos; it++) {
+    if (want ? ok[it] !== 2 : ok[it] !== 0) continue;
+    count++;
+    for (let b = 0; b < n; b++) {
+      const s = (it >> b) & 1;
+      if (need[b] === -1) need[b] = s; else if (need[b] !== s) need[b] = 2;
+    }
+  }
+  if (!count) return null;
+  let sel = 0, val = 0;
+  for (let b = 0; b < n; b++)
+    if (need[b] === 0 || need[b] === 1) { sel |= 1 << b; if (need[b]) val |= 1 << b; }
+  return sel ? { sel, val, count } : null;
+}
+
 /* a condition as words: "MKOI beat TH and FNC beat NAVI" */
 function raceCondText(state, cond) {
   const parts = [];
@@ -4804,6 +4830,13 @@ function raceFocusHTML(state, ti) {
     for (const c of dead) bits.push('<li class="bad">If ' + raceCondText(state, c) + ' — <b>out</b>, whatever else happens.</li>');
     if (!sure.length)
       bits.push('<li>No set of three results puts them through for certain — even the best case is still waiting on the final day.</li>');
+    /* the narrow end of it: what a miss (or a route through) needs every time */
+    const common = raceCommon(state, ti, A.pIn <= 0.5);
+    if (common && common.sel)
+      bits.push('<li class="' + (A.pIn > 0.5 ? 'good' : 'warn') + '">' + (A.pIn > 0.5
+          ? 'They only miss out if <b>all</b> of these happen: '
+          : 'Every ending that gets them through needs <b>all</b> of: ')
+        + raceCondText(state, common) + '.</li>');
   } else if (!state.deep && st.key === 'alive') {
     bits.push('<li>Too many games left to name the scenarios exactly — lock a few results on the right and they will appear.</li>');
   }
