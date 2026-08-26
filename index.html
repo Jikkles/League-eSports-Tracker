@@ -151,9 +151,8 @@ main{min-width:0}
   .panel{padding:14px 12px;border-radius:var(--radius)}
   .p-title{font-size:20px}
   .logo{font-size:19px}.logo small{display:none}.logo-mark{width:24px;height:24px}
-  nav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-  nav::-webkit-scrollbar{display:none}
-  .tab{font-size:18px;padding:12px 16px;letter-spacing:1.1px;flex:none}
+  /* nav: see the phone block near the end of the sheet — all five
+     destinations share the width rather than scrolling off the right edge */
   .two-col{grid-template-columns:1fr}
   .modal{width:100vw;padding:20px 14px;border-radius:0;min-height:100vh}
   .modal-bg{padding:0}
@@ -336,7 +335,7 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .chip.sel{border-color:var(--cyan);background:var(--cyan);color:#001014}
 .chip .tlogo,.chip .tmono{width:16px;height:16px}
 .chip .x{color:var(--faint);margin-left:2px;font-family:var(--mono);font-size:10px}
-.bracket{display:grid;gap:14px 34px;padding:6px 2px;align-items:stretch;position:relative}
+.bracket{display:grid;gap:14px 34px;padding:6px 2px;align-items:stretch;position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .bcell{display:flex;flex-direction:column;gap:12px;justify-content:center;min-width:0;height:100%;position:relative;z-index:1}
 /* advancement wiring, drawn to measured box positions after layout */
 .bwires{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:0}
@@ -350,7 +349,9 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .wire-key i{width:22px;height:0;border-top:1.5px solid #3D3D3D;display:inline-block}
 .wire-key i.drop{border-top-style:dashed;border-top-color:rgba(232,57,74,.6)}
 .wire-key i.live{border-top-color:var(--cyan);border-top-width:2px}
-.bgroup-label{display:inline-block;background:#1A1A1A;color:var(--dim);font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;padding:5px 12px;border-radius:var(--pill);margin-bottom:-4px;align-self:flex-start}
+/* one line, always: wrapped inside a column this narrow the pill stopped being
+   a label and became a blob sitting over the match boxes */
+.bgroup-label{display:inline-block;white-space:nowrap;background:#1A1A1A;color:var(--dim);font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;padding:5px 12px;border-radius:var(--pill);margin-bottom:-4px;align-self:flex-start}
 .bmatch{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
 .bslot{display:flex;align-items:center;gap:8px;padding:9px 10px;min-height:40px;font-size:14px;font-weight:600;border-bottom:1px solid var(--line)}
 .bslot:last-child{border-bottom:none}
@@ -515,6 +516,9 @@ tr.race-row:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
   /* the panel clips what it cannot fit, and a clipped "Eliminated" chip is a
      lie by truncation — drop the column the standings table already carries */
   .tbl-race .gl{display:none}
+  /* W–L and Range are two short tokens each; letting them wrap added a line to
+     every row for no gain, while the team name is the one worth wrapping */
+  .tbl-race td:nth-child(3),.tbl-race td:nth-child(5){white-space:nowrap}
   .race-chip{font-size:8.5px;padding:3px 5px}
   .rf-head{font-size:15px}
   .rf-head .rf-big{font-size:22px}
@@ -727,6 +731,13 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 /* ---- next up rows: one dense divided list. The matchup lives in its own
        centred block so wide screens don't stretch it into empty space ---- */
 .nxt-list{display:flex;flex-direction:column}
+/* A flex column whose content is taller than it shrinks its items, and the
+   floor each one shrinks to is `.duo .nxt`'s min-height:72px — which was
+   exactly a row's height while a row was one tier, and half of one once the
+   narrow layout stacked the matchup under the time. The rows kept their 72px
+   and drew the matchup over the next day's heading. Rows are a fixed size
+   here; nothing about them should be negotiable. */
+.nxt-list>*{flex:none}
 /* an expanded list scrolls inside the panel instead of stretching the page */
 .nxt-list.long{max-height:72vh;overflow-y:auto;scrollbar-width:thin}
 .nxt{display:grid;grid-template-columns:112px 190px minmax(0,1fr) 150px;align-items:center;gap:14px;
@@ -880,8 +891,13 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 @media (max-width:1100px){
   .ov-row{grid-template-columns:1fr}
   .duo{grid-template-columns:1fr}
-  /* two tiers: when + who it is, then the matchup itself */
-  .nxt{grid-template-columns:auto 1fr auto;grid-template-areas:"time rg meta" "mid mid mid";row-gap:10px;gap:12px}
+  /* two tiers: when + who it is, then the matchup itself.
+     `.duo .nxt` further down sets a *four*-column template, and a media query
+     adds no specificity — so this rule has to out-specify it or the fourth
+     track survives as a phantom column with nothing in it, eating 112px of a
+     390px row. That is what truncated team codes to "B…" and wrapped
+     "Best of 5 · Play-In Knockouts" over four lines. */
+  .nxt,.duo .nxt{grid-template-columns:auto auto minmax(0,1fr);grid-template-areas:"time rg meta" "mid mid mid";row-gap:10px;gap:12px}
   .nxt .n-when{grid-area:time}
   .nxt .n-rg{grid-area:rg;border-right:none;padding:0 0 0 12px}
   .nxt .n-meta{grid-area:meta}
@@ -891,16 +907,62 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .tri{grid-template-columns:1fr}
   .tri>.panel:last-child{grid-column:auto}
   .f-grid{grid-template-columns:1fr 1fr}
+  /* A tablet held in portrait lands here rather than in the phone block below,
+     and it is still a thumb doing the tapping — so the controls that were
+     built at mouse size get a real target here too. Sizes only; the layout
+     above this width is already comfortable. */
+  .p-head .right a.mini,.p-head .right button.mini{padding:12px 2px}
+  .btn.icon{width:44px;height:44px;padding:0;font-size:17px;flex:none}
+  .btn.small{padding:10px 14px}
+  .rgf{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  .pnl-btn{padding:13px 9px}
+  .f-rg{min-height:44px;padding:8px 2px}
+  .f-links a{width:44px;height:44px}
+  .modal-close{width:44px;height:44px;font-size:18px}
+  .vod-btn{padding:9px 14px}
+  .sim-toolbar select,.pool-add input,.pool-add .btn{min-height:44px}
+  /* the race panel's whole instruction is "click a side to lock it", so these
+     are the controls the panel exists for — they were 28px tall */
+  .rfx-pick{padding:10px 8px;min-height:42px}
 }
 @media (max-width:640px){
   .hdr-top{flex-wrap:wrap;gap:10px;padding:11px 14px}
   .hdr-status{width:100%;margin-left:0;justify-content:space-between;gap:10px}
   .hdr-clock{text-align:left}
-  .hdr-time{font-size:22px}
-  nav{flex-wrap:nowrap}                       /* one scrolling strip, not three rows */
-  .fchip{font-size:17px;padding:12px 14px;letter-spacing:1.2px;flex:none}
-  .nav-div{margin:0 10px;height:32px}
-  .tab .lgw{width:30px;height:30px}
+  /* The whole header stuck: 236px of logo, clock, nav and ticker held on
+     screen, 28% of an 844px phone permanently spent on chrome. Two changes.
+     First the row itself gets shorter — a phone shows the time in its own
+     status bar, so a 27px duplicate clock is chrome pretending to be data;
+     the timezone it carried stays, because the schedules are in local time
+     and the page has to say so. "updated 16:11" goes the same way: the live
+     dot beside it already reports the same thing.
+     Second, the header scrolls up until the nav reaches the top and pins
+     there. That needs the logo row's height as a negative `top`, measured by
+     syncHeaderOffset(); the fallback here is deliberately a little *short* of
+     it, so a scripting failure leaves a sliver of logo showing rather than
+     slicing the top off the tabs. */
+  header{top:calc(-1 * var(--hdr-off,96px))}
+  html{scroll-padding-top:104px}    /* so scrollIntoView clears the pinned nav */
+  .hdr-clock{display:flex;align-items:baseline;gap:7px}
+  #hdrClock{display:none}
+  .hdr-time{font-size:11px;letter-spacing:1.4px}
+  .hdr-time .tz{vertical-align:0;margin-left:0;font-size:10px}
+  /* the status line wraps rather than shoving the refresh button off the edge:
+     "Data updates in real time" is the widest thing in the header and it is
+     also the least urgent, so it is what gives way */
+  .hdr-status{flex-wrap:wrap;row-gap:6px}
+  .hdr-meta{flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px 9px;min-width:0}
+  #apiStatus{white-space:normal}
+  #lastRefresh{display:none}
+
+  /* All five share the width instead of scrolling: LPL and LCS were off the
+     right edge with nothing saying the strip moved, which hid half the site. */
+  nav{display:flex;flex-wrap:nowrap;gap:2px;padding:0 6px}
+  .nav-div{display:none}
+  .fchip,.tab{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;
+    font-size:14.5px;letter-spacing:.3px;padding:12px 2px;margin:4px 0 11px;white-space:nowrap}
+  .tab .lgw{width:20px;height:20px}
+  .fchip::after,.tab::after{bottom:-6px;height:3px}
   .ov-regions{grid-template-columns:1fr 1fr}
   .ov-nums{gap:16px}
   .ov-n b{font-size:29px}
@@ -912,7 +974,10 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .duo .nxt .n-time,.duo .nxt .n-date{font-size:19px}
   .duo .nxt .n-code{font-size:18px}
   .duo .nxt .n-lg{width:36px;height:36px}
-  .duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);gap:7px}
+  /* the centre column holds "vs" on a fixture but a score on a result, and a
+     score is twice as wide — pinned at 28px it did not wrap (it is nowrap), it
+     drew straight over the crests either side of it */
+  .duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:7px}
   .duo .nxt .n-a,.duo .nxt .n-b{gap:8px}
   .duo .nxt .n-rg{padding:3px 4px}
   .duo .nxt .n-rg .lgw{width:24px;height:24px}
@@ -922,7 +987,63 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .n-sc i{margin:0 5px}
   .f-grid{grid-template-columns:1fr;padding:22px 14px 14px}
   .f-legal{padding:0 14px 22px}
+
+  /* Standings: eight columns never fitted 390px, and the panel clips what it
+     cannot fit — so Strk and GL were not merely cramped, they were gone, with
+     no scrollbar to say so. Same reasoning the race table already carries.
+     Names stop wrapping too: "Natus Vincere" over two lines made 130px rows
+     and put three teams on a screen. */
+  .tbl-scroll .tbl-big td,.tbl-scroll .tbl-big th{white-space:nowrap}
+  .tbl-scroll .tbl-big td:nth-child(2){max-width:none}
+
+  /* Tap targets. WCAG 2.5.8 wants 24px minimum and 44px is the size a thumb
+     actually hits; "View full schedule ›" was 18px tall. */
+  .p-head .right a.mini,.p-head .right button.mini{padding:13px 2px;font-size:12.5px}
+  .btn.icon{width:44px;height:44px;padding:0;font-size:17px;flex:none}
+  .rgf{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:6px}
+  .rgf.all{padding:6px 8px}
+  .rgfilt{gap:2px;margin-left:8px}
+  /* the crest row and the trailing link each take a line of their own here, so
+     the panel head was spending ~150px before any fixture appeared */
+  .p-head{gap:4px 10px;margin-bottom:8px}
+  .sub-line{margin:0 0 6px}
+  .pnl-btn{padding:14px 9px}
+  .btn.small{padding:11px 14px;font-size:11px}
+  /* the hero ran as one unwrapped row, so on a 320px phone its wiki links
+     pushed the whole document sideways */
+  .region-hero{flex-wrap:wrap;gap:10px 12px;padding:12px 14px}
+  .region-hero h1{font-size:28px;letter-spacing:2.5px}
+  .region-hero .links{margin-left:0;width:100%}
+  .region-hero .links .btn.small{flex:1 1 auto;text-align:center}
+  .f-rg{min-height:44px;padding:8px 2px}
+  .f-links{gap:8px}
+  .f-links a{width:44px;height:44px;font-size:16px}
+  .modal-close{width:44px;height:44px;font-size:18px}
+  .honour.linked{padding-top:14px;padding-bottom:14px}
+
+  /* the format picker is wider than the phone; let it shrink rather than
+     disappear past the panel's clipped right edge */
+  .sim-toolbar select{max-width:100%;flex:1 1 100%}
+  .sim-toolbar .btn{flex:1 1 auto;min-height:44px}
+  .pool-add input{width:100%}
 }
+
+/* Horizontal scrollers inside a clipping panel need to say they scroll.
+   Shadows that fade as you reach each end, in the background layer: the
+   `local` pair scrolls away with the content, the `scroll` pair stays put,
+   so a shadow shows only on the side that still has something to reveal. */
+.tbl-scroll,.race-tbl,.bracket{
+  background-image:
+    linear-gradient(90deg,var(--panel) 42%,rgba(17,17,17,0)),
+    linear-gradient(-90deg,var(--panel) 42%,rgba(17,17,17,0)),
+    radial-gradient(farthest-side at 0 50%,rgba(255,255,255,.20),rgba(255,255,255,0)),
+    radial-gradient(farthest-side at 100% 50%,rgba(255,255,255,.20),rgba(255,255,255,0));
+  background-position:0 0,100% 0,0 0,100% 0;
+  background-repeat:no-repeat;
+  background-size:34px 100%,34px 100%,15px 100%,15px 100%;
+  background-attachment:local,local,scroll,scroll;
+}
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 </style>
 </head>
 <body>
@@ -3126,7 +3247,7 @@ function buildRegionPage(slug) {
   const st = el('div','panel rg'); st.style.setProperty('--rg', R.color);
   st.innerHTML = `<div class="p-head"><div class="p-title">Current Standings</div>
       <span class="p-sub" id="tableSrc-${slug}">official standings via lolesports</span></div>
-    <div id="table-${slug}"><div class="loading">Loading…</div></div>`;
+    <div id="table-${slug}" class="tbl-scroll"><div class="loading">Loading…</div></div>`;
   page.appendChild(st);
 
   // playoff race: qualification odds + scenarios
@@ -3246,7 +3367,7 @@ function resultBracketHTML(bd) {
     inner += cell + '</div>';
   }
   return `<div class="m-section"><div class="eyebrow">${esc(bd.title||'Bracket')}</div>
-    <div class="bracket" style="grid-template-columns:repeat(${bd.cols}, minmax(0,1fr));grid-template-rows:auto auto">${inner}</div>
+    <div class="bracket" style="grid-template-columns:repeat(${bd.cols}, minmax(${BCOL_MIN}px,1fr));grid-template-rows:auto auto">${inner}</div>
     ${bd.note?'<div class="bracket-note">'+esc(bd.note)+'</div>':''}</div>`;
 }
 
@@ -3728,6 +3849,11 @@ function renderRegionData(slug) {
    Formats define matches with slot sources: seed:N, w:MatchId, l:MatchId.
    col/row place them in the grid (row 1 = upper, 2 = lower, 0 = spans).
 ===================================================================== */
+/* Narrowest a bracket column may become before the grid starts scrolling
+   instead of squashing. Sized to hold a "Upper Bracket – Round 2" label and a
+   team name beside its crest and score. */
+const BCOL_MIN = 158;
+
 const FORMATS = {
   de6: { name:'6-team double elim', seeds:6, cols:5, matches:[
     {id:'M1', g:'Upper Bracket – Round 1', col:1,row:1, s:['seed:1','seed:4']},
@@ -4015,7 +4141,12 @@ function renderSim(slug) {
   /* bracket grid */
   const br = $('#simBracket-'+slug);
   br.innerHTML = '';
-  br.style.gridTemplateColumns = `repeat(${F.cols}, minmax(0, 1fr))`;
+  /* A floor, not 0: with `minmax(0, 1fr)` six columns squeezed into a 390px
+     phone are ~30px each, and since nothing clips, the round labels and match
+     boxes simply drew on top of each other. A real minimum makes the grid
+     wider than the screen so `.bracket` genuinely scrolls, which is what the
+     overflow rule always assumed. Wide screens still get equal 1fr columns. */
+  br.style.gridTemplateColumns = `repeat(${F.cols}, minmax(${BCOL_MIN}px, 1fr))`;
   br.style.gridTemplateRows = 'auto auto';
   const cells = {};
   const labelDone = {};
@@ -4939,8 +5070,22 @@ function switchTab(name) {
    resize and once the display fonts have settled */
 let wireTimer = null;
 function redrawAllWires() { Object.keys(REGIONS).forEach(s => { try { drawSimWires(s); } catch (e) {} }); }
-window.addEventListener('resize', () => { clearTimeout(wireTimer); wireTimer = setTimeout(redrawAllWires, 150); });
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(redrawAllWires);
+
+/* On a phone the header scrolls up until the tab strip reaches the top and
+   pins there, which needs the logo row's height as a negative `top`. The CSS
+   carries a fallback, but the real height moves with the display font, the
+   locale's date string and the text-size setting — so measure it, the same
+   way the bracket wiring is measured, rather than trusting a constant. Too
+   large a value would slice the top off the tabs; too small leaves a sliver
+   of the row above them. */
+function syncHeaderOffset() {
+  const top = document.querySelector('.hdr-top');
+  if (top) document.documentElement.style.setProperty('--hdr-off', Math.round(top.getBoundingClientRect().height) + 'px');
+}
+syncHeaderOffset();
+
+window.addEventListener('resize', () => { clearTimeout(wireTimer); wireTimer = setTimeout(() => { redrawAllWires(); syncHeaderOffset(); }, 150); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { redrawAllWires(); syncHeaderOffset(); });
 document.querySelectorAll('.tab, .f-rg').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
 /* the All chip is the way back to the home board */
