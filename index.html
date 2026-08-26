@@ -779,7 +779,11 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .duo .nxt .n-rg .lgw{width:30px;height:30px}
 .duo .nxt .n-rg .nm{font-size:11.5px;letter-spacing:.4px;line-height:1}
 .duo .nxt .n-rg .sp{display:none}
-.duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);gap:16px;max-width:none}
+/* the "vs" gutter and its gaps were 86px of a half-width panel's matchup —
+   a third of it, spent on a two-letter word, while the team codes either side
+   went without. Trimmed, the widest code ("SHFT") clears with room to spare
+   instead of by half a pixel at 1408px. */
+.duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:12px;max-width:none}
 .duo .nxt .n-a,.duo .nxt .n-b{gap:13px}
 .duo .nxt .n-lg{width:48px;height:48px}
 .duo .nxt .n-code{font-size:23px}
@@ -887,21 +891,42 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 @media (max-width:1400px){
   .tri{grid-template-columns:1fr 1fr}
   .tri>.panel:last-child{grid-column:1/-1}
-}
-@media (max-width:1100px){
-  .ov-row{grid-template-columns:1fr}
-  .duo{grid-template-columns:1fr}
-  /* two tiers: when + who it is, then the matchup itself.
+  /* Two tiers: when + who it is, then the matchup itself.
+     This used to start at 1100px, which left a dead band from 1101 to 1400 —
+     every common laptop — where the row still tried to fit the time, the
+     region, both crested teams and the format on one line inside a half-width
+     panel. There was not room: the matchup got what was left after four other
+     columns had taken theirs, so the team codes were clipped to "SHFT" → "S…",
+     and between 1101 and 1152 the code box was zero pixels wide and only the
+     ellipsis survived. Giving the matchup a line of its own is what the narrow
+     layout already did; it just started too late.
+
      `.duo .nxt` further down sets a *four*-column template, and a media query
      adds no specificity — so this rule has to out-specify it or the fourth
-     track survives as a phantom column with nothing in it, eating 112px of a
-     390px row. That is what truncated team codes to "B…" and wrapped
-     "Best of 5 · Play-In Knockouts" over four lines. */
+     track survives as a phantom column with nothing in it. */
   .nxt,.duo .nxt{grid-template-columns:auto auto minmax(0,1fr);grid-template-areas:"time rg meta" "mid mid mid";row-gap:10px;gap:12px}
   .nxt .n-when{grid-area:time}
   .nxt .n-rg{grid-area:rg;border-right:none;padding:0 0 0 12px}
   .nxt .n-meta{grid-area:meta}
   .nxt .n-mid{grid-area:mid;max-width:none}
+}
+/* Above the phone block, a matchup with a line to itself has room going spare
+   rather than room to spare — left alone it centres a small cluster in a wide
+   empty band. Cap the span so the pairing reads as one object, and spend the
+   rest on the crests and codes, which is what anyone is actually looking at. */
+@media (min-width:641px) and (max-width:1400px){
+  .duo .nxt .n-mid{max-width:470px;margin:0 auto}
+  .duo .nxt .n-lg{width:50px;height:50px}
+  .duo .nxt .n-code{font-size:25px}
+  .duo .nxt{row-gap:6px}
+  /* Blank slots pad the list to a fixed count so filtering by region never
+     resizes the panel. That only holds while a blank matches a filled row,
+     and a filled row is two tiers tall here. */
+  .duo .nxt.empty{min-height:138px}
+}
+@media (max-width:1100px){
+  .ov-row{grid-template-columns:1fr}
+  .duo{grid-template-columns:1fr}
 }
 @media (max-width:900px){
   .tri{grid-template-columns:1fr}
