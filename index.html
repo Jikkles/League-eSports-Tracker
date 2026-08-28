@@ -4582,8 +4582,9 @@ function raceCtx(slug) {
 ===================================================================== */
 
 /* An unplayed Bo3 has a winner in every ending this panel enumerates but no
-   map score, and the map score is now part of the ranking. So the score is
-   branched too: from a per-game edge p, a Bo(2k−1) that the winner takes ends
+   scoreline, and the scoreline is now part of the ranking: 2–0 and 2–1 are the
+   same match win and a different game record. So the score is branched too:
+   from a per-game edge p, a Bo(2k−1) that the winner takes ends
    with the loser on j games with probability proportional to C(k−1+j, j)·qʲ.
    For a Bo3 that is 2–0 at 1/(1+2q) and 2–1 at 2q/(1+2q).
 
@@ -4602,8 +4603,8 @@ function raceScoreWeights(pGame, need) {
 }
 
 /* One hypothetical season, in the shape the metrics read it: a slot per game
-   still to be played, each carrying who won it in this ending and how the maps
-   could have fallen. The scaffolding is built once and rewritten in place per
+   still to be played, each carrying who won it in this ending and how the games
+   inside it could have fallen. The scaffolding is built once and rewritten in place per
    ending — at sixty-odd thousand endings, allocating it fresh each time costs
    more than the ranking does. */
 function raceEnding(C, played) {
@@ -4752,7 +4753,7 @@ function raceSplitRuns(C, E, K, chain, depth) {
    answer depends on the cluster and not on where it sits in the table, which
    is what makes it worth caching.
 
-   The map scores are the reason this is a distribution at all. Every game one
+   The scorelines are the reason this is a distribution at all. Every game one
    of these teams has left is branched over its possible scorelines, weighted
    by the model, and the chain is run on each branch: a 2–0 and a 2–1 can put
    the same two teams in a different order, and the panel says how often. */
@@ -4936,7 +4937,7 @@ function raceRun(slug) {
       const band = raceRank(C, g, wins, E);
       for (const ti of g.members) {
         const bd = band[ti];
-        /* the odds of finishing inside the cut, over every way the map scores
+        /* the odds of finishing inside the cut, over every way the scorelines
            could land in this ending — a whole number when the ending settles
            it either way, a fraction while a 2–0 and a 2–1 would separate them
            differently or a place is shared outright */
@@ -5254,13 +5255,13 @@ function raceFocusHTML(state, ti) {
      one that needs a scoreline. Different sentences, and not interchangeable. */
   const highNote = A.best === A.bestSolo ? ''
     : A.tieSeen ? ' — a place they would <b>share</b>, with the rules out of tiebreaks'
-                : ' — and only where the <b>map scores</b> fall their way';
+                : ' — and only where the <b>scorelines</b> fall their way';
   const range = 'Finish as high as <b>' + raceOrd(A.best) + '</b>' + highNote
     + ', as low as <b>' + raceOrd(A.worst) + '</b>.';
   const tie = A.pTie > 0.005
-    ? '<li class="warn"><b>' + (A.tieSeen ? 'Not settled by results alone' : 'Down to the map scores')
+    ? '<li class="warn"><b>' + (A.tieSeen ? 'Not settled by results alone' : 'Down to the scorelines')
       + '</b>: in ' + racePct(A.pTie) + ' of endings the games going this way is not enough on its own '
-      + '— the place turns on <b>how the maps fall</b>' + (A.tieSeen
+      + '— the place turns on <b>which of those games finish 2–0 and which 2–1</b>' + (A.tieSeen
         ? ', or on a tie the published rules run out before splitting' : '')
       + ', because the table is ranked on game win % before any tiebreak. The <b>' + odds
       + '</b> weighs those by how often they go their way rather than counting them as a yes, '
@@ -5274,12 +5275,12 @@ function raceFocusHTML(state, ti) {
   else if (!sure)
     bits.push('<li><b>No</b> ending puts them through on the results alone: in all <b>'
       + open.toLocaleString() + '</b> of ' + N + ' ' + endings + ' that leave them a way in, the place '
-      + 'comes down to the map scores. ' + range + ' The <b>' + odds
+      + 'comes down to the scorelines. ' + range + ' The <b>' + odds
       + '</b> weighs every ending, and every scoreline inside it, by how likely it is.</li>');
   else
     bits.push('<li>Through to ' + label + ' whatever the scorelines in <b>' + sure.toLocaleString()
       + '</b> of ' + N + ' ' + endings + ', and in <b>' + open.toLocaleString()
-      + '</b> more the place comes down to the map scores. ' + range + ' The <b>' + odds
+      + '</b> more the place comes down to the scorelines. ' + range + ' The <b>' + odds
       + '</b> weighs every ending, and every scoreline inside it, by how likely it is.</li>');
 
   /* their own games, conditioned */
@@ -5344,7 +5345,7 @@ function raceToSim(slug) {
   const wins = new Int16Array(C.n), played = [];
   C.teams.forEach(t => { wins[t.i] = t.w; });
   /* the model favourite in every unplayed game, and — since the standings
-     count map scores — the scoreline it most likely wins by */
+     count games won — the scoreline it most likely wins by */
   const push = (f, aw) => {
     const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
     const sc = state.score.get(f.id)[aw ? 0 : 1];

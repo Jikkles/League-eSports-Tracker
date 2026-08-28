@@ -95,7 +95,7 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
 - **Cuts come from `cutsForGroup()`**, shared with the standings table so the line one
   draws and the line the other measures against cannot drift apart. Grouped leagues
   (LCK Legend/Rise, LPL Ascend/Nirvana) race inside their group.
-- **Map scores rank teams, not just wins.** This is the rule the panel used to get
+- **Scorelines rank teams, not just match wins.** This is the rule the panel used to get
   wrong. The LEC rulebook (2026 season, v3.1) §6.1.2/§6.3.5: "Standings at the end of
   the Regular Season will be determined by the amount of Matches won and Game Win
   Percentage" — game win % across the *whole split*, as a ranking key, before any
@@ -114,11 +114,11 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
   level starts again from the first tiebreak — so a three-way tie that head-to-head
   splits 2/1/1 sends the two survivors back to their own head-to-head, not on to the
   next metric.
-- **An unplayed Bo3 has no map score, so the score is enumerated too.** `raceCluster()`
+- **An unplayed Bo3 has no scoreline, so the scoreline is enumerated too.** `raceCluster()`
   branches every game a tied cluster has left over its possible scorelines, weights each
   by the model (`raceScoreWeights()`, from the per-game edge: 2–0 at 1/(1+2q)), runs the
   chain on each, and reports the distribution. A place can be held in 60% of the ways the
-  maps fall, and the odds now say so rather than pretending the question is not there.
+  games fall, and the odds now say so rather than pretending the question is not there.
   Branching is per cluster rather than per ending — only teams level on match wins care —
   and cached on (cluster, who won their games), which is what keeps a 65,536-ending
   enumeration under a quarter of a second.
