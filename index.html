@@ -491,6 +491,14 @@ tr.race-row:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
 .rfx-pick.on i{color:var(--cyan-lo)}
 .rfx-pick .tlogo,.rfx-pick .tmono{width:16px;height:16px}
 .race-fx.locked .rfx-pick:not(.on){opacity:.45}
+/* the scoreline picker, only drawn under a game that is already locked: a
+   2–0 and a 2–1 are the same result and a different table, but on most games
+   nobody cares, so this stays out of the way until a side has been chosen */
+.rfx-score{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:-2px 0 7px 2px}
+.rfx-score b{font-family:var(--mono);font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);font-weight:400;margin-right:1px}
+.rfx-sc{font-family:var(--mono);font-size:10px;background:#141414;border:1px solid var(--line);color:var(--faint);padding:2px 6px;border-radius:var(--radius);cursor:pointer;transition:background .12s ease,border-color .12s ease}
+.rfx-sc:hover{background:#222222;border-color:var(--line2)}
+.rfx-sc.on{background:rgba(11,198,227,.14);border-color:var(--cyan);color:var(--cyan)}
 .race-hint,.race-note{font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--faint)}
 .race-note{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
 .race-focus{margin-top:14px}
@@ -953,6 +961,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   /* the race panel's whole instruction is "click a side to lock it", so these
      are the controls the panel exists for — they were 28px tall */
   .rfx-pick{padding:10px 8px;min-height:42px}
+  .rfx-sc{padding:6px 9px;font-size:11px;min-height:32px}
 }
 @media (max-width:640px){
   .hdr-top{flex-wrap:wrap;gap:10px;padding:11px 14px}
@@ -4448,7 +4457,14 @@ const RACE_MAX_COND  = 4;         // scenarios listed per question
    the real filter; this only catches leagues with no defaultGames to count. */
 const RACE_BLOCK_RX = /playoff|play-?in|final|bracket|tiebreak|knockout|gauntlet/i;
 
-const raceState = {};   // slug -> {locks:{matchId:'a'|'b'}, focus:name}
+/* A lock is a side, and optionally the scoreline it goes by: 'a' fixes the
+   winner and leaves the score to the model, 'a0' fixes a 2–0 and 'a1' a 2–1
+   (the digit is the games the loser takes). Plain 'a'/'b' is what every lock
+   saved before scorelines mattered looks like, so it stays a valid value and
+   nobody's stored scenario is lost. */
+const lockSide  = v => String(v || '').charAt(0);
+const lockScore = v => String(v || '').length > 1 ? +String(v).slice(1) : -1;
+const raceState = {};   // slug -> {locks:{matchId:'a'|'a0'|'a1'|'b'|...}, focus:name}
 const raceCache = {};   // slug -> {sig, state} — the enumeration is not free
 
 function raceLoad(slug) {
@@ -4893,10 +4909,12 @@ function raceRun(slug) {
   const baseWins = new Int16Array(C.n), basePlayed = [];
   C.teams.forEach(t => { baseWins[t.i] = t.w; });
   for (const f of locked) {
-    const aw = S.locks[f.id] === 'a';
+    const v = S.locks[f.id], aw = lockSide(v) === 'a';
     const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
-    const sc = scoreOf(f, aw);
-    baseWins[w]++; basePlayed.push({ w, l, need: sc.need, w20: sc.w20 });
+    const sc = scoreOf(f, aw), fix = lockScore(v);
+    /* a pinned scoreline is the same enumeration with one branch left in it */
+    const w20 = fix >= 0 && fix < sc.need ? sc.w20.map((x, j) => j === fix ? 1 : 0) : sc.w20;
+    baseWins[w]++; basePlayed.push({ w, l, need: sc.need, w20 });
   }
 
   const acc = C.teams.map(() => ({
@@ -4977,49 +4995,188 @@ function raceRun(slug) {
   return state;
 }
 
+/* =====================================================================
+   THE SPACE THE SCENARIO SENTENCES ARE SEARCHED IN
+
+   The odds can afford to leave a scoreline weighted, because they are a sum
+   over endings. A sentence cannot: now that the table is ranked on game win %,
+   "Fnatic are through if they beat GIANTX" is sometimes only true of a 2–0,
+   and saying it flat would be a promise the rules do not make.
+
+   So the scenarios get their own enumeration — every remaining game's result
+   *and* its scoreline — built the first time a team is focused. Each game
+   takes a fixed number of bits, so the search below can stay on a bitmask, and
+   that needs its option count to be a power of two: a free Bo3 has four (two
+   sides, each 2–0 or 2–1), a free Bo1 two, and a game already locked to a side
+   has however many scorelines are left. A regular-season Bo5 would have six
+   and is the case that gives up — none of these leagues plays one, and the
+   panel falls back to naming results alone rather than inventing a shape.
+
+   When even that is too big to walk, the fallback is the results-only
+   enumeration the odds already ran: fewer sentences, all still true.
+===================================================================== */
+const RACE_SCEN_MAX = 1 << 12;   // 4,096 result-and-scoreline endings
+
+function raceScen(state) {
+  if (state.scen !== undefined) return state.scen;
+  state.scen = null;
+  const C = state.C, S = raceLoad(state.slug);
+
+  const slots = [];
+  let bits = 0;
+  for (const f of C.fixtures) {
+    const need = Math.max(1, Math.ceil((f.bo || 1) / 2));
+    const lock = S.locks[f.id] || '', side = lockSide(lock);
+    /* what is still open about this game: both halves, the scoreline only, or
+       nothing at all once someone has pinned it */
+    const opts = !side ? 2 * need : (lockScore(lock) >= 0 || need === 1 ? 0 : need);
+    if (!opts) continue;
+    const b = Math.round(Math.log2(opts));
+    if (1 << b !== opts) return state.scen;         // not a power of two: give up
+    slots.push({ f, need, side, opts, bits: b, shift: bits,
+                 mask: ((1 << b) - 1) << bits,
+                 // v = side * need + j, so the side lives in the high bit(s)
+                 sideMask: side ? 0 : ((1 << b) - (1 << (b - 1))) << bits });
+    bits += b;
+  }
+  const total = 1 << bits;
+  if (slots.length && total <= RACE_SCEN_MAX) {
+    state.scen = raceScenWalk(state, slots, total);
+    if (state.scen) return state.scen;
+  }
+
+  /* too many to walk with scorelines in: fall back to the results-only
+     enumeration, where a sentence is only ever printed for an ending the
+     results settle on their own */
+  if (state.deep)
+    state.scen = { slots: state.free.map((f, b) => ({ f, need: 1, side: '', opts: 2, bits: 1,
+                     shift: b, mask: 1 << b, sideMask: 1 << b, coarse: true })),
+                   total: state.combos, ok: state.okAll, scored: false };
+  return state.scen;
+}
+
+/* Walk every result-and-scoreline ending and record, per team, whether it is
+   in (2), out (0), or level on the line with the rules out of tiebreaks (1). */
+function raceScenWalk(state, slots, total) {
+  const C = state.C, S = raceLoad(state.slug);
+  const base = new Int16Array(C.n);
+  C.teams.forEach(t => { base[t.i] = t.w; });
+
+  /* one played-slot per fixture, rewritten in place; a pinned scoreline is a
+     weight of 1 on its own branch */
+  const oneHot = (need, j) => { const a = new Array(need).fill(0); a[j] = 1; return a; };
+  const plan = C.fixtures.map(f => {
+    const need = Math.max(1, Math.ceil((f.bo || 1) / 2));
+    const lock = S.locks[f.id] || '';
+    return { f, need, side: lockSide(lock), fix: lockScore(lock),
+             slot: slots.find(s => s.f === f) || null,
+             hot: Array.from({ length: need }, (_, j) => oneHot(need, j)) };
+  });
+  const E = raceEnding(C, plan.map(p => ({ w: p.f.a, l: p.f.b, need: p.need, w20: p.hot[0] })));
+  /* The cluster cache keys a resolution on who won the games behind it, which
+     is a complete key for the odds loop — there a scoreline's weights follow
+     from its winner — and the wrong key here, where the entire point is to pin
+     scorelines that share one. Switching it off is cheaper than widening it:
+     this walks a few thousand endings once per scenario, not sixty-odd
+     thousand per lock. */
+  E.memo = { get: () => undefined, set: () => {} };
+  const wins = new Int16Array(C.n);
+  const ok = C.teams.map(() => new Uint8Array(total));
+
+  for (let it = 0; it < total; it++) {
+    wins.set(base);
+    plan.forEach((p, i) => {
+      let side = p.side, j = p.fix;
+      if (p.slot) {
+        const v = (it & p.slot.mask) >>> p.slot.shift;
+        if (p.slot.side) { side = p.slot.side; j = v; }
+        else { side = v >= p.need ? 'b' : 'a'; j = v % p.need; }
+      }
+      if (j < 0 || j >= p.need) j = 0;             // Bo1, or a side with one scoreline
+      const aw = side === 'a', s = E.slots[i];
+      s.w = aw ? p.f.a : p.f.b; s.l = aw ? p.f.b : p.f.a; s.w20 = p.hot[j];
+      wins[s.w]++;
+    });
+    raceEndingLink(E);
+    for (const g of C.groups) {
+      const band = raceRank(C, g, wins, E);
+      for (const ti of g.members) {
+        let share = 0;
+        if (g.cut) for (const [pl, pw] of band[ti].dist) if (pl <= g.cut) share += pw;
+        ok[ti][it] = share > 0.9999999 ? 2 : (share > 0 ? 1 : 0);
+      }
+    }
+  }
+  return { slots, total, ok, scored: true };
+}
+
+/* Every way one slot can be constrained, coarsest first: "Fnatic beat GIANTX"
+   before "Fnatic beat GIANTX 2–0", so the search finds the shorter true
+   sentence and `implied` throws the longer ones away. */
+function raceTerms(slot) {
+  const out = [];
+  if (!slot.side) {
+    for (let s = 0; s < 2; s++)
+      out.push({ slot, sel: slot.sideMask, val: (s * slot.need) << slot.shift,
+                 side: s ? 'b' : 'a', j: -1 });
+    if (slot.coarse || slot.need === 1) return out;
+    for (let s = 0; s < 2; s++) for (let j = 0; j < slot.need; j++)
+      out.push({ slot, sel: slot.mask, val: (s * slot.need + j) << slot.shift,
+                 side: s ? 'b' : 'a', j });
+  } else {
+    for (let j = 0; j < slot.need; j++)
+      out.push({ slot, sel: slot.mask, val: j << slot.shift, side: slot.side, j });
+  }
+  return out;
+}
+
 /* Smallest sets of results that settle it. A condition is a set of games with
-   a side picked in each; it *guarantees* qualification when no enumerated
-   ending consistent with it leaves the team short, and *ends* it when no
-   ending consistent with it gets the team in. Exact path only — with a sampled
-   model, "there is no ending where X" is not a sentence you are entitled to. */
-function raceConditions(state, ti, want, maxSize) {
-  if (!state.deep) return [];
-  const ok = state.okAll[ti], n = state.free.length, combos = state.combos;
+   a side — and where it matters, a scoreline — picked in each; it *guarantees*
+   qualification when no enumerated ending consistent with it leaves the team
+   short, and *ends* it when no ending consistent with it gets the team in.
+   Exact enumeration only: with a sampled model, "there is no ending where X"
+   is not a sentence you are entitled to. */
+function raceConditions(space, ti, want, maxSize) {
+  if (!space) return [];
+  const ok = space.ok[ti], total = space.total, slots = space.slots;
   const found = [];
   const implied = (sel, val) => found.some(c => (sel & c.sel) === c.sel && (val & c.sel) === c.val);
   const test = (sel, val) => {
-    for (let it = 0; it < combos; it++) {
+    for (let it = 0; it < total; it++) {
       if ((it & sel) !== val) continue;
       if (want ? ok[it] !== 2 : ok[it] !== 0) return false;
     }
     return true;
   };
+  const terms = slots.map(raceTerms);
   const pick = [];
   const walk = (start, size) => {
     if (found.length >= RACE_MAX_COND) return;
     if (!size) {
-      let sel = 0;
-      for (const b of pick) sel |= 1 << b;
-      for (let v = 0; v < (1 << pick.length); v++) {
-        let val = 0;
-        pick.forEach((b, i) => { if ((v >> i) & 1) val |= 1 << b; });
+      const lists = pick.map(i => terms[i]);
+      let n = 1;
+      for (const l of lists) n *= l.length;
+      for (let v = 0; v < n; v++) {
+        let rest = v, sel = 0, val = 0;
+        const parts = [];
+        for (const l of lists) {
+          const t = l[rest % l.length]; rest = (rest - rest % l.length) / l.length;
+          sel |= t.sel; val |= t.val; parts.push(t);
+        }
         if (implied(sel, val)) continue;
-        if (test(sel, val)) found.push({ sel, val, size: pick.length });
+        if (test(sel, val)) found.push({ sel, val, parts, size: pick.length });
         if (found.length >= RACE_MAX_COND) return;
       }
       return;
     }
-    for (let b = start; b <= n - size; b++) { pick.push(b); walk(b + 1, size - 1); pick.pop(); }
+    for (let i = start; i <= slots.length - size; i++) { pick.push(i); walk(i + 1, size - 1); pick.pop(); }
   };
   for (let size = 1; size <= maxSize && found.length < RACE_MAX_COND; size++) walk(0, size);
-  /* a scenario the team has a hand in beats one it can only watch */
-  const own = c => {
-    let k = 0;
-    for (let b = 0; b < n; b++)
-      if (((c.sel >> b) & 1) && (state.free[b].a === ti || state.free[b].b === ti)) k++;
-    return k;
-  };
-  return found.sort((x, y) => x.size - y.size || own(y) - own(x));
+  /* a scenario the team has a hand in beats one it can only watch, and a
+     scenario that does not care about a scoreline beats one that does */
+  const own = c => c.parts.filter(p => p.slot.f.a === ti || p.slot.f.b === ti).length;
+  const fine = c => c.parts.filter(p => p.j >= 0).length;
+  return found.sort((x, y) => x.size - y.size || fine(x) - fine(y) || own(y) - own(x));
 }
 
 /* What every ending of one kind has in common. "Alive" on its own invites the
@@ -5028,37 +5185,46 @@ function raceConditions(state, ti, want, maxSize) {
    still be tied and lose the tiebreak. This names the results a miss actually
    needs, so the gap between the two answers is visible rather than mysterious.
    Exact path only: it is a claim about every ending, not a sample of them. */
-function raceCommon(state, ti, want) {
-  if (!state.deep) return null;
-  const ok = state.okAll[ti], n = state.free.length;
-  const need = new Array(n).fill(-1);   // -1 unseen, 0/1 a side, 2 varies
+function raceCommon(space, ti, want) {
+  if (!space) return null;
+  const ok = space.ok[ti], total = space.total;
+  const seen = space.slots.map(() => new Set());
   let count = 0;
-  for (let it = 0; it < state.combos; it++) {
+  for (let it = 0; it < total; it++) {
     if (want ? ok[it] !== 2 : ok[it] !== 0) continue;
     count++;
-    for (let b = 0; b < n; b++) {
-      const s = (it >> b) & 1;
-      if (need[b] === -1) need[b] = s; else if (need[b] !== s) need[b] = 2;
-    }
+    space.slots.forEach((s, i) => seen[i].add((it & s.mask) >>> s.shift));
   }
   if (!count) return null;
   let sel = 0, val = 0;
-  for (let b = 0; b < n; b++)
-    if (need[b] === 0 || need[b] === 1) { sel |= 1 << b; if (need[b]) val |= 1 << b; }
-  return sel ? { sel, val, count } : null;
+  const parts = [];
+  space.slots.forEach((s, i) => {
+    const vs = [...seen[i]];
+    const side = v => s.side ? s.side : (v >= s.need ? 'b' : 'a');
+    if (vs.length === 1) {                            // one scoreline, every time
+      sel |= s.mask; val |= vs[0] << s.shift;
+      parts.push({ slot: s, sel: s.mask, val: vs[0] << s.shift,
+                   side: side(vs[0]), j: s.side ? vs[0] : vs[0] % s.need });
+    } else if (!s.side && !s.coarse && new Set(vs.map(side)).size === 1) {
+      // the winner is always the same, the scoreline is not
+      const sd = side(vs[0]);
+      sel |= s.sideMask; val |= (sd === 'b' ? s.need : 0) << s.shift;
+      parts.push({ slot: s, sel: s.sideMask, val: (sd === 'b' ? s.need : 0) << s.shift, side: sd, j: -1 });
+    } else if (s.coarse && vs.length === 1) { /* handled above */ }
+  });
+  return parts.length ? { sel, val, parts, count } : null;
 }
 
-/* a condition as words: "MKOI beat TH and FNC beat NAVI" */
+/* a condition as words: "MKOI beat TH 2–0 and FNC beat NAVI" */
 function raceCondText(state, cond) {
-  const parts = [];
-  for (let b = 0; b < state.free.length; b++) {
-    if (!((cond.sel >> b) & 1)) continue;
-    const f = state.free[b], aw = !((cond.val >> b) & 1);
+  return cond.parts.map(p => {
+    const f = p.slot.f, aw = p.side === 'a';
     const w = state.C.teams[aw ? f.a : f.b].name, l = state.C.teams[aw ? f.b : f.a].name;
-    parts.push('<b>' + esc(raceShort(w)) + '</b> beat ' + esc(raceShort(l)));
-  }
-  return parts.join(' and ');
+    return '<b>' + esc(raceShort(w)) + '</b> beat ' + esc(raceShort(l))
+      + (p.j >= 0 ? ' <b>' + p.slot.need + '–' + p.j + '</b>' : '');
+  }).join(' and ');
 }
+
 const raceShort = name => String(name || '').replace(/\s+(Esports|eSports|Gaming|Team|Club)$/i, '').trim()
   || String(name || '');
 const racePct = p => p >= 0.9995 ? '100%' : p <= 0.0005 ? '0%'
@@ -5173,19 +5339,45 @@ function renderRace(slug) {
       const d = new Date(f.when).toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short' });
       if (d !== lastDay) { fh += '<div class="race-day">' + esc(d) + '</div>'; lastDay = d; }
       const lock = S.locks[f.id] || '';
+      const side0 = lockSide(lock);
       const fi = state.free.indexOf(state.free.find(x => x.id === f.id));
       const p = fi >= 0 ? state.pA[fi] : null;
-      const side = (which, ti) => '<button class="rfx-pick' + (lock === which ? ' on' : '')
+      const side = (which, ti) => '<button class="rfx-pick' + (side0 === which ? ' on' : '')
         + '" data-f="' + esc(f.id) + '" data-s="' + which + '" title="Lock this result and recalculate">'
         + logoHTML(C.teams[ti].name) + '<span>' + esc(raceTag(C.teams[ti])) + '</span>'
         + (p != null ? '<i>' + Math.round((which === 'a' ? p : 1 - p) * 100) + '%</i>' : '') + '</button>';
       fh += '<div class="race-fx' + (lock ? ' locked' : '') + '">' + side('a', f.a)
         + '<span class="race-v">v</span>' + side('b', f.b) + '</div>';
+
+      /* Once a side is locked, the scoreline is the other half of the result:
+         the table is ranked on game win %, so a 2–0 and a 2–1 are the same win
+         and a different finish. Left alone it stays weighed by the model — this
+         is only here for the scenario that turns on it. */
+      const need = Math.max(1, Math.ceil((f.bo || 1) / 2));
+      if (side0 && need > 1) {
+        const winner = C.teams[side0 === 'a' ? f.a : f.b];
+        const at = lockScore(lock);
+        let cs = '<div class="rfx-score"><b>' + esc(raceTag(winner)) + ' by</b>';
+        for (let j = 0; j < need; j++)
+          cs += '<button class="rfx-sc' + (at === j ? ' on' : '') + '" data-f="' + esc(f.id)
+            + '" data-j="' + j + '" title="Lock this scoreline too">' + need + '–' + j + '</button>';
+        cs += '<button class="rfx-sc' + (at < 0 ? ' on' : '') + '" data-f="' + esc(f.id)
+          + '" data-j="-1" title="Leave the scoreline to the model">either</button></div>';
+        fh += cs;
+      }
     }
     fixBox.innerHTML = fh;
     fixBox.querySelectorAll('.rfx-pick').forEach(b => b.addEventListener('click', () => {
       const id = b.dataset.f, s = b.dataset.s;
-      if (S.locks[id] === s) delete S.locks[id]; else S.locks[id] = s;
+      /* clicking the side already locked lets it go, scoreline and all;
+         switching sides drops a scoreline that was picked for the other team */
+      if (lockSide(S.locks[id]) === s) delete S.locks[id]; else S.locks[id] = s;
+      raceSave(slug); renderRace(slug);
+    }));
+    fixBox.querySelectorAll('.rfx-sc').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.f, j = +b.dataset.j, cur = S.locks[id];
+      if (!cur) return;
+      S.locks[id] = j < 0 || lockScore(cur) === j ? lockSide(cur) : lockSide(cur) + j;
       raceSave(slug); renderRace(slug);
     }));
   }
@@ -5296,30 +5488,36 @@ function raceFocusHTML(state, ti) {
   }
   for (const f of state.locked) {
     if (f.a !== ti && f.b !== ti) continue;
-    const won = state.locks[f.id] === (f.a === ti ? 'a' : 'b');
+    const won = lockSide(state.locks[f.id]) === (f.a === ti ? 'a' : 'b');
+    const need = Math.max(1, Math.ceil((f.bo || 1) / 2)), fix = lockScore(state.locks[f.id]);
+    const by = fix >= 0 && fix < need
+      ? ' ' + (won ? need + '–' + fix : fix + '–' + need) : '';
     bits.push('<li class="own">v <b>' + esc(raceShort(C.teams[f.a === ti ? f.b : f.a].name))
-      + '</b> — locked as a ' + (won ? 'win' : 'loss') + ' in this scenario.</li>');
+      + '</b> — locked as a ' + (won ? 'win' : 'loss') + by + ' in this scenario'
+      + (by ? '.' : (need > 1 ? ', with the scoreline left to the model.' : '.')) + '</li>');
   }
   if (tie) bits.push(tie);
 
-  /* results that settle it, and results they cannot survive */
-  if (state.deep && st.key === 'alive') {
-    const sure = raceConditions(state, ti, true, 3);
-    const dead = raceConditions(state, ti, false, 2);
+  /* results that settle it, and results they cannot survive — named down to
+     the scoreline wherever the scoreline is what settles them */
+  const SP = raceScen(state);
+  if (SP && st.key === 'alive') {
+    const sure = raceConditions(SP, ti, true, 3);
+    const dead = raceConditions(SP, ti, false, 2);
     for (const c of sure) bits.push('<li class="good">If ' + raceCondText(state, c) + ' — <b>in</b>, whatever else happens.</li>');
     for (const c of dead) bits.push('<li class="bad">If ' + raceCondText(state, c) + ' — <b>out</b>, whatever else happens.</li>');
     if (!sure.length)
       bits.push('<li>No set of three results puts them through for certain'
-        + (A.cSure ? ' — even the best case is still waiting on the final day.'
-                   : ' — no combination of wins settles it, because the last place is decided on game win %.') + '</li>');
+        + (SP.scored ? ' — not even with the scorelines named.'
+                     : ' — and with this many games left the scorelines are not being named, so lock a few results and the ones that turn on a 2–0 will appear.') + '</li>');
     /* the narrow end of it: what a miss (or a route through) needs every time */
-    const common = raceCommon(state, ti, A.pIn <= 0.5);
+    const common = raceCommon(SP, ti, A.pIn <= 0.5);
     if (common && common.sel)
       bits.push('<li class="' + (A.pIn > 0.5 ? 'good' : 'warn') + '">' + (A.pIn > 0.5
           ? 'They only miss out if <b>all</b> of these happen: '
           : 'Every ending that gets them through needs <b>all</b> of: ')
         + raceCondText(state, common) + '.</li>');
-  } else if (!state.deep && st.key === 'alive') {
+  } else if (!SP && st.key === 'alive') {
     bits.push('<li>Too many games left to name the scenarios exactly — lock a few results on the right and they will appear.</li>');
   }
 
@@ -5346,15 +5544,16 @@ function raceToSim(slug) {
   C.teams.forEach(t => { wins[t.i] = t.w; });
   /* the model favourite in every unplayed game, and — since the standings
      count games won — the scoreline it most likely wins by */
-  const push = (f, aw) => {
+  const push = (f, aw, fix) => {
     const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
     const sc = state.score.get(f.id)[aw ? 0 : 1];
     let best = 0;
     sc.w20.forEach((v, j) => { if (v > sc.w20[best]) best = j; });
+    if (fix >= 0 && fix < sc.need) best = fix;
     wins[w]++; played.push({ w, l, need: sc.need, w20: sc.w20.map((v, j) => j === best ? 1 : 0) });
   };
-  for (const f of state.locked) push(f, S.locks[f.id] === 'a');
-  state.free.forEach((f, b) => push(f, state.pA[b] >= 0.5));
+  for (const f of state.locked) push(f, lockSide(S.locks[f.id]) === 'a', lockScore(S.locks[f.id]));
+  state.free.forEach((f, b) => push(f, state.pA[b] >= 0.5, -1));
   const qual = [];
   for (const g of C.groups) {
     if (!g.cut) continue;

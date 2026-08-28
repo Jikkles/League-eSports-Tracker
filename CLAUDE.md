@@ -140,8 +140,26 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
   panel now prints the results every miss has in common ("they only miss out if all of:
   …"), which makes that gap checkable rather than mysterious. Don't resolve such a
   disagreement by softening the maths.
-- Locked scenarios live in `nexusdesk_race_<slug>` and are keyed by match id, so a lock
-  on a game that has since been played is dropped rather than applied twice.
+- **A lock can name the scoreline too.** `nexusdesk_race_<slug>` is keyed by match id, so
+  a lock on a game that has since been played is dropped rather than applied twice, and
+  the value is a side optionally followed by the loser's game count: `a` leaves the
+  scoreline to the model, `a0` pins a 2–0 and `a1` a 2–1. Plain `a`/`b` is every lock
+  saved before scorelines mattered, so it stays valid and nobody's stored scenario is
+  lost. `lockSide()` / `lockScore()` read it; the picker only appears under a game that
+  already has a side, because on most games nobody cares.
+- **The scenario sentences get their own enumeration.** The odds may leave a scoreline
+  weighted, being a sum over endings; a sentence may not, because "they are through if
+  they win" is sometimes only true of a 2–0. `raceScen()` walks every remaining result
+  *and* scoreline (`RACE_SCEN_MAX`, 4,096) so `raceConditions()` can say "GIANTX beat
+  NAVI 2–0 and MKOI beat TH 2–0 — in". Each game takes a whole number of bits so the
+  search stays on a bitmask, which needs its option count to be a power of two — a
+  regular-season Bo5 is the case that gives up and falls back to naming results only, as
+  does a split with too many games left. `raceTerms()` offers the side-only constraint
+  before the scoreline one so the shorter true sentence wins.
+- **That walk turns the cluster cache off**, and the reason is worth keeping in mind
+  before reusing `raceCluster()` anywhere else: the cache keys on *who* won each game,
+  which is a complete key while a scoreline's weights follow from its winner, and the
+  wrong key the moment scorelines are pinned independently of it.
 
 ## Generated data: the DRAFTS block
 
