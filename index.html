@@ -752,7 +752,11 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .nxt .n-rg .lgw{width:32px;height:32px}
 .nxt .n-rg .nm{font-family:var(--body);font-weight:800;font-size:16px;letter-spacing:.6px;color:var(--rg,var(--cyan));line-height:1.15}
 .nxt .n-rg .sp{display:block;font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--faint);text-transform:uppercase}
-.nxt .n-mid{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;gap:14px;max-width:640px;margin:0 auto;width:100%}
+/* The centre track holds either "VS" or a score, and a score is the wider of
+   the two: 23px digits either side of a spaced dash run past 44px, and a fixed
+   track let the surplus spill out the right-hand edge only — into the gap, then
+   under the winner's crest. Sizing it to its content keeps both gaps real. */
+.nxt .n-mid{display:grid;grid-template-columns:minmax(0,1fr) minmax(44px,auto) minmax(0,1fr);align-items:center;gap:14px;max-width:640px;margin:0 auto;width:100%}
 .nxt .n-a,.nxt .n-b{display:flex;align-items:center;gap:14px;min-width:0}
 .nxt .n-a{justify-content:flex-end}
 .nxt .n-code{font-family:var(--disp);font-weight:800;font-size:27px;letter-spacing:.4px;white-space:nowrap;
@@ -783,7 +787,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
    a third of it, spent on a two-letter word, while the team codes either side
    went without. Trimmed, the widest code ("SHFT") clears with room to spare
    instead of by half a pixel at 1408px. */
-.duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:12px;max-width:none}
+.duo .nxt .n-mid{grid-template-columns:minmax(0,1fr) minmax(44px,auto) minmax(0,1fr);gap:12px;max-width:none}
 .duo .nxt .n-a,.duo .nxt .n-b{gap:13px}
 .duo .nxt .n-lg{width:48px;height:48px}
 .duo .nxt .n-code{font-size:23px}
