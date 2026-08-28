@@ -4778,10 +4778,18 @@ function raceCluster(C, E, K) {
   K.forEach((t, i) => { at[t] = i; });
   const s = K.length;
   const acc = new Float64Array(s * s);
+  /* `tie` is a different thing from a spread distribution and the panel says
+     so differently: a run longer than one is a place the published rules ran
+     out before splitting, where a team sitting across two places in the
+     distribution is just waiting on a scoreline. */
+  const tie = {};
   const add = (runs, weight) => {
     let p = 0;
     for (const run of runs) {
-      for (const t of run) for (let k = 0; k < run.length; k++) acc[at[t] * s + p + k] += weight / run.length;
+      for (const t of run) {
+        if (run.length > 1) tie[t] = true;
+        for (let k = 0; k < run.length; k++) acc[at[t] * s + p + k] += weight / run.length;
+      }
       p += run.length;
     }
   };
@@ -4808,7 +4816,7 @@ function raceCluster(C, E, K) {
     let tot = 0;
     for (let k = 0; k < s; k++) { const w = acc[at[t] * s + k]; if (w > 1e-12) { d.push([k, w]); tot += w; } }
     for (const e of d) e[1] /= (tot || 1);
-    out[t] = d;
+    out[t] = { d, tie: !!tie[t] };
   }
   if (mk && !E.global) E.memo.set(mk, out);
   E.global = was || E.global;
@@ -4833,12 +4841,12 @@ function raceRank(C, g, wins, E, loss) {
     let j = i;
     while (j + 1 < order.length && key(order[j + 1]) === key(order[i])) j++;
     const cluster = order.slice(i, j + 1);
-    if (cluster.length === 1) out[cluster[0]] = { lo: pos, hi: pos, dist: [[pos, 1]] };
+    if (cluster.length === 1) out[cluster[0]] = { lo: pos, hi: pos, dist: [[pos, 1]], tie: false };
     else {
       const rel = raceCluster(C, E, cluster);
       for (const t of cluster) {
-        const d = rel[t].map(e => [pos + e[0], e[1]]);
-        out[t] = { lo: d[0][0], hi: d[d.length - 1][0], dist: d };
+        const d = rel[t].d.map(e => [pos + e[0], e[1]]);
+        out[t] = { lo: d[0][0], hi: d[d.length - 1][0], dist: d, tie: rel[t].tie };
       }
     }
     pos += cluster.length; i = j + 1;
@@ -4891,7 +4899,7 @@ function raceRun(slug) {
   }
 
   const acc = C.teams.map(() => ({
-    pIn:0, pTie:0, best:99, bestSolo:99, worst:0, cIn:0, cSure:0,
+    pIn:0, pTie:0, best:99, bestSolo:99, worst:0, cIn:0, cSure:0, tieSeen:false,
     pos: new Float64Array(C.n + 2),
     cond: free.map(() => [{ w:0, inw:0 }, { w:0, inw:0 }])
   }));
@@ -4941,6 +4949,7 @@ function raceRun(slug) {
         /* the best place they could hold outright: a place they only share, or
            only reach on the right scoreline, is not a finish */
         if (bd.dist.length === 1 && bd.lo < A.bestSolo) A.bestSolo = bd.lo;
+        if (bd.tie) A.tieSeen = true;
         if (bd.hi > A.worst) A.worst = bd.hi;
         for (const [pl, pw] of bd.dist) A.pos[pl] += weight * pw;
         if (share > 0) A.cIn++;
@@ -5232,19 +5241,46 @@ function raceFocusHTML(state, ti) {
      share got read as the qualification chance. It now says what it is not,
      names the headline it qualifies, and waits until after the games the team
      actually plays, so the eye meets the odds first. */
+  /* Endings where the result of the games settles it, and endings where it
+     does not. The two used to be added together and reported as one count,
+     which read as a promise: a team on 27% was told it "reaches the playoffs
+     in 8 of 8 endings", and three teams could each be read as making a
+     six-team cut. What that count meant was that they still had a claim on a
+     place in all eight — not that they took it. */
+  const sure = A.cSure, open = Math.max(0, A.cIn - A.cSure);
+  const N = state.combos.toLocaleString();
+  const endings = state.exact ? 'possible endings' : 'sampled endings';
+  /* why the top of their range is not a finish: a place they would share, or
+     one that needs a scoreline. Different sentences, and not interchangeable. */
+  const highNote = A.best === A.bestSolo ? ''
+    : A.tieSeen ? ' — a place they would <b>share</b>, with the rules out of tiebreaks'
+                : ' — and only where the <b>map scores</b> fall their way';
+  const range = 'Finish as high as <b>' + raceOrd(A.best) + '</b>' + highNote
+    + ', as low as <b>' + raceOrd(A.worst) + '</b>.';
   const tie = A.pTie > 0.005
-    ? '<li class="warn"><b>Tiebreak risk</b>, not a qualification chance: in ' + racePct(A.pTie)
-      + ' of endings winning those games is not enough on its own — the last place turns on how the '
-      + 'maps fall, or on a tie the published rules run out before splitting. The <b>' + odds
-      + '</b> above weighs those by how often they go their way, rather than counting them as a yes.</li>'
+    ? '<li class="warn"><b>' + (A.tieSeen ? 'Not settled by results alone' : 'Down to the map scores')
+      + '</b>: in ' + racePct(A.pTie) + ' of endings the games going this way is not enough on its own '
+      + '— the place turns on <b>how the maps fall</b>' + (A.tieSeen
+        ? ', or on a tie the published rules run out before splitting' : '')
+      + ', because the table is ranked on game win % before any tiebreak. The <b>' + odds
+      + '</b> weighs those by how often they go their way rather than counting them as a yes, '
+      + 'which is why it can sit well under 100% while every ending still leaves them in with a shout.</li>'
     : '';
   if (st.line) bits.push('<li class="' + (st.key === 'out' ? 'bad' : 'good') + '">' + esc(st.line) + '</li>');
+  else if (!open)
+    bits.push('<li>Through to ' + label + ' in <b>' + sure.toLocaleString() + '</b> of ' + N + ' ' + endings
+      + ' — whatever the scorelines. ' + range + ' The <b>' + odds
+      + '</b> weighs each ending by how likely it is; the count treats them all alike.</li>');
+  else if (!sure)
+    bits.push('<li><b>No</b> ending puts them through on the results alone: in all <b>'
+      + open.toLocaleString() + '</b> of ' + N + ' ' + endings + ' that leave them a way in, the place '
+      + 'comes down to the map scores. ' + range + ' The <b>' + odds
+      + '</b> weighs every ending, and every scoreline inside it, by how likely it is.</li>');
   else
-    bits.push('<li>Reaches ' + label + ' in <b>' + A.cIn.toLocaleString() + '</b> of '
-      + state.combos.toLocaleString() + (state.exact ? ' possible endings' : ' sampled endings')
-      + ' — finish as high as <b>' + (A.bestSolo !== A.best ? 'joint ' : '') + raceOrd(A.best)
-      + '</b>, as low as <b>' + raceOrd(A.worst) + '</b>. '
-      + 'The <b>' + odds + '</b> weighs each ending by how likely it is; the count treats them all alike.</li>');
+    bits.push('<li>Through to ' + label + ' whatever the scorelines in <b>' + sure.toLocaleString()
+      + '</b> of ' + N + ' ' + endings + ', and in <b>' + open.toLocaleString()
+      + '</b> more the place comes down to the map scores. ' + range + ' The <b>' + odds
+      + '</b> weighs every ending, and every scoreline inside it, by how likely it is.</li>');
 
   /* their own games, conditioned */
   for (const b of own) {
@@ -5272,7 +5308,9 @@ function raceFocusHTML(state, ti) {
     for (const c of sure) bits.push('<li class="good">If ' + raceCondText(state, c) + ' — <b>in</b>, whatever else happens.</li>');
     for (const c of dead) bits.push('<li class="bad">If ' + raceCondText(state, c) + ' — <b>out</b>, whatever else happens.</li>');
     if (!sure.length)
-      bits.push('<li>No set of three results puts them through for certain — even the best case is still waiting on the final day.</li>');
+      bits.push('<li>No set of three results puts them through for certain'
+        + (A.cSure ? ' — even the best case is still waiting on the final day.'
+                   : ' — no combination of wins settles it, because the last place is decided on game win %.') + '</li>');
     /* the narrow end of it: what a miss (or a route through) needs every time */
     const common = raceCommon(state, ti, A.pIn <= 0.5);
     if (common && common.sel)
