@@ -57,7 +57,8 @@ Deployed via GitHub Pages straight from this repo.
   runtime. This needs no manual maintenance.
 - **Baked-in constants** go stale and need periodic research + patching:
   - `REGIONS` — per-region split label, regular-season game count, default playoff
-    format, channel/wiki links
+    format, channel/wiki links, and `rank` (how the league orders its table — see
+    the playoff race section)
   - `HONOURS` — season honours board (tournament winners, runners-up, dates)
   - `STORYLINES` — home-tab narrative bullets
   - `POWER_RANKINGS` + `POWER_RANKINGS_ASOF` — mirror of lolesports.com Global Power
@@ -70,7 +71,8 @@ Deployed via GitHub Pages straight from this repo.
   against the live API and gol.gg and reports drift as either STALE (provably out of
   date — a split label naming the wrong split, a `defaultGames` the standings have
   already exceeded, a `groupCuts` key no longer matching any group, a cut line past the
-  end of its table, a rankings mirror older than three weeks) or NOTE (a judgement call
+  end of its table, a ranking rule that no longer reproduces the last published table, a
+  rankings mirror older than three weeks) or NOTE (a judgement call
   — a split that just started, a season link pointing at last year, a trophy the
   honours board may be missing). Start a data session here rather than guessing.
   Anything it reports comes with the constant to edit.
@@ -93,19 +95,44 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
 - **Cuts come from `cutsForGroup()`**, shared with the standings table so the line one
   draws and the line the other measures against cannot drift apart. Grouped leagues
   (LCK Legend/Rise, LPL Ascend/Nirvana) race inside their group.
-- **Ties follow the published order as far as the data reaches, then stop.** The LEC's
-  rulebook (Liquipedia mirrors it) breaks them on head-to-head wins, then head-to-head
-  game win %, then strength of victory, then the Spring standings. `raceRank()` applies
-  the first, and `raceGamePct()` the second — each tiebreak measured among the teams
-  still level after the one before it, which is the standard reading. Rule 2 needs map
-  scores, so it only runs when every game between the tied teams has actually been
-  played: a hypothetical Bo3 has a winner but no score, and 2–0 and 2–1 are not the same
-  tiebreak. It declines rather than guessing, and the teams stay level.
-- **What neither can split is a shared band**, counted as a fraction of a place and
-  marked `=` in the Range column, because strength of victory has no definition this
-  repo has verified and the Spring standings are not baked in. Do not invent a deeper
-  tiebreak — the same rule as the constants. If you implement one, implement the
-  *published* one and only where real data backs it.
+- **Map scores rank teams, not just wins.** This is the rule the panel used to get
+  wrong. The LEC rulebook (2026 season, v3.1) §6.1.2/§6.3.5: "Standings at the end of
+  the Regular Season will be determined by the amount of Matches won and Game Win
+  Percentage" — game win % across the *whole split*, as a ranking key, before any
+  head-to-head tiebreak is reached. A 2–0 is worth more than a 2–1, and a team can be
+  passed without losing a match, which is why the panel used to disagree with the
+  broadcast. Only teams level on both reach §6.6: head-to-head match record, head-to-head
+  game win %, strength of victory (§6.7, by matches won then games won), then the Spring
+  standings.
+- **`REGIONS[].rank` is that order, first key first**, and `raceMetric()` implements one
+  metric per name (`wins`, `gamePct`, `h2h`, `h2hGamePct`, `sov`, `sovGames`).
+  `check.mjs` rejects a name the engine does not answer to, because an unknown metric is
+  skipped in silence and the table then ranks on whatever is left. All four leagues rank
+  the same way for the first four; only the LEC has a published rule beyond them.
+- **§6.6.2 restarts the chain**, and `raceSplitRuns()` recurses rather than walking down
+  the list: the moment a metric separates anyone they are placed, and whoever is still
+  level starts again from the first tiebreak — so a three-way tie that head-to-head
+  splits 2/1/1 sends the two survivors back to their own head-to-head, not on to the
+  next metric.
+- **An unplayed Bo3 has no map score, so the score is enumerated too.** `raceCluster()`
+  branches every game a tied cluster has left over its possible scorelines, weights each
+  by the model (`raceScoreWeights()`, from the per-game edge: 2–0 at 1/(1+2q)), runs the
+  chain on each, and reports the distribution. A place can be held in 60% of the ways the
+  maps fall, and the odds now say so rather than pretending the question is not there.
+  Branching is per cluster rather than per ending — only teams level on match wins care —
+  and cached on (cluster, who won their games), which is what keeps a 65,536-ending
+  enumeration under a quarter of a second.
+- **What the rules still cannot split is a shared band**, counted as a fraction of a
+  place and marked `=` in the Range column: after strength of victory the LEC goes to the
+  Spring standings, which this page does not hold. Do not invent a deeper tiebreak — the
+  same rule as the constants. If you implement one, implement the *published* one and
+  only where real data backs it.
+- **`stale.mjs` checks the rule against reality**, by rebuilding the last finished split
+  of each league from the schedule, ranking it with the functions lifted out of
+  `index.html`, and comparing against the ordinals the league published. It runs the
+  page's own code rather than a copy, so it catches both a rule change and a bad edit to
+  the engine. That check is what caught the original bug; re-run it before trusting any
+  change in here.
 - **`raceCommon()` names what a miss needs**, because "Alive" alone reads as a
   contradiction when a broadcast has just called the same team through. Riot's clinch
   graphics run on wins — a team nobody can pass is safe — while this counts a lost

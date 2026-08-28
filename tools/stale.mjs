@@ -33,7 +33,8 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import { readDataConstants } from './constants.mjs';
+import { runInNewContext } from 'node:vm';
+import { readDataConstants, extractConstants, extractFunctions } from './constants.mjs';
 import { discoverTournament } from './golgg.mjs';
 import { LEAGUES } from './drafts.mjs';
 
@@ -252,6 +253,140 @@ for (const [slug, R] of Object.entries(REGIONS)) {
         stale(R.name, `${label} draws a line after rank ${c.after}, but that table holds ${total} teams.`,
               `A cut at or past the last row never renders. Update REGIONS.${slug}.${label}.`);
   }
+}
+
+/* ---- the ranking rule, against the last table each league published ------ */
+
+/*
+ * REGIONS[].rank says how a league orders its table: match wins, then game win
+ * percentage across the whole split, then the head-to-head tiebreakers. That
+ * is a claim about somebody else's rulebook, it is the one constant here whose
+ * being wrong is completely invisible — the page renders a confident, wrong
+ * table and nothing throws — and, unlike most claims of that kind, it is
+ * checkable. Rebuild a finished split from the schedule, rank it with the
+ * page's own code, and compare against the ordinals the league published.
+ *
+ * It lifts the ranking functions out of index.html rather than keeping a copy,
+ * so this catches a rule change and a bad edit to the engine with one test.
+ * The rules only reach for game scores, so only a split whose games this can
+ * rebuild exactly is worth testing: where the reconstruction disagrees with
+ * the API's own win-loss records the split is skipped rather than guessed at.
+ */
+const RANK_FNS = ['raceScoreWeights', 'raceEnding', 'raceEndingLink', 'raceGameRec',
+                  'raceH2HM', 'raceH2HG', 'raceMetric', 'raceSplitRuns', 'raceCluster', 'raceRank'];
+let engine = null;
+try {
+  const { sources, missing } = extractFunctions(C.src, RANK_FNS);
+  if (missing.length) throw new Error(`index.html has no ${missing.join(', ')}`);
+  const shapes = extractConstants(C.src, ['RACE_SHAPES_MAX', 'RACE_RANK_DEFAULT']);
+  if (shapes.missing.length) throw new Error(`index.html has no ${shapes.missing.join(', ')}`);
+  engine = { RACE_RANK_DEFAULT: shapes.values.RACE_RANK_DEFAULT };
+  runInNewContext(
+    `const RACE_SHAPES_MAX = ${shapes.values.RACE_SHAPES_MAX};\n` + sources.join('\n'), engine);
+} catch (e) {
+  note('ranking rule', `Could not read the ranking code out of index.html (${e.message}).`,
+       'The rank check was skipped. check.mjs is the place to look if the script no longer parses.');
+}
+
+/* the league's whole schedule, back far enough to cover one tournament */
+async function scheduleSince(id, since) {
+  const first = await apiJSON('/getSchedule', { leagueId: id });
+  let events = first?.data?.schedule?.events || [];
+  let token = first?.data?.schedule?.pages?.older;
+  for (let page = 0; page < 10 && token; page++) {
+    const oldest = events.reduce((m, e) => Math.min(m, Date.parse(e.startTime) || Infinity), Infinity);
+    if (oldest <= since) break;
+    const prev = await apiJSON('/getSchedule', { leagueId: id, pageToken: token });
+    events = (prev?.data?.schedule?.events || []).concat(events);
+    token = prev?.data?.schedule?.pages?.older;
+  }
+  return events;
+}
+
+if (engine) for (const [slug, R] of Object.entries(REGIONS)) {
+  const tours = toursBySlug[slug] || [];
+  const finished = tours
+    .filter(t => Date.parse(t.endDate) < NOW && new Date(Date.parse(t.endDate)).getUTCFullYear() === YEAR)
+    .sort((a, b) => Date.parse(b.endDate) - Date.parse(a.endDate));
+  if (!finished.length) continue;
+  const tour = finished[0];
+
+  let standings = null;
+  try { standings = (await apiJSON('/getStandingsV3', { tournamentId: tour.id }))?.data?.standings; }
+  catch { try { standings = (await apiJSON('/getStandings', { tournamentId: tour.id }))?.data?.standings; } catch {} }
+  if (!Array.isArray(standings) || !standings.length) continue;
+
+  let stage = null, most = 0;
+  for (const s of standings) for (const st of s.stages || []) {
+    const n = new Set((st.sections || []).flatMap(sec =>
+      (sec.rankings || []).flatMap(rk => (rk.teams || []).map(t => t.id || t.name)))).size;
+    if (n > most) { most = n; stage = st; }
+  }
+  if (!stage) continue;
+
+  let events;
+  try { events = await scheduleSince(leagueIds[slug] || LEAGUES[slug]?.id, Date.parse(tour.startDate)); }
+  catch (e) { note(R.name, `Could not read the schedule for \`${tour.slug}\` (${e.message}).`,
+                   'The rank check needs it; nothing on the page is broken by this.'); continue; }
+  const window = events
+    .filter(e => { const t = Date.parse(e.startTime);
+                   return t >= Date.parse(tour.startDate) - 864e5 && t <= Date.parse(tour.endDate) + 864e5; })
+    .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
+
+  const chain = (R.rank || engine.RACE_RANK_DEFAULT).filter(k => k !== 'wins');
+  let checked = 0, wrong = null;
+  for (const sec of stage.sections || []) {
+    const rows = [];
+    for (const rk of sec.rankings || []) for (const t of rk.teams || [])
+      rows.push({ name: t.name, k: nk(t.name), ord: rk.ordinal,
+                  w: t.record?.wins | 0, l: t.record?.losses | 0 });
+    if (rows.length < 3) continue;
+    const idx = {};
+    rows.forEach((t, i) => { t.i = i; idx[t.k] = i; });
+    const n = rows.length;
+
+    /* the regular season, by the same quota trick the page uses: each team gets
+       exactly the games its published record accounts for, in date order */
+    const left = rows.map(t => t.w + t.l);
+    const h2h = new Int8Array(n * n), gw = new Int16Array(n * n);
+    const gwT = new Int16Array(n), glT = new Int16Array(n), mw = new Int16Array(n);
+    for (const ev of window) {
+      if (ev.state !== 'completed' || (ev.match?.teams || []).length !== 2) continue;
+      const a = ev.match.teams[0], b = ev.match.teams[1];
+      const ia = idx[nk(a.name || '')], ib = idx[nk(b.name || '')];
+      if (ia == null || ib == null || ia === ib) continue;
+      if (!(left[ia] > 0 && left[ib] > 0)) continue;
+      left[ia]--; left[ib]--;
+      const ag = a.result?.gameWins | 0, bg = b.result?.gameWins | 0;
+      if (a.result?.outcome === 'win') { h2h[ia * n + ib]++; mw[ia]++; }
+      else if (b.result?.outcome === 'win') { h2h[ib * n + ia]++; mw[ib]++; }
+      gw[ia * n + ib] += ag; gw[ib * n + ia] += bg;
+      gwT[ia] += ag; glT[ia] += bg; gwT[ib] += bg; glT[ib] += ag;
+    }
+    /* a split this cannot rebuild exactly proves nothing either way */
+    if (rows.some(t => mw[t.i] !== t.w)) continue;
+
+    const Cx = { teams: rows, n, idx, h2h, gw, gwT, glT, chain };
+    const wins = new Int16Array(n);
+    rows.forEach(t => { wins[t.i] = t.w; });
+    const band = engine.raceRank(Cx, { members: rows.map(t => t.i), cut: 0 },
+                                 wins, engine.raceEnding(Cx, []));
+    const got = rows.slice().sort((x, y) => band[x.i].lo - band[y.i].lo || x.name.localeCompare(y.name));
+    const want = rows.slice().sort((x, y) => x.ord - y.ord);
+    checked++;
+    // the feed shares an ordinal between teams it never split; only compare where it committed
+    if (!got.every((t, i) => t.ord === want[i].ord))
+      wrong = { sec: sec.name || 'the table',
+                got: got.map(t => `${t.name} ${t.w}-${t.l}`).join(' > '),
+                want: want.map(t => `${t.name} ${t.w}-${t.l}`).join(' > ') };
+  }
+
+  if (wrong)
+    stale(R.name, `The ranking rule does not reproduce the published \`${tour.slug}\` table (${wrong.sec}).`
+          + `\n        page:      ${wrong.got}\n        published: ${wrong.want}`,
+          `Either the league changed its rules or the ordering code drifted. REGIONS.${slug}.rank lists the metrics in order (wins, gamePct, h2h, h2hGamePct, sov, sovGames); the LEC's are in its rulebook under Standings and Tiebreakers.`);
+  else if (checked)
+    fine(R.name, `ranking rule reproduces the published \`${tour.slug}\` table`);
 }
 
 /* ---- gol.gg tournament names (what drafts.mjs scrapes) ------------------- */

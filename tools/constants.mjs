@@ -97,6 +97,48 @@ export function extractConstants(src, names) {
   return { values, missing };
 }
 
+/**
+ * Pull named top-level function declarations out of the script body.
+ *
+ * Why: one tool now wants to *run* part of the page rather than read its data.
+ * stale.mjs checks that the ranking rule baked into REGIONS still reproduces
+ * the tables the leagues publish, and that check is only worth anything if it
+ * exercises the code the browser runs — a second copy of the algorithm in the
+ * tool would agree with itself forever while the page drifted.
+ *
+ * Same discipline as readLiteral: skip strings and comments, count braces.
+ * Anything it mangles fails loudly when the caller evaluates it.
+ */
+export function extractFunctions(src, names) {
+  const nl = src.indexOf(String.fromCharCode(13, 10)) >= 0
+    ? String.fromCharCode(13, 10) : String.fromCharCode(10);
+  const out = [];
+  const missing = [];
+  for (const name of names) {
+    /* top-level declarations only: the marker is a `function` at column 0 */
+    const at = src.indexOf(nl + 'function ' + name + '(');
+    if (at < 0) { missing.push(name); continue; }
+    const from = at + nl.length;
+    let i = from, depth = 0, open = false, end = -1;
+    while (i < src.length) {
+      const c = src[i];
+      if (c === '/' && src[i + 1] === '/') { i = src.indexOf('\n', i); if (i < 0) break; continue; }
+      if (c === '/' && src[i + 1] === '*') { i = src.indexOf('*/', i); if (i < 0) break; i += 2; continue; }
+      if (c === '"' || c === "'" || c === '`') {
+        const q = c; i++;
+        while (i < src.length) { if (src[i] === '\\') { i += 2; continue; } if (src[i] === q) break; i++; }
+        i++; continue;
+      }
+      if (c === '{') { depth++; open = true; }
+      else if (c === '}') { depth--; if (open && !depth) { end = i + 1; break; } }
+      i++;
+    }
+    if (end < 0) throw new Error(`${name}: could not find the brace closing its body`);
+    out.push(src.slice(from, end));
+  }
+  return { sources: out, missing };
+}
+
 /** The five data constants both callers care about, in one call. */
 export const DATA_CONSTANTS =
   ['REGIONS', 'HONOURS', 'STORYLINES', 'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'FORMATS'];

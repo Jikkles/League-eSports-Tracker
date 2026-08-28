@@ -1278,6 +1278,11 @@ const REGIONS = {
         yt:'https://www.youtube.com/@LEC/live', twitch:'https://www.twitch.tv/lec', vods:'https://www.youtube.com/@LEC/videos',
         wiki:'https://lol.fandom.com/wiki/LEC/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LEC/2026/Summer',
         splitLabel:'Summer 2026', defaultGames:9, defFormat:'de6',
+        /* LEC 2026 Rulebook v3.1 §6.1.2/§6.3.5 (match wins, then game win %)
+           and §6.6/§6.7 (the tiebreakers, strength of victory included). The
+           rule after these is the Spring Split standings, which this page does
+           not hold — teams still level there share the place. */
+        rank:['wins','gamePct','h2h','h2hGamePct','sov','sovGames'],
         cuts:[{after:6, kind:'po'}] },   // single table, top 6 -> playoffs
   lck:{ name:'LCK', full:'League of Legends Champions Korea', color:'var(--lck)', slug:'lck',
         // @LCK is the Korean-language channel; @LCKglobal carries the English cast
@@ -4014,7 +4019,9 @@ function matchProbBo(slug, a, b, bo) {
   const d = ra.r - rb.r + h;
   const pGame = 1/(1+Math.pow(10, -d/400));
   const p = Math.min(.99, Math.max(.01, seriesProb(pGame, bo || 5)));
-  return { p, ra, rb, hStr };
+  /* pGame comes back too: the race panel needs it to weigh a 2–0 against a
+     2–1, which the standings now count. */
+  return { p, pGame, ra, rb, hStr };
 }
 function probTitle(a, b, pr) {
   const fmt = x => `${x.gpr?'GPR':'est.'} ${Math.round(x.base)}`
@@ -4426,6 +4433,13 @@ function renderRanks() {
    loses to TH" is a combinatorial one, and sampling can only ever answer
    that with "we didn't happen to see it".
 ===================================================================== */
+/* How a league orders its table, first key first. Every one of these four
+   ranks on match wins and then on game win % across the whole split before it
+   reaches a head-to-head tiebreak at all — checked by rebuilding their 2026
+   splits from the API and comparing against the published final tables. What
+   comes after head-to-head game win % is only written down for the LEC, which
+   is the one region that overrides this. */
+const RACE_RANK_DEFAULT = ['wins', 'gamePct', 'h2h', 'h2hGamePct'];
 const RACE_EXACT_MAX = 1 << 16;   // enumerate every ending up to 65,536 of them
 const RACE_DEEP_MAX  = 1 << 12;   // ...and hunt for minimal scenarios up to 4,096
 const RACE_ITERS     = 20000;     // sampled seasons past that
@@ -4476,22 +4490,34 @@ function raceCtx(slug) {
   teams.forEach((t, i) => { t.i = i; t.k = nk(t.name); idx[t.k] = i; });
   const n = teams.length;
 
-  /* Head-to-head from this split's completed games — the first tiebreak in
-     every one of these leagues' rulebooks — and alongside it the map scores,
-     which are the LEC's second one (head-to-head game win % inside the tied
-     group). gw[i][j] is the games i won off j; a Bo3 published as 2–0 and one
-     published as 2–1 are the same h2h win and a different tiebreak. */
+  /* What has actually been played, which is now four things rather than one.
+     h2h[i][j] is the matches i took off j and gw[i][j] the games, both of them
+     tiebreaks; gwT/glT are each team's game record across the whole split,
+     which is the ranking key that sits directly under match wins.
+
+     Only regular-season games count towards any of them. The bracket rides in
+     the same feed, so this walks the split in order and spends each team's
+     allowance — the same quota trick the fixture list below uses — rather than
+     trusting block names. Without it, the first weekend of playoffs would
+     start rewriting the regular-season table underneath the race. */
   const h2h = new Int8Array(n * n);
   const gw = new Int16Array(n * n);
-  for (const ev of spEvents) {
-    if (ev.state !== 'completed' || (ev.match?.teams || []).length !== 2) continue;
+  const gwT = new Int16Array(n), glT = new Int16Array(n);
+  const spent = teams.map(t => t.w + t.l);
+  const done = spEvents.filter(ev => ev.state === 'completed' && (ev.match?.teams || []).length === 2)
+                       .sort((x, y) => Date.parse(x.startTime) - Date.parse(y.startTime));
+  for (const ev of done) {
     const a = ev.match.teams[0], b = ev.match.teams[1];
     const ia = idx[nk(a.name || '')], ib = idx[nk(b.name || '')];
-    if (ia == null || ib == null) continue;
+    if (ia == null || ib == null || ia === ib) continue;
+    if (!(spent[ia] > 0 && spent[ib] > 0)) continue;   // allowance gone: this is a bracket game
+    spent[ia]--; spent[ib]--;
+    const ag = a.result?.gameWins || 0, bg = b.result?.gameWins || 0;
     if (a.result?.outcome === 'win') h2h[ia * n + ib]++;
     else if (b.result?.outcome === 'win') h2h[ib * n + ia]++;
-    gw[ia * n + ib] += a.result?.gameWins || 0;
-    gw[ib * n + ia] += b.result?.gameWins || 0;
+    gw[ia * n + ib] += ag; gw[ib * n + ia] += bg;
+    gwT[ia] += ag; glT[ia] += bg;
+    gwT[ib] += bg; glT[ib] += ag;
   }
 
   /* Remaining regular-season games. The bracket sits in the same feed, so it
@@ -4520,93 +4546,299 @@ function raceCtx(slug) {
     return { name:g, cut: c ? c.after : 0, kind: c ? c.kind : '',
              members: teams.filter(t => t.group === g).map(t => t.i) };
   });
-  return { slug, R, teams, n, idx, h2h, gw, fixtures, groups };
+  /* the order the league ranks its table in, first key first */
+  const chain = (R.rank || RACE_RANK_DEFAULT).filter(k => k !== 'wins');
+  return { slug, R, teams, n, idx, h2h, gw, gwT, glT, fixtures, groups, chain };
 }
 
-/* LEC tiebreak 2: head-to-head game win % inside the tied group.
-   Applied only when every match between the tied teams has actually been
-   played. A hypothetical Bo3 has a winner but no map score, and 2–0 and 2–1
-   are not the same tiebreak — so where one of the group's games is still to
-   come, this declines rather than guesses, and the teams stay level.
-   Returns a score per team, or null if it cannot be worked out. */
-function raceGamePct(C, tied, played) {
-  for (const p of played)
-    if (tied.indexOf(p.w) >= 0 && tied.indexOf(p.l) >= 0) return null;   // no map score for that one
-  const pct = {};
-  for (const t of tied) {
-    let won = 0, tot = 0;
-    for (const o of tied) {
-      if (o === t) continue;
-      const mine = C.gw[t * C.n + o], theirs = C.gw[o * C.n + t];
-      if (!mine && !theirs) return null;                  // never met: nothing to measure
-      won += mine; tot += mine + theirs;
-    }
-    pct[t] = tot ? won / tot : 0;
+/* =====================================================================
+   HOW A TABLE IS ORDERED
+
+   This used to rank on match wins and send every tie to head-to-head. That is
+   not what any of these leagues do, and the difference shows up on a
+   broadcast. The LEC rulebook (2026 season, v3.1, §6.1.2 and §6.3.5) puts it
+   plainly: "Standings at the end of the Regular Season will be determined by
+   the amount of Matches won and Game Win Percentage". Game win percentage is a
+   ranking key rather than a tiebreak — measured across the whole split, not
+   just between the tied teams — so a 2–0 is worth more than a 2–1 and a team
+   can be passed without losing a match. Only teams level on both reach the
+   §6.6 tiebreakers: head-to-head match record, head-to-head game win
+   percentage, strength of victory, then the Spring standings.
+
+   That is checkable, and it checks out. Rebuild a finished split from the API
+   and sort it this way and you get the league's own published table; sort it
+   on match wins then head-to-head and you do not. LEC Spring 2026 ended with
+   G2, Movistar KOI and NAVI all 6–3, published 3rd/4th/5th, which is their
+   game-win-% order (71.4 / 65.2 / 52.2) and not their head-to-head order. The
+   LCK, LPL and LCS splits of that season order the same way, which is why
+   REGIONS[].rank is the same list for all four bar the LEC's rulebook tail.
+
+   §6.6.2 is the other half of the rule: the moment a metric separates anyone,
+   those teams are placed and whoever is still level starts the tiebreakers
+   again from the top — so a three-way tie that head-to-head splits 2/1/1 sends
+   the two survivors back to their own head-to-head rather than on to the next
+   metric. raceSplitRuns() gets that by recursing into the whole chain instead
+   of walking down it once.
+===================================================================== */
+
+/* An unplayed Bo3 has a winner in every ending this panel enumerates but no
+   map score, and the map score is now part of the ranking. So the score is
+   branched too: from a per-game edge p, a Bo(2k−1) that the winner takes ends
+   with the loser on j games with probability proportional to C(k−1+j, j)·qʲ.
+   For a Bo3 that is 2–0 at 1/(1+2q) and 2–1 at 2q/(1+2q).
+
+   The branching is done per tied cluster rather than per ending, because only
+   teams level on match wins care what the scores were: a cluster is resolved
+   once for each way the games its own members have left could be scored, and
+   the results are weighted and added. Clusters are small and late-split
+   clusters have few games left, so this is usually two or four branches. */
+const RACE_SHAPES_MAX = 96;   // score branches per cluster; past this, a shared band
+function raceScoreWeights(pGame, need) {
+  const q = Math.min(0.999, Math.max(0.001, 1 - pGame));
+  const w = [];
+  let c = 1, s = 0;
+  for (let j = 0; j < need; j++) { const v = c * Math.pow(q, j); w.push(v); s += v; c = c * (need + j) / (j + 1); }
+  return w.map(v => v / s);
+}
+
+/* One hypothetical season, in the shape the metrics read it: a slot per game
+   still to be played, each carrying who won it in this ending and how the maps
+   could have fallen. The scaffolding is built once and rewritten in place per
+   ending — at sixty-odd thousand endings, allocating it fresh each time costs
+   more than the ranking does. */
+function raceEnding(C, played) {
+  const byTeam = [];
+  for (let i = 0; i < C.n; i++) byTeam.push([]);
+  const slots = (played || []).map((p, i) => ({ i, w: p.w, l: p.l, need: p.need || 1, w20: p.w20 || [1] }));
+  const E = { slots, byTeam, j: new Int8Array(Math.max(1, slots.length)),
+              wins: null, loss: null, rec: new Int16Array(2), sc: new Float64Array(C.n),
+              global: false, memo: new Map() };
+  raceEndingLink(E);
+  return E;
+}
+/* re-file the slots under the teams playing them, after the winners change */
+function raceEndingLink(E) {
+  for (const a of E.byTeam) a.length = 0;
+  for (const s of E.slots) {
+    /* a Bo1 has only one possible score, so it needs no branch */
+    E.j[s.i] = s.need === 1 ? 0 : -1;
+    E.byTeam[s.w].push(s); E.byTeam[s.l].push(s);
   }
-  return pct;
 }
 
-/* Final table for one hypothetical ending. Ties go to head-to-head within the
-   tied cluster — every one of these leagues breaks them there first. What
-   head-to-head cannot split is left as a *band* of shared positions rather
-   than guessed at: the leagues settle those on rules this page has no data to
-   apply (the LEC goes to head-to-head game win %, then strength of victory),
-   so a team in a band straddling the cut counts as a fractional qualifier and
-   the panel reports how much of its number hangs on that. */
-function raceRank(C, g, wins, played, loss) {
-  /* Wins settle it inside a finished table, where everyone has played the same
-     number of games. `loss` is for the unfinished one — ranking a 3-3 above a
-     3-5 mid-split — and is left out of the projections, where it cannot differ. */
+/* Final game record for one team, into E.rec. false while a game it played
+   still has an unbranched score. */
+function raceGameRec(C, E, t) {
+  let gw = C.gwT[t], gl = C.glT[t];
+  for (const s of E.byTeam[t]) {
+    const j = E.j[s.i];
+    if (j < 0) return false;
+    if (s.w === t) { gw += s.need; gl += j; } else { gw += j; gl += s.need; }
+  }
+  E.rec[0] = gw; E.rec[1] = gl;
+  return true;
+}
+/* matches, and games, t took off o — counting this ending's results. games
+   come back as -1 where a score between them is still open. */
+function raceH2HM(C, E, t, o) {
+  let m = C.h2h[t * C.n + o];
+  for (const s of E.byTeam[t]) if (s.w === t && s.l === o) m++;
+  return m;
+}
+function raceH2HG(C, E, t, o) {
+  let g = C.gw[t * C.n + o];
+  for (const s of E.byTeam[t]) {
+    if (s.w === t && s.l === o) { if (E.j[s.i] < 0) return -1; g += s.need; }
+    else if (s.l === t && s.w === o) { if (E.j[s.i] < 0) return -1; g += E.j[s.i]; }
+  }
+  return g;
+}
+
+/* One metric, scored across the teams still level. Higher ranks higher. null
+   means this ending does not determine it, which stops the chain rather than
+   skipping to the next rule — a metric you cannot read is not a metric that
+   came out level, and moving past it would apply a rule the league would not
+   have reached. */
+function raceMetric(key, C, E, K) {
+  const out = E.sc;
+  if (key === 'wins') {
+    for (const t of K) out[t] = E.wins[t] * 1000 - (E.loss ? E.loss[t] : 0);
+    return out;
+  }
+  if (key === 'gamePct') {
+    for (const t of K) {
+      if (!raceGameRec(C, E, t)) return null;
+      const g = E.rec[0] + E.rec[1];
+      if (!g) return null;
+      out[t] = E.rec[0] / g;
+    }
+    return out;
+  }
+  if (key === 'h2h') {
+    for (const t of K) { let m = 0; for (const o of K) if (o !== t) m += raceH2HM(C, E, t, o); out[t] = m; }
+    return out;
+  }
+  if (key === 'h2hGamePct') {
+    for (const t of K) {
+      let won = 0, tot = 0;
+      for (const o of K) {
+        if (o === t) continue;
+        const a = raceH2HG(C, E, t, o), b = raceH2HG(C, E, o, t);
+        if (a < 0 || b < 0) return null;
+        won += a; tot += a + b;
+      }
+      if (!tot) return null;                   // never met: nothing to measure
+      out[t] = won / tot;
+    }
+    return out;
+  }
+  /* Strength of victory (§6.7): add up what the teams you beat won — match
+     wins first, and games won only where that left them level. Both read the
+     whole table rather than the tied teams, which is why reaching either marks
+     the ending global: the answer stops depending only on this cluster's own
+     games, so it cannot be reused for the same cluster in another ending. The
+     games version also needs a settled record for every team the tied ones
+     beat, and those teams' remaining games are not branched here, so away from
+     a finished table it declines rather than guessing. */
+  if (key === 'sov' || key === 'sovGames') {
+    E.global = true;
+    for (const t of K) {
+      let s = 0;
+      for (let o = 0; o < C.n; o++) {
+        if (o === t) continue;
+        const m = raceH2HM(C, E, t, o);
+        if (!m) continue;
+        let v;
+        if (key === 'sov') v = E.wins[o];
+        else { if (!raceGameRec(C, E, o)) return null; v = E.rec[0]; }
+        s += m * v;
+      }
+      out[t] = s;
+    }
+    return out;
+  }
+  return null;
+}
+
+/* The chain, applied the way §6.6.2 says to apply it: score the teams still
+   level and, the moment a metric separates any of them, place those and start
+   the whole chain again inside each part. Returns the set as an ordered list
+   of runs; a run longer than one is a shared position that nothing in the
+   chain could split. */
+function raceSplitRuns(C, E, K, chain, depth) {
+  if (K.length < 2 || depth > 8) return [K];
+  for (const key of chain) {
+    const sc = raceMetric(key, C, E, K);
+    if (!sc) return [K];                       // undeterminable: they share the places
+    const ord = K.slice().sort((x, y) => sc[y] - sc[x] || C.teams[x].name.localeCompare(C.teams[y].name));
+    const runs = [];
+    for (let i = 0; i < ord.length; ) {
+      let j = i;
+      while (j + 1 < ord.length && sc[ord[j + 1]] === sc[ord[i]]) j++;
+      runs.push(ord.slice(i, j + 1));
+      i = j + 1;
+    }
+    if (runs.length > 1) {
+      const out = [];
+      for (const r of runs) for (const sub of raceSplitRuns(C, E, r, chain, depth + 1)) out.push(sub);
+      return out;
+    }
+  }
+  return [K];
+}
+
+/* One cluster of teams level on match wins, resolved into a distribution over
+   the places they occupy — as offsets from the top of the cluster, so the
+   answer depends on the cluster and not on where it sits in the table, which
+   is what makes it worth caching.
+
+   The map scores are the reason this is a distribution at all. Every game one
+   of these teams has left is branched over its possible scorelines, weighted
+   by the model, and the chain is run on each branch: a 2–0 and a 2–1 can put
+   the same two teams in a different order, and the panel says how often. */
+function raceCluster(C, E, K) {
+  const open = [];
+  for (const t of K) for (const s of E.byTeam[t]) if (E.j[s.i] < 0 && open.indexOf(s) < 0) open.push(s);
+
+  /* the same cluster comes back thousands of times across the enumeration, and
+     with the same games behind it resolves the same way. Cache on the cluster
+     and on who won those games — the only two things it depends on, unless the
+     chain reaches strength of victory, which reads the whole table. */
+  let mk = '';
+  if (C.n <= 30 && E.slots.length <= 30) {
+    let cm = 0, wp = 0;
+    for (const t of K) cm |= 1 << t;
+    for (const s of open) if (s.w < s.l) wp |= 1 << s.i;
+    mk = cm + ':' + wp;
+    const hit = E.memo.get(mk);
+    if (hit) return hit;
+  }
+
+  const at = {};
+  K.forEach((t, i) => { at[t] = i; });
+  const s = K.length;
+  const acc = new Float64Array(s * s);
+  const add = (runs, weight) => {
+    let p = 0;
+    for (const run of runs) {
+      for (const t of run) for (let k = 0; k < run.length; k++) acc[at[t] * s + p + k] += weight / run.length;
+      p += run.length;
+    }
+  };
+  let shapes = 1;
+  for (const o of open) shapes *= o.need;
+  const was = E.global;
+  E.global = false;
+  if (!open.length) add(raceSplitRuns(C, E, K, C.chain, 0), 1);
+  else if (shapes <= RACE_SHAPES_MAX) {
+    for (let sh = 0; sh < shapes; sh++) {
+      let rest = sh, weight = 1;
+      for (const o of open) {
+        const v = rest % o.need; rest = (rest - v) / o.need;
+        E.j[o.i] = v; weight *= o.w20[v];
+      }
+      add(raceSplitRuns(C, E, K, C.chain, 0), weight);
+    }
+    for (const o of open) E.j[o.i] = -1;
+  } else add([K], 1);   // too many score branches to walk: the places are shared
+
+  const out = {};
+  for (const t of K) {
+    const d = [];
+    let tot = 0;
+    for (let k = 0; k < s; k++) { const w = acc[at[t] * s + k]; if (w > 1e-12) { d.push([k, w]); tot += w; } }
+    for (const e of d) e[1] /= (tot || 1);
+    out[t] = d;
+  }
+  if (mk && !E.global) E.memo.set(mk, out);
+  E.global = was || E.global;
+  return out;
+}
+
+/* Final table for one hypothetical ending.
+
+   Per team: the first and last place still open to it, and the distribution
+   over those places. Where the chain runs out with teams still level — the
+   LEC's next rule is the Spring standings, which this page does not hold —
+   they share the places between them, which is what `=` marks in the Range
+   column. */
+function raceRank(C, g, wins, E, loss) {
+  E.wins = wins; E.loss = loss || null;
   const key = t => wins[t] * 1000 - (loss ? loss[t] : 0);
-  const order = g.members.slice().sort((x, y) =>
-    key(y) - key(x) || C.teams[x].name.localeCompare(C.teams[y].name));
+  const order = g.members.slice().sort((x, y) => key(y) - key(x)
+    || C.teams[x].name.localeCompare(C.teams[y].name));
   const out = {};
   let pos = 1, i = 0;
   while (i < order.length) {
     let j = i;
     while (j + 1 < order.length && key(order[j + 1]) === key(order[i])) j++;
     const cluster = order.slice(i, j + 1);
-    if (cluster.length === 1) {
-      out[cluster[0]] = { lo: pos, hi: pos };
-    } else {
-      const set = new Set(cluster);
-      const hw = {};
+    if (cluster.length === 1) out[cluster[0]] = { lo: pos, hi: pos, dist: [[pos, 1]] };
+    else {
+      const rel = raceCluster(C, E, cluster);
       for (const t of cluster) {
-        let h = 0;
-        for (const o of cluster) if (o !== t) h += C.h2h[t * C.n + o];
-        for (const p of played) if (p.w === t && set.has(p.l)) h++;
-        hw[t] = h;
-      }
-      cluster.sort((x, y) => hw[y] - hw[x]);
-      let k = 0, p2 = pos;
-      while (k < cluster.length) {
-        let m = k;
-        while (m + 1 < cluster.length && hw[cluster[m + 1]] === hw[cluster[k]]) m++;
-        /* what head-to-head wins could not split goes to game win %, and what
-           that cannot split either stays a shared band — the rules after it
-           (strength of victory, then the Spring standings) need data this page
-           does not have, and guessing them would be inventing a result */
-        const tied = cluster.slice(k, m + 1);
-        let runs = [tied];
-        if (tied.length > 1) {
-          const pct = raceGamePct(C, tied, played);
-          if (pct) {
-            const ord = tied.slice().sort((x, y) => pct[y] - pct[x]);
-            runs = [];
-            for (let z = 0; z < ord.length; ) {
-              let e = z;
-              while (e + 1 < ord.length && pct[ord[e + 1]] === pct[ord[z]]) e++;
-              runs.push(ord.slice(z, e + 1));
-              z = e + 1;
-            }
-          }
-        }
-        for (const run of runs) {
-          const band = { lo: p2, hi: p2 + run.length - 1 };
-          for (const t of run) out[t] = band;
-          p2 += run.length;
-        }
-        k = m + 1;
+        const d = rel[t].map(e => [pos + e[0], e[1]]);
+        out[t] = { lo: d[0][0], hi: d[d.length - 1][0], dist: d };
       }
     }
     pos += cluster.length; i = j + 1;
@@ -4636,14 +4868,26 @@ function raceRun(slug) {
   const deep = exact && combos <= RACE_DEEP_MAX;
 
   buildSimCtx(slug);
-  const pA = free.map(f => matchProbBo(slug, C.teams[f.a].name, C.teams[f.b].name, f.bo).p);
+  /* pA is the chance the home side takes the match; need/w20 is what the
+     scoreline would then be, which the standings now count — so each fixture
+     carries the weights for both sides winning, and the ending picks one. */
+  const pr = C.fixtures.map(f => matchProbBo(slug, C.teams[f.a].name, C.teams[f.b].name, f.bo));
+  const prOf = f => pr[C.fixtures.indexOf(f)];
+  const scoreOf = (f, aWon) => {
+    const need = Math.max(1, Math.ceil((f.bo || 1) / 2));
+    const pg = prOf(f).pGame;
+    return { need, w20: raceScoreWeights(aWon ? pg : 1 - pg, need) };
+  };
+  const pA = free.map(f => prOf(f).p);
+  const freeScore = free.map(f => [scoreOf(f, true), scoreOf(f, false)]);
 
   const baseWins = new Int16Array(C.n), basePlayed = [];
   C.teams.forEach(t => { baseWins[t.i] = t.w; });
   for (const f of locked) {
     const aw = S.locks[f.id] === 'a';
     const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
-    baseWins[w]++; basePlayed.push({ w, l });
+    const sc = scoreOf(f, aw);
+    baseWins[w]++; basePlayed.push({ w, l, need: sc.need, w20: sc.w20 });
   }
 
   const acc = C.teams.map(() => ({
@@ -4655,7 +4899,11 @@ function raceRun(slug) {
   const okAll = deep ? C.teams.map(() => new Uint8Array(combos)) : null;
 
   const wins = new Int16Array(C.n);
-  const played = [];
+  /* the scaffold the ranking reads, built once: the locked games never move,
+     and the free ones only change hands */
+  const E = raceEnding(C, basePlayed.concat(free.map((f, b) =>
+    ({ w: f.a, l: f.b, need: freeScore[b][0].need, w20: freeScore[b][0].w20 }))));
+  const freeSlot = free.map((f, b) => E.slots[basePlayed.length + b]);
   /* which side took each game this time round. The exact path could read this
      off the iteration counter's bits, but the sampled path cannot: a split with
      32 or more games left overruns what a JS bitwise shift can address, and the
@@ -4665,36 +4913,39 @@ function raceRun(slug) {
   for (let it = 0; it < combos; it++) {
     let weight = 1;
     wins.set(baseWins);
-    played.length = 0;
-    for (const p of basePlayed) played.push(p);
     for (let b = 0; b < n; b++) {
       let aw;
       if (exact) { aw = !((it >> b) & 1); weight *= aw ? pA[b] : 1 - pA[b]; }
       else aw = Math.random() < pA[b];
       sides[b] = aw ? 0 : 1;
-      const f = free[b];
-      const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
-      wins[w]++; played.push({ w, l });
+      const f = free[b], sc = freeScore[b][aw ? 0 : 1], s = freeSlot[b];
+      s.w = aw ? f.a : f.b; s.l = aw ? f.b : f.a; s.w20 = sc.w20;
+      wins[s.w]++;
     }
+    raceEndingLink(E);
     totalW += weight;
     for (const g of C.groups) {
-      const band = raceRank(C, g, wins, played);
+      const band = raceRank(C, g, wins, E);
       for (const ti of g.members) {
-        const bd = band[ti], size = bd.hi - bd.lo + 1;
-        const qual = g.cut ? Math.max(0, Math.min(size, g.cut - bd.lo + 1)) : 0;
-        const share = g.cut ? qual / size : 0;
+        const bd = band[ti];
+        /* the odds of finishing inside the cut, over every way the map scores
+           could land in this ending — a whole number when the ending settles
+           it either way, a fraction while a 2–0 and a 2–1 would separate them
+           differently or a place is shared outright */
+        let share = 0;
+        if (g.cut) for (const [pl, pw] of bd.dist) if (pl <= g.cut) share += pw;
         const A = acc[ti];
         A.pIn += weight * share;
-        if (qual > 0 && qual < size) A.pTie += weight;
+        if (share > 0.0000001 && share < 0.9999999) A.pTie += weight;
         if (bd.lo < A.best) A.best = bd.lo;
-        /* the best place they could hold outright, as opposed to share: a band
-           top is not a finish, it is a tiebreak this page has not called */
-        if (size === 1 && bd.lo < A.bestSolo) A.bestSolo = bd.lo;
+        /* the best place they could hold outright: a place they only share, or
+           only reach on the right scoreline, is not a finish */
+        if (bd.dist.length === 1 && bd.lo < A.bestSolo) A.bestSolo = bd.lo;
         if (bd.hi > A.worst) A.worst = bd.hi;
-        for (let p = bd.lo; p <= bd.hi; p++) A.pos[p] += weight / size;
+        for (const [pl, pw] of bd.dist) A.pos[pl] += weight * pw;
         if (share > 0) A.cIn++;
-        if (share === 1) A.cSure++;
-        if (okAll) okAll[ti][it] = share === 1 ? 2 : (share > 0 ? 1 : 0);
+        if (share > 0.9999999) A.cSure++;
+        if (okAll) okAll[ti][it] = share > 0.9999999 ? 2 : (share > 0 ? 1 : 0);
         for (let b = 0; b < n; b++) {
           const c = A.cond[b][sides[b]];
           c.w += weight; c.inw += weight * share;
@@ -4709,7 +4960,9 @@ function raceRun(slug) {
     if (A.best === 99) A.best = 0;
     if (A.bestSolo === 99) A.bestSolo = 0;
   }
-  const state = { slug, C, free, locked, locks: S.locks, exact, deep, combos, acc, okAll, pA };
+  const score = new Map();
+  C.fixtures.forEach(f => score.set(f.id, [scoreOf(f, true), scoreOf(f, false)]));
+  const state = { slug, C, free, locked, locks: S.locks, exact, deep, combos, acc, okAll, pA, score };
   raceCache[slug] = { sig, state };
   return state;
 }
@@ -4842,28 +5095,38 @@ function renderRace(slug) {
           + ' can go, weighed by the same model the simulator uses. '
         : 'Sampled: ' + RACE_ITERS.toLocaleString() + ' simulated endings — too many games left ('
           + state.free.length + ') to enumerate them all, so "impossible" here means "never seen". ')
-      + 'Ties go to head-to-head wins, then to head-to-head game win % where every game between the tied teams has already been played. What neither can split is shown as a shared position — the rules after them (strength of victory, then the Spring standings) need data this page does not have.';
+      + 'Teams level on match wins are separated by game win % across the whole split — a 2–0 counts for more than a 2–1 — and only then by head-to-head, so an unplayed game is weighed by both who wins it and how. What the rules still cannot split is shown as a shared position.';
 
   /* ---- the table ---- */
   const nowWins = new Int16Array(C.n), nowLoss = new Int16Array(C.n);
   C.teams.forEach(t => { nowWins[t.i] = t.w; nowLoss[t.i] = t.l; });
   const HEAD = '<table class="tbl-race"><tr><th class="num">#</th><th>Team</th><th class="num">W–L</th>'
     + '<th class="num gl" title="Games left in the regular season">GL</th>'
-    + '<th class="num" title="Best and worst finish still mathematically available. “=” means the best is a place shared with another team, left to a tiebreak this page cannot call">Range</th>'
+    + '<th class="num" title="Best and worst finish still mathematically available. “=” means the best is a place they cannot hold outright — it needs a scoreline to fall their way, or it is shared with a team the rules cannot separate them from">Range</th>'
     + '<th>Odds</th><th></th></tr>';
   let html = '';
   for (const g of C.groups) {
     /* where they stand today: the official ordinal where the API gave us one,
-       our own count of the fetched games where it did not */
-    const band = raceRank(C, g, nowWins, [], nowLoss);
+       our own count of the fetched games where it did not. The feed hands out
+       a shared ordinal to teams level on match wins — it does not apply the
+       league's own game-win-% rule until the split is over — so ties in it are
+       ordered here by the rule the table will actually be settled on. */
+    const band = raceRank(C, g, nowWins, raceEnding(C, []), nowLoss);
     const at = ti => C.teams[ti].ord || band[ti].lo;
-    const rows = g.members.slice().sort((x, y) => at(x) - at(y)
+    const rows = g.members.slice().sort((x, y) => at(x) - at(y) || band[x].lo - band[y].lo
       || C.teams[x].name.localeCompare(C.teams[y].name));
     if (C.groups.length > 1) html += '<div class="grp-head">' + esc(g.name || 'Table') + '</div>';
     html += HEAD;
+    /* Competition ranking off that order. The feed's own ordinal cannot be
+       printed straight: it hands the same number to teams it has not split
+       yet, so two rows would both read 7 with nothing to say why. A place is
+       only marked shared where this page cannot separate them either. */
+    const tied = (x, y) => at(x) === at(y) && band[x].lo === band[y].lo;
+    const disp = [];
+    rows.forEach((ti, i) => { disp[i] = i && tied(rows[i - 1], ti) ? disp[i - 1] : i + 1; });
     rows.forEach((ti, i) => {
       const t = C.teams[ti], A = state.acc[ti];
-      const shared = rows.some(o => o !== ti && at(o) === at(ti));
+      const shared = rows.some(o => o !== ti && tied(o, ti));
       const cut = g.cut && i + 1 === g.cut && i + 1 < rows.length;
       const st = raceStatus(state, ti, g);
       const sharedBest = A.best && A.bestSolo !== A.best;   // top of the range is a shared place
@@ -4872,7 +5135,7 @@ function renderRace(slug) {
       html += '<tr class="race-row' + (cut ? ' cutline' : '')
         + (nk(S.focus) === t.k ? ' sel' : '') + '" data-t="' + esc(t.name) + '" tabindex="0"'
         + ' title="What ' + esc(t.name) + ' needs">'
-        + '<td class="num rank-cell">' + at(ti) + (shared ? '=' : '') + '</td>'
+        + '<td class="num rank-cell">' + disp[i] + (shared ? '=' : '') + '</td>'
         + '<td>' + logoHTML(t.name) + esc(raceShort(t.name)) + '</td>'
         + '<td class="num">' + t.w + '–' + t.l + '</td>'
         + '<td class="num gl">' + t.left + '</td>'
@@ -4971,9 +5234,9 @@ function raceFocusHTML(state, ti) {
      actually plays, so the eye meets the odds first. */
   const tie = A.pTie > 0.005
     ? '<li class="warn"><b>Tiebreak risk</b>, not a qualification chance: in ' + racePct(A.pTie)
-      + ' of endings they finish level on the cut line with head-to-head wins and game win % both unable to '
-      + 'split it, so the call passes to rules this page cannot apply. The <b>' + odds
-      + '</b> above counts those as a share of a place, not a yes.</li>'
+      + ' of endings winning those games is not enough on its own — the last place turns on how the '
+      + 'maps fall, or on a tie the published rules run out before splitting. The <b>' + odds
+      + '</b> above weighs those by how often they go their way, rather than counting them as a yes.</li>'
     : '';
   if (st.line) bits.push('<li class="' + (st.key === 'out' ? 'bad' : 'good') + '">' + esc(st.line) + '</li>');
   else
@@ -5042,23 +5305,27 @@ function raceToSim(slug) {
   const C = state.C, S = raceLoad(slug);
   const wins = new Int16Array(C.n), played = [];
   C.teams.forEach(t => { wins[t.i] = t.w; });
-  for (const f of state.locked) {
-    const aw = S.locks[f.id] === 'a';
+  /* the model favourite in every unplayed game, and — since the standings
+     count map scores — the scoreline it most likely wins by */
+  const push = (f, aw) => {
     const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
-    wins[w]++; played.push({ w, l });
-  }
-  state.free.forEach((f, b) => {
-    const aw = state.pA[b] >= 0.5;
-    const w = aw ? f.a : f.b, l = aw ? f.b : f.a;
-    wins[w]++; played.push({ w, l });
-  });
+    const sc = state.score.get(f.id)[aw ? 0 : 1];
+    let best = 0;
+    sc.w20.forEach((v, j) => { if (v > sc.w20[best]) best = j; });
+    wins[w]++; played.push({ w, l, need: sc.need, w20: sc.w20.map((v, j) => j === best ? 1 : 0) });
+  };
+  for (const f of state.locked) push(f, S.locks[f.id] === 'a');
+  state.free.forEach((f, b) => push(f, state.pA[b] >= 0.5));
   const qual = [];
   for (const g of C.groups) {
     if (!g.cut) continue;
-    const band = raceRank(C, g, wins, played);
-    g.members.slice().sort((x, y) => band[x].lo - band[y].lo)
+    const band = raceRank(C, g, wins, raceEnding(C, played));
+    /* expected place, so a tie the rules cannot call still seeds in some order
+       rather than dropping a team out of the bracket */
+    const at = ti => band[ti].dist.reduce((s, e) => s + e[0] * e[1], 0);
+    g.members.slice().sort((x, y) => at(x) - at(y))
       .filter(ti => band[ti].lo <= g.cut)
-      .forEach(ti => qual.push({ ti, wins: wins[ti], pos: band[ti].lo }));
+      .forEach(ti => qual.push({ ti, wins: wins[ti], pos: at(ti) }));
   }
   if (!qual.length) return;
   qual.sort((x, y) => x.pos - y.pos || y.wins - x.wins);

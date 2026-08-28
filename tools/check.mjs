@@ -53,6 +53,8 @@ const ROOT = join(HERE, '..');
 const INDEX = join(ROOT, 'index.html');
 
 const STRICT = process.argv.includes('--strict');
+/* the metric names raceMetric() in index.html actually answers to */
+const RANK_METRICS = ['wins', 'gamePct', 'h2h', 'h2hGamePct', 'sov', 'sovGames'];
 const SIZE_BUDGET = 400 * 1024;   // DRAFTS grows all split; shout before it gets silly
 /* The budget above only warns, and it is a warning nobody sees unless they read
    the log — health.yml does not pass --strict, so nothing has ever stopped the
@@ -309,6 +311,21 @@ if (m && !fails.length) {
         else if (formatKeys.size && !formatKeys.has(r.defFormat))
           fail(`${at}.defFormat is "${r.defFormat}", which is not a key of FORMATS.`,
                `Known formats: ${[...formatKeys].join(', ')}. The playoff tab renders empty without a match.`);
+
+        /* the ranking chain: a metric name the engine does not know is
+           skipped in silence, and the table quietly orders itself on whatever
+           is left — which is exactly the bug this constant exists to fix */
+        if (r.rank !== undefined) {
+          if (!Array.isArray(r.rank) || !r.rank.length) fail(`${at}.rank is not a non-empty array.`);
+          else {
+            const unknown = r.rank.filter(k => !RANK_METRICS.includes(k));
+            if (unknown.length)
+              fail(`${at}.rank names ${unknown.map(u => `"${u}"`).join(', ')}, which the ranking code does not implement.`,
+                   `Known metrics: ${RANK_METRICS.join(', ')}. An unknown one is ignored, so the table silently ranks on the rest.`);
+            if (r.rank[0] !== 'wins')
+              fail(`${at}.rank starts with "${r.rank[0]}"; match wins come first in every one of these leagues.`);
+          }
+        }
 
         const cutSets = [
           ...(r.cuts ? [['cuts', r.cuts]] : []),
