@@ -64,7 +64,9 @@ Deployed via GitHub Pages straight from this repo.
     play different seasons (LPL Ascend 14, Nirvana 6), and `tableSpans` where the
     regular season is filed as more than one tournament (see below)
   - `EVENT` — the international-event tab: the next major (Worlds 2026), its
-    dates, host, field, stages, wordmark and wiki links. See the section below
+    dates, host, field, stages, wordmark, wiki links and `qual`, the
+    qualification board of who is through and what decides the rest. See the
+    section below
   - `HONOURS` — season honours board (tournament winners, runners-up, dates)
   - `STORYLINES` — home-tab narrative bullets
   - `POWER_RANKINGS` + `POWER_RANKINGS_ASOF` — mirror of lolesports.com Global Power
@@ -207,11 +209,13 @@ A sixth item leads the nav's tabs, fenced off by a rule on either side: one tab
 for the next major the four leagues feed into (right now Worlds 2026), sitting
 between the All chip and the leagues because it is the season's main event
 rather than a fifth league. It is driven by the `EVENT`
-constant and nothing else — there is no feed behind it yet, so the page is a
-deliberate placeholder: the home board's shape (Live Now, Next Up, Recent
-Games), a *Work in progress* badge saying so, and TBD wherever a time, a team or
-a result will go. Nothing on it is invented; the dates, host, field and stage
-structure come from Leaguepedia's tournament page and are linked from the hero.
+constant and nothing else — there is no feed behind it yet. Above the fold it
+carries a real qualification board (see `EVENT.qual` below); under that it is
+still a deliberate placeholder: the home board's shape (Live Now, Next Up,
+Recent Games), a *Work in progress* badge saying so, and TBD wherever a time, a
+team or a result will go. Nothing on it is invented; the dates, host, field,
+stage structure and qualification routes come from Leaguepedia's tournament page
+and are linked from the hero.
 
 - **`EVENT` is not a `REGIONS` entry, on purpose.** Every `Object.keys(REGIONS)`
   walk on this page — the home board, the refresh loop, the standings, the race,
@@ -223,6 +227,24 @@ structure come from Leaguepedia's tournament page and are linked from the hero.
   Rolling the tab on to the next event means editing all three — `check.mjs`
   holds them to each other, so getting two of them right fails the build rather
   than rendering a tab that opens a blank page.
+- **`EVENT.qual` is the qualification board, and it is the one part of the tab
+  with facts on it.** Riot publishes no qualification feed, so it is researched
+  and patched by hand like `HONOURS`, from Leaguepedia's participants table on
+  the page the hero already links. Each region carries `routes` — the seed
+  table, one entry per place, each with the `on` date that place is settled —
+  and `thru`, every team already qualified. **Those two lists are deliberately
+  not the same list.** When this was written the LCP's final had not been
+  played, so both its finalists were through with neither seed assigned; filing
+  each of them under a seed row would have been inventing the result of a game
+  nobody had played. So the pips count `thru` against `routes`, a `thru` entry
+  names its route only once that is settled, and the panel says "all 3 places
+  taken · seeding settled 30 Aug" rather than guessing. `check.mjs` holds a
+  `thru`'s route name to the region's `routes` — a misspelt one renders a route
+  that is already won as still open — and holds the place totals to the prose
+  in `EVENT.field`, which is the same arithmetic written out twice on one
+  screen. `stale.mjs` reads the `on` dates back: a place whose date has passed
+  while its region is still a team short is STALE, and one falling within a week
+  is a NOTE, so the board is chased rather than quietly rotting.
 - **`stale.mjs` is what notices the tab has gone off.** Nothing on the page is
   fetched, so nothing about it can break loudly: once the event it names has been
   played, the tab advertises a finished tournament with TBD in every row while

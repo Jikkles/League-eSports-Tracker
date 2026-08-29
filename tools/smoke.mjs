@@ -332,6 +332,36 @@ if (loaded) {
     return `${r.label}: ${r.panels} panels, ${r.rows} TBD fixtures`;
   });
 
+  /* The qualification board is the only thing on that tab with facts in it, and
+     it is drawn from a constant the page never fetches: evtQual() returns an
+     empty string when EVENT.qual is gone, so the tab would lose it and still
+     render, still pass every other check here, and still say nothing. This
+     reads the pips back and holds them against the constant that drew them. */
+  await check('event tab: qualification board', async () => {
+    const r = await page.evaluate(() => {
+      const q = typeof EVENT !== 'undefined' ? EVENT.qual : null;
+      const rows = [...document.querySelectorAll('.qual-panel .q-rg')];
+      if (!q) return { err: 'EVENT.qual is not on the page' };
+      if (rows.length !== q.regions.length)
+        return { err: `${rows.length} region rows drawn for ${q.regions.length} in the constant` };
+      let pips = 0, on = 0;
+      for (let i = 0; i < rows.length; i++) {
+        const p = rows[i].querySelectorAll('.q-pip');
+        if (p.length !== q.regions[i].routes.length)
+          return { err: `${q.regions[i].rg} drew ${p.length} pips for ${q.regions[i].routes.length} places` };
+        pips += p.length;
+        on += rows[i].querySelectorAll('.q-pip.on').length;
+      }
+      const want = q.regions.reduce((n, x) => n + x.thru.length, 0);
+      if (on !== want) return { err: `${on} places drawn as filled, ${want} teams on the board` };
+      return { pips, on, sub: document.querySelector('.qual-panel .p-sub')?.textContent.trim() || '' };
+    });
+    if (r.err) throw new Error(r.err);
+    if (!r.sub.includes(`${r.on} of ${r.pips}`))
+      throw new Error(`the panel's count reads "${r.sub}" against ${r.on} of ${r.pips} pips`);
+    return r.sub;
+  });
+
   await check('back to home', async () => {
     await page.click('.fchip[data-f=all]');
     await page.waitForSelector('#page-home.active', { timeout: STEP_MS });

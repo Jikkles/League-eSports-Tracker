@@ -39,6 +39,7 @@ renaming it breaks Pages hosting.
 | `HONOURS` | 2026 honours board: First Stand, LEC Versus/Spring, LPL splits, MSI, EWC, KeSPA Cup, Worlds | After each tournament concludes |
 | `STORYLINES` | 4-5 season narrative bullets on the Home tab | When honours change |
 | `FORMATS` | Playoff bracket wirings (de6 LEC, de6b LCK/LCS byes, de10 LPL, de8, se4) | If Riot changes a playoff format |
+| `EVENT` | The international-event tab: Worlds 2026's dates, host, field, stages, wordmark, wiki links, and `qual` — the qualification board (per-region `routes` with the date each place is settled, and `thru`, the teams already through) | As each region's places are decided; roll it on once the event is played |
 | `REGIONS` | Per-region: `splitLabel`, `defaultGames`, `defFormat`, `cuts`/`groupCuts` (playoff/play-in qualification lines), channel/wiki URLs | At split boundaries |
 
 ## Research sourcing per area
@@ -49,6 +50,8 @@ block nightly. If Tom asks for a rankings refresh, run `node tools/gpr.mjs` (add
 show him what would change) and commit that — do not go looking for articles or ask for a screenshot.
 If the scrape fails, say so rather than filling the block in by hand; a hand-edit is overwritten on the
 next nightly run and the two sources then disagree.
+
+**Worlds qualification** — Leaguepedia's participants table on the tournament page (`lol.fandom.com/wiki/2026_Season_World_Championship`) is the source of record; it lists every seed, its qualification path and the date it is settled. Fetch it as wikitext via the MediaWiki API (`/api.php?action=parse&page=...&prop=wikitext&format=json`) — plain page fetches are blocked, and Liquipedia refuses them outright. Resolve team names through the lolesports `/getTeams` feed rather than the wiki's short codes, so the spelling matches everything else on the page. Never place a team on a seed the wiki has not assigned it.
 
 **Honours & winners** — web_search first, then Leaguepedia (`lol.fandom.com`) and Liquipedia
 (`liquipedia.net`) pages for the specific tournament. Record: winner, runner-up, series score,

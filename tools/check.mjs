@@ -440,6 +440,76 @@ if (m && !fails.length) {
           if (!st.sub) fail(`EVENT.stages[${i}] (${st.name}) has no sub.`);
         });
       }
+
+      /* -- EVENT.qual: the qualification board ---------------------------- */
+      /* The board is hand-researched, and the two halves of it can disagree
+         in ways that render perfectly: a `thru` naming a route that no longer
+         exists silently leaves that route listed as open, and a place count
+         edited here but not in EVENT.field puts two different fields of 19 on
+         the same screen. Both are checked here rather than left to a reader. */
+      if (EVENT.qual !== undefined) {
+        const q = EVENT.qual;
+        if (!q.note) fail('EVENT.qual.note is missing.');
+        if (!Array.isArray(q.regions) || !q.regions.length) {
+          fail('EVENT.qual.regions is not a non-empty array.');
+        } else {
+          const seen = new Map();          // team -> region, across the whole board
+          let places = 0;
+
+          q.regions.forEach((r, i) => {
+            const at = `EVENT.qual.regions[${i}]${r.rg ? ` (${r.rg})` : ''}`;
+            for (const field of ['rg', 'lg', 'color'])
+              if (!r[field]) fail(`${at} has no ${field}.`);
+
+            if (!Array.isArray(r.routes) || !r.routes.length) {
+              fail(`${at} has no routes.`,
+                   'A region with no route table has no places to fill and renders an empty row.');
+              return;
+            }
+            places += r.routes.length;
+
+            /* evtQual() marks a route spent by matching a team's `via` against
+               it, so two routes spelled the same way would both go at once. */
+            const vias = new Set();
+            r.routes.forEach((x, j) => {
+              if (!x.via) fail(`${at}.routes[${j}] has no via.`);
+              else if (vias.has(x.via)) fail(`${at} lists the route "${x.via}" twice.`,
+                     'A team qualifying by it would strike both off at once.');
+              else vias.add(x.via);
+              if (!x.on || Number.isNaN(Date.parse(x.on)))
+                fail(`${at}.routes[${j}] (${x.via}) has no parseable date: ${x.on}`);
+            });
+
+            const thru = r.thru;
+            if (!Array.isArray(thru)) { fail(`${at}.thru is not an array.`); return; }
+            if (thru.length > r.routes.length)
+              fail(`${at} has ${thru.length} teams through for ${r.routes.length} places.`);
+
+            thru.forEach((t, j) => {
+              if (!t.team) { fail(`${at}.thru[${j}] has no team.`); return; }
+              if (!t.on || Number.isNaN(Date.parse(t.on)))
+                fail(`${at}.thru[${j}] (${t.team}) has no parseable date: ${t.on}`);
+              if (t.via !== undefined && !vias.has(t.via))
+                fail(`${at}.thru[${j}] (${t.team}) qualified via "${t.via}", which is not one of that region's routes.`,
+                     'evtQual() strikes a route off by that name, so the route stays listed as still open.');
+              if (seen.has(t.team))
+                fail(`${t.team} is through in both ${seen.get(t.team)} and ${r.rg}.`);
+              else seen.set(t.team, r.rg);
+            });
+          });
+
+          /* EVENT.field is the same arithmetic written out in prose above the
+             board. Editing one and not the other puts two answers on screen. */
+          if (EVENT.field) {
+            const total = /(\d+)\s+teams/.exec(EVENT.field);
+            if (total && +total[1] !== places)
+              fail(`EVENT.field says ${total[1]} teams; the qualification board has ${places} places.`);
+            for (const r of q.regions)
+              if (r.rg && !EVENT.field.includes(`${r.routes.length} ${r.rg}`))
+                fail(`EVENT.field does not say "${r.routes.length} ${r.rg}", which is what the board gives that region.`);
+          }
+        }
+      }
     }
 
     /* -- POWER_RANKINGS ---------------------------------------------------- */

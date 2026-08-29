@@ -139,6 +139,49 @@ if (EVENT) {
   }
 }
 
+/* ---- EVENT.qual: the qualification board --------------------------------- */
+
+/* The board is the one part of that tab with facts on it, and it rots on a
+   schedule it carries itself: every place names the date it is settled. Once
+   that date has passed and the place is still empty, the page is showing an
+   open route to a game that has been played — which nothing else here would
+   notice, because no feed is behind it. The dates come from Leaguepedia's
+   participants table; the fix is always to patch EVENT.qual against it. */
+if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
+  const SOON_DAYS = 7;
+  const day = iso => new Date(iso).toLocaleDateString('en-GB', {day:'numeric', month:'short', timeZone:'UTC'});
+  let filled = 0, places = 0, soon = [];
+
+  for (const r of EVENT.qual.regions) {
+    const routes = r.routes || [], thru = r.thru || [];
+    places += routes.length; filled += thru.length;
+
+    /* Dates rather than routes: which place a team ends up holding is often
+       drawn later than the place is won, so the honest question is how many
+       of this region's places should be settled by now. */
+    const due = routes.filter(x => Date.parse(x.on) < NOW);
+    if (due.length > thru.length) {
+      const last = due.map(x => x.on).sort().pop();
+      stale('EVENT.qual', `${r.rg}: ${due.length} of its ${routes.length} places were settled by ${day(last)}, but only ${thru.length} team${thru.length === 1 ? ' is' : 's are'} on the board.`,
+            `Patch EVENT.qual.regions[].thru for ${r.rg} from the participants table on ${EVENT.wiki}.`);
+    }
+    for (const x of routes) {
+      const d = Math.ceil((Date.parse(x.on) - NOW) / 86400e3);
+      if (d >= 0 && d <= SOON_DAYS) soon.push(`${x.via} (${day(x.on)})`);
+    }
+  }
+
+  if (filled === places)
+    note('EVENT.qual', `All ${places} places are filled.`,
+         'The board has said everything it can say — the tab now wants the draw and the fixtures rather than the qualification panel.');
+  else
+    fine('EVENT.qual', `${filled} of ${places} places filled`);
+
+  if (soon.length)
+    note('EVENT.qual', `Settled within ${SOON_DAYS} days: ${soon.join(', ')}.`,
+         'Worth a patch once they are played — this check will start calling them stale the day after.');
+}
+
 /* ---- per-league checks --------------------------------------------------- */
 
 let leagueIds = {};

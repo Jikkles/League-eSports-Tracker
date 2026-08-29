@@ -610,6 +610,33 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .ov-rg.tbd:hover{background:var(--panel);border-color:var(--line);border-top-color:var(--rg)}
 .nxt.tbd:hover{background:transparent}
 .ov-rg.tbd .n,.nxt.tbd .n-code,.nxt.tbd .n-time,.nxt.tbd .n-date{color:var(--faint)}
+/* ---- the qualification board: the one part of this tab with facts in it ----
+   Each row carries its region's colour in --qc so the pips and the team chips
+   pick it up without six rules; the two regions this page has no league colour
+   for take the event's own cyan rather than borrowing someone else's. */
+.qual-note{font-family:var(--mono);font-size:10.5px;line-height:1.7;color:var(--faint);
+  padding-bottom:4px}
+/* every row is ruled off, the first one included: that top rule is what parts
+   the board from the note above it */
+.q-rg{display:grid;grid-template-columns:150px 1fr;gap:10px 16px;align-items:start;
+  padding:13px 0;border-top:1px solid var(--line)}
+.q-who{display:flex;flex-direction:column;gap:7px}
+.q-who .nm{font-family:var(--body);font-weight:800;font-size:15px;letter-spacing:.3px;color:var(--qc)}
+.q-who .lg{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;color:var(--dim)}
+.q-pips{display:flex;align-items:center;gap:5px}
+.q-pip{width:9px;height:9px;border-radius:50%;border:1px solid var(--line2)}
+.q-pip.on{background:var(--qc);border-color:var(--qc)}
+.q-count{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;color:var(--faint);margin-left:4px}
+.q-body{display:flex;flex-direction:column;gap:9px;min-width:0}
+.q-teams{display:flex;flex-wrap:wrap;gap:8px}
+.q-team{display:flex;flex-direction:column;gap:3px;padding:7px 10px;background:var(--panel2);
+  border:1px solid var(--line);border-left:2px solid var(--qc);border-radius:3px}
+.q-team b{font-family:var(--body);font-weight:700;font-size:13px}
+.q-team i{font-family:var(--mono);font-style:normal;font-size:9.5px;letter-spacing:.5px;color:var(--faint)}
+.q-open{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:5px 20px}
+.q-open li{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.q-on{color:var(--faint)}
+.q-none{font-family:var(--mono);font-size:11px;color:var(--faint)}
 
 .loading{font-family:var(--mono);font-size:11px;color:var(--faint);padding:14px;text-align:center}
 .err-msg{font-family:var(--mono);font-size:11px;color:var(--loss);padding:10px;border:1px dashed rgba(224,82,96,.4);margin:6px 0}
@@ -1035,6 +1062,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .tab-evt{padding:12px 2px}
   .evt-mark{height:15px;max-width:100%}
   .evt-hero .evt-mark{height:30px}
+  .q-rg{grid-template-columns:1fr;gap:9px}
+  .q-team{flex:1 1 auto}
   .fchip::after,.tab::after{bottom:-6px;height:3px}
   .ov-regions{grid-template-columns:1fr 1fr}
   .ov-nums{gap:16px}
@@ -1430,6 +1459,65 @@ const EVENT = {
     {name:'Swiss',    sub:'16 TEAMS · FIVE ROUNDS'},
     {name:'Knockout', sub:'8 TEAMS · SINGLE ELIM · BO5'},
   ],
+
+  /* Who is already going, and what decides the rest. Riot publishes no
+     qualification feed, so this is researched and patched by hand like
+     HONOURS — Leaguepedia's participants table, linked from the hero above,
+     is the source, and `on` is the date it gives for that place being settled.
+
+     `routes` is the seed table, one entry per place in seed order. `thru` is
+     every team already qualified, and is deliberately NOT the same list: the
+     LCP's final has not been played, so both its finalists are through with
+     neither seed assigned. Filing each of them under a seed row would be
+     inventing the result of a game nobody has played, so the pips count
+     `thru` against `routes` and the seeds stay open until they are drawn.
+     A `thru` entry names its route only once that is settled; check.mjs holds
+     those names to `routes` and the place totals to EVENT.field. */
+  qual:{
+    note:'The MSI champion\u2019s seed only counts if that team also reaches its domestic playoffs or season finals. China\u2019s fourth place is the extra seed for finishing MSI 2026 as the second-best region.',
+    regions:[
+      {rg:'Korea', lg:'LCK', color:'var(--lck)',
+       routes:[{via:'LCK Season Playoffs champion',    on:'2026-09-13'},
+               {via:'LCK Season Playoffs runner-up',   on:'2026-09-13'},
+               {via:'LCK Season Playoffs third place', on:'2026-09-12'},
+               {via:'MSI 2026 champion',               on:'2026-08-15'}],
+       thru:[{team:'Hanwha Life Esports', via:'MSI 2026 champion', on:'2026-08-15'}]},
+
+      {rg:'China', lg:'LPL', color:'var(--lpl)',
+       routes:[{via:'LPL Grand Finals champion',     on:'2026-09-13'},
+               {via:'LPL championship points',       on:'2026-08-13'},
+               {via:'LPL Regional Finals winner',    on:'2026-09-17'},
+               {via:'LPL Regional Finals runner-up', on:'2026-09-19'}],
+       thru:[{team:'BILIBILI GAMING', via:'LPL championship points', on:'2026-08-13'}]},
+
+      {rg:'EMEA', lg:'LEC', color:'var(--lec)',
+       routes:[{via:'LEC Summer Playoffs champion',    on:'2026-09-20'},
+               {via:'LEC Summer Playoffs runner-up',   on:'2026-09-20'},
+               {via:'LEC Summer Playoffs third place', on:'2026-09-19'}],
+       thru:[]},
+
+      /* Three places, three teams, no seeds: MVK took the points place, and
+         the Split 3 final decides which of the other two is the first seed. */
+      {rg:'Asia-Pacific', lg:'LCP', color:'var(--cyan)',
+       routes:[{via:'LCP Split 3 champion',    on:'2026-08-30'},
+               {via:'LCP Split 3 runner-up',   on:'2026-08-30'},
+               {via:'LCP championship points', on:'2026-08-29'}],
+       thru:[{team:'Team Secret Whales', on:'2026-08-02'},
+             {team:'MVK Esports', via:'LCP championship points', on:'2026-08-22'},
+             {team:'CTBC Flying Oyster', on:'2026-08-29'}]},
+
+      {rg:'North America', lg:'LCS', color:'var(--lcs)',
+       routes:[{via:'LCS Summer Playoffs champion',    on:'2026-10-04'},
+               {via:'LCS Summer Playoffs runner-up',   on:'2026-10-04'},
+               {via:'LCS Summer Playoffs third place', on:'2026-10-03'}],
+       thru:[]},
+
+      {rg:'Brazil', lg:'CBLOL', color:'var(--cyan)',
+       routes:[{via:'CBLOL Split 2 Playoffs champion',  on:'2026-10-10'},
+               {via:'CBLOL Split 2 Playoffs runner-up', on:'2026-10-10'}],
+       thru:[]},
+    ],
+  },
 };
 
 /* -------- Baked-in 2026 season data (verified Aug 2026) -------- */
@@ -3591,6 +3679,61 @@ function evtRow(kind) {
     </div>`;
 }
 
+/* The qualification board — the one panel on this tab with facts behind it.
+   Two lists per region and not one: the places already taken, and the routes
+   still to be run. A route is spent when a qualified team names it, which is
+   not the same as counting down the seed table from the top: Korea's one team
+   through holds the fourth seed, so the three still open are the playoff
+   places, not the first three rows. */
+function evtQual() {
+  const q = EVENT.qual;
+  if (!q) return '';
+
+  /* The dates are days, not moments. Formatting them in the viewer's zone
+     would drag a UTC midnight back to the previous day west of Greenwich and
+     have the page name the wrong date for a final. */
+  const day = iso => new Date(iso + 'T12:00:00Z')
+    .toLocaleDateString(undefined, {day:'numeric', month:'short', timeZone:'UTC'});
+
+  const places = q.regions.reduce((n, r) => n + r.routes.length, 0);
+  const taken  = q.regions.reduce((n, r) => n + r.thru.length, 0);
+
+  const rows = q.regions.map(r => {
+    const n = r.thru.length, of = r.routes.length;
+    const pips = r.routes.map((_, i) => `<span class="q-pip${i < n ? ' on' : ''}"></span>`).join('');
+
+    const teams = n
+      ? r.thru.map(t => `<span class="q-team"><b>${esc(t.team)}</b>
+          <i>${esc(t.via || 'seed to be drawn')} \u00B7 ${day(t.on)}</i></span>`).join('')
+      : '<span class="q-none">nobody through yet</span>';
+
+    /* Only the places still open are listed. A route beside the team that
+       already won it says the same thing twice, and a region whose places are
+       all taken has nothing left to run — only seeds left to draw. */
+    const claimed = new Set(r.thru.map(t => t.via).filter(Boolean));
+    const open = r.routes.filter(x => !claimed.has(x.via));
+    const rest = n === of
+      ? `<span class="q-none">all ${of} places taken \u00B7 seeding settled ${day(r.routes[0].on)}</span>`
+      : `<ul class="q-open">${open.map(x =>
+          `<li>${esc(x.via)} <span class="q-on">${day(x.on)}</span></li>`).join('')}</ul>`;
+
+    return `<div class="q-rg" style="--qc:${esc(r.color)}">
+        <div class="q-who">
+          <div><div class="nm">${esc(r.rg)}</div><div class="lg">${esc(r.lg)}</div></div>
+          <div class="q-pips">${pips}<span class="q-count">${n} / ${of}</span></div>
+        </div>
+        <div class="q-body"><div class="q-teams">${teams}</div>${rest}</div>
+      </div>`;
+  }).join('');
+
+  return `<div class="panel qual-panel">
+      <div class="p-head"><div class="p-title">Qualification</div>
+        <span class="p-sub">${taken} of ${places} places filled</span></div>
+      <div class="qual-note">${esc(q.note)}</div>
+      ${rows}
+    </div>`;
+}
+
 function buildEventPage() {
   const page = $('#page-' + EVENT.slug);
   if (!page) return;                 // no section, no page — check.mjs catches that
@@ -3623,10 +3766,13 @@ function buildEventPage() {
     </div>
 
     <div class="panel evt-note">
-      <b>This page is a work in progress.</b> It holds the shape the tournament board will take \u2014
-      what is on air, what is next, what has just been played \u2014 but nothing behind it is wired to a
-      feed yet, so every fixture below reads TBD. The four league tabs are unaffected.
+      <b>This page is a work in progress.</b> The qualification board below is researched and real.
+      Everything under it is the shape the tournament board will take \u2014 what is on air, what is
+      next, what has just been played \u2014 with nothing wired to a feed yet, so every fixture reads
+      TBD. The four league tabs are unaffected.
     </div>
+
+    ${evtQual()}
 
     <div class="ov-regions evt-stages">
       ${EVENT.stages.map(st => `<div class="ov-rg tbd">
