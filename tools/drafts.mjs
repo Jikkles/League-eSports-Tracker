@@ -50,7 +50,7 @@ const MAX_NEW_GAMES = 400;       // a runaway run shouldn't scrape the whole sit
    live name comes from tools/golgg.mjs on every run. */
 export const LEAGUES = {
   lec: { id: '98767991302996019', name: 'LEC', golgg: 'LEC 2026 Summer Season' },
-  lck: { id: '98767991310872058', name: 'LCK', golgg: 'LCK 2026 Season Play-In' },
+  lck: { id: '98767991310872058', name: 'LCK', golgg: 'LCK 2026 Season Playoffs' },
   lpl: { id: '98767991314006698', name: 'LPL', golgg: 'LPL 2026 Grand Finals' },
   lcs: { id: '98767991299243165', name: 'LCS', golgg: 'LCS 2026 Summer' },
 };
