@@ -305,12 +305,17 @@ for (const [slug, R] of Object.entries(REGIONS)) {
       return [`groupCuts.${g}`, c, n];
     }),
   ];
+  /* A cut PAST the last row is a line nobody sees and a rank nobody holds.
+     A cut ON the last row is different and deliberate: it draws no line, but
+     it tells the race panel that the places below the one being raced for
+     still qualify for something, so a team that misses the cut is not
+     eliminated (LCK Legend sends its fifth and last to a play-in). */
   for (const [label, cuts, total] of cutSets) {
     if (!total) continue;
     for (const c of cuts)
-      if (c.after >= total)
+      if (c.after > total)
         stale(R.name, `${label} draws a line after rank ${c.after}, but that table holds ${total} teams.`,
-              `A cut at or past the last row never renders. Update REGIONS.${slug}.${label}.`);
+              `A cut past the last row never renders and no team can reach it. Update REGIONS.${slug}.${label}.`);
   }
 }
 

@@ -480,6 +480,7 @@ tr.race-row:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
 .race-chip.in{color:var(--win);border-color:rgba(49,196,111,.5);background:rgba(49,196,111,.10)}
 .race-chip.out{color:var(--loss);border-color:rgba(232,57,74,.5);background:rgba(232,57,74,.10)}
 .race-chip.live{color:var(--cyan);border-color:rgba(11,198,227,.45)}
+.race-chip.next{color:var(--cyan);border-color:rgba(11,198,227,.5);background:rgba(11,198,227,.10)}
 .race-day{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--faint);text-transform:uppercase;margin:10px 0 5px}
 .race-day:first-child{margin-top:0}
 .race-fx{display:grid;grid-template-columns:1fr 14px 1fr;gap:4px;align-items:center;margin-bottom:5px}
@@ -1309,8 +1310,13 @@ const REGIONS = {
            ordinals stop matching anything this page computes. */
         tableSpans:2,
         // double round robin inside a group of five = 8 of those 26 games
-        // Legend: 1-4 -> playoffs, 5 -> play-in. Rise: 1-3 -> play-in, 4-5 out
-        groupCuts:{ legend:[{after:4, kind:'po'}], rise:[{after:3, kind:'pi'}] } },
+        /* Legend: 1-4 -> playoffs, 5 -> play-in. Rise: 1-3 -> play-in, 4-5 out.
+           Legend's second cut sits on the last row on purpose: it draws no line
+           (there is nobody below it) but it says nobody in Legend is knocked
+           out, which is the difference between "missed the playoff places" and
+           "season over". kt Rolster finished fifth here and won the play-in. */
+        groupCuts:{ legend:[{after:4, kind:'po'}, {after:5, kind:'pi'}],
+                    rise:[{after:3, kind:'pi'}] } },
   lpl:{ name:'LPL', full:'League of Legends Pro League', color:'var(--lpl)', slug:'lpl',
         // Huya carries the LPL's own broadcast, so it leads wherever the
         // league links out to somewhere to watch
@@ -3412,12 +3418,13 @@ function buildRegionPage(slug) {
       </div></div>
     <div class="sim-toolbar">
       <label class="p-sub" for="simFmt-${slug}">Format</label>
+      <!-- built from FORMATS: a hand-kept list drifts, and it had, silently.
+           A format added for the LPL's eight-team bracket was missing from
+           here, so selecting it left the control blank over a bracket that had
+           already changed underneath. -->
       <select id="simFmt-${slug}">
-        <option value="de6">6-team double elim — LEC (seeds 1–4 upper, 5–6 lower)</option>
-        <option value="de6b">6-team double elim — LCK / LCS (seeds 1–2 bye to Round 2)</option>
-        <option value="de10">10-team double elim — LPL Split 3 (seeds 1–2 bye to Semis)</option>
-        <option value="de8">8-team double elimination</option>
-        <option value="se4">4-team single elimination</option>
+        ${Object.entries(FORMATS).map(([k, f]) =>
+          `<option value="${k}">${esc(f.name)}</option>`).join('')}
       </select>
       <span class="p-sub">check <a href="${R.liqui}" target="_blank" rel="noopener">Liquipedia</a> for the confirmed bracket</span>
     </div>
@@ -4043,7 +4050,7 @@ const FORMATS = {
     {id:'M8', g:'Lower Bracket – Round 3', col:4,row:2, s:['w:M7','l:M3']},
     {id:'M9', g:'Lower Bracket Final', col:5,row:2, s:['w:M8','l:M5']},
     {id:'M10', g:'Grand Final', col:6,row:0, s:['w:M5','w:M9']} ]},
-  de10: { name:'10-team double elim (LPL Split 3)', seeds:10, cols:7, matches:[
+  de10: { name:'10-team double elim, top-2 byes', seeds:10, cols:7, matches:[
     {id:'M1', g:'Upper Quarterfinals', col:1,row:1, s:['seed:3','seed:10']},
     {id:'M2', g:'Upper Quarterfinals', col:1,row:1, s:['seed:4','seed:9']},
     {id:'M3', g:'Upper Quarterfinals', col:1,row:1, s:['seed:5','seed:8']},
@@ -4323,13 +4330,30 @@ function simSeedOrder(slug) {
   return pool.map(ti => C.teams[ti].name);
 }
 
+/* A bracket format saved in a viewer's browser outlives the split it was
+   chosen for. The LPL's playoff bracket went from ten teams to eight, so a
+   returning viewer got the eight real qualifiers dropped into a ten-slot
+   bracket and two empty seats with nothing to say why — it reads as two
+   missing teams. Where the region's current default fits the field and the
+   saved format does not, the default wins: the viewer asked for the field as
+   it stands, and a bracket that cannot hold it is not that field. A format the
+   viewer chose that still fits is left alone. */
+function simFitFormat(slug, n) {
+  const S = simLoad(slug), def = REGIONS[slug]?.defFormat;
+  if (!n || !FORMATS[def] || !FORMATS[S.format]) return S.format;
+  if (FORMATS[S.format].seeds === n || FORMATS[def].seeds !== n) return S.format;
+  S.format = def;
+  const sel = $('#simFmt-' + slug);
+  if (sel) sel.value = def;
+  return def;
+}
+
 function initSim(slug) {
   const S = simLoad(slug);
   const fmtSel = $('#simFmt-'+slug);
   fmtSel.value = S.format;
   fmtSel.addEventListener('change', () => { S.format = fmtSel.value; S.winners = {}; simSave(slug); renderSim(slug); });
   $('#simSeed-'+slug).addEventListener('click', () => {
-    const F = FORMATS[S.format];
     /* Who actually qualifies, in the order the league ranks them — not the
        first N of a flat list. A grouped league qualifies inside its group, so
        the flat list both seeded the wrong teams and dropped real qualifiers:
@@ -4337,6 +4361,7 @@ function initSim(slug) {
        on a merged table, so the button used to build a bracket without them.
        Falls back to the flat list only where there is no table to rank. */
     const seeded = simSeedOrder(slug) || simTeamsAvailable(slug);
+    const F = FORMATS[simFitFormat(slug, seeded.length)];
     S.seeds = {};
     seeded.slice(0, F.seeds).forEach((n,i) => S.seeds[i+1] = n);
     S.winners = {};
@@ -4769,7 +4794,14 @@ function raceCtx(slug) {
   const groups = [...new Set(teams.map(t => t.group))].map(g => {
     const cuts = cutsForGroup(R, g) || [];
     const c = cuts.find(x => x.kind === 'po') || cuts.find(x => x.kind === 'pi') || null;
-    return { name:g, cut: c ? c.after : 0, kind: c ? c.kind : '',
+    /* The place below the one being raced for, where the league gives it to
+       something rather than to nobody: the LCK's Legend group sends its top
+       four to the playoffs and its fifth to a play-in. Missing the cut and
+       being out of the season are then different things, and the panel has to
+       be able to tell them apart. */
+    const nx = c ? cuts.filter(x => x !== c && x.after > c.after)
+                       .sort((a, b) => a.after - b.after)[0] || null : null;
+    return { name:g, cut: c ? c.after : 0, kind: c ? c.kind : '', next: nx,
              members: teams.filter(t => t.group === g).map(t => t.i) };
   });
   /* the order the league ranks its table in, first key first */
@@ -5441,7 +5473,10 @@ const racePct = p => p >= 0.9995 ? '100%' : p <= 0.0005 ? '0%'
   : p > 0.995 ? '>99%' : p < 0.005 ? '<1%' : Math.round(p * 100) + '%';
 /* 100% belongs to teams that are actually through, not to rounding: a team
    still able to miss out reads ">99%", however thin the path is */
-const raceOdds = (A, st) => st.key === 'in' ? '100%' : st.key === 'out' ? '0%'
+const raceOdds = (A, st) => st.key === 'in' ? '100%'
+  // 'next' reaches here only with cIn === 0: they cannot make the places this
+  // column is about, and the chip beside it says which ones they did make
+  : (st.key === 'out' || st.key === 'next') ? '0%'
   : racePct(Math.min(0.9994, Math.max(0.0006, A.pIn)));
 function raceOrd(k) { const s = ['th','st','nd','rd'], v = k % 100; return k + (s[(v - 20) % 10] || s[v] || s[0]); }
 
@@ -5617,11 +5652,26 @@ function raceStatus(state, ti, g) {
          being proof it survives every ending there is */
       : { key:'near', chip:'<span class="race-chip in">Near-certain</span>',
           line:'Through in all ' + state.combos.toLocaleString() + ' sampled endings — but sampling cannot prove there is no way out.' };
-  if (A.cIn === 0)
+  if (A.cIn === 0) {
+    /* Missing the cut is not the same as being knocked out, and saying so cost
+       this panel its credibility: it called kt Rolster "Eliminated —
+       mathematically out" while kt, fifth in Legend, were preparing for the
+       play-in they went on to win. Where the group hands the places below the
+       line to something, name it instead. */
+    const nx = g.next;
+    const nxLabel = nx && nx.kind === 'po' ? 'playoffs' : 'play-in';
+    if (nx && A.worst && A.worst <= nx.after)
+      return { key:'next', chip:'<span class="race-chip next">' + esc(nxLabel) + '</span>',
+               line:'Out of the ' + label + ' places, but through to the ' + nxLabel
+                    + ' — every place left to them is one that still qualifies.' };
+    if (nx && A.best && A.best <= nx.after)
+      return { key:'next', chip:'<span class="race-chip live">' + esc(nxLabel) + '?</span>',
+               line:'Out of the ' + label + ' places, and now racing for the ' + nxLabel + ' instead.' };
     return { key:'out', chip:'<span class="race-chip out">' + (state.exact ? 'Eliminated' : 'No path seen') + '</span>',
              line: state.exact
                ? 'Mathematically out — there is no combination of remaining results that gets them into the ' + label + '.'
                : 'Not once in ' + state.combos.toLocaleString() + ' sampled endings did they reach the ' + label + '.' };
+  }
   return { key:'alive', chip:'<span class="race-chip live">Alive</span>' };
 }
 
@@ -5779,7 +5829,7 @@ function raceToSim(slug) {
   // a group that qualifies straight to the playoffs seeds above one that only
   // reaches a play-in — see cutOrder()
   qual.sort((x, y) => x.ord - y.ord || x.pos - y.pos || y.wins - x.wins);
-  const Sim = simLoad(slug), F = FORMATS[Sim.format];
+  const Sim = simLoad(slug), F = FORMATS[simFitFormat(slug, qual.length)];
   Sim.seeds = {}; Sim.winners = {};
   qual.slice(0, F.seeds).forEach((q, i) => { Sim.seeds[i + 1] = C.teams[q.ti].name; });
   simSave(slug); renderSim(slug);

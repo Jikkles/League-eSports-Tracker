@@ -226,7 +226,10 @@ if (loaded) {
       if (r.rows !== r.teams) throw new Error(`${r.rows} race rows for ${r.teams} teams`);
       if (!r.groups.length) throw new Error('no qualification cut resolved for this league');
 
-      const VOCAB = new Set(['Locked', 'Near-certain', 'Alive', 'Eliminated', 'No path seen']);
+      // "play-in" / "playoffs" (and the "?" forms) mark a team that missed the
+      // cut being raced for but still has a place below it — see raceStatus()
+      const VOCAB = new Set(['Locked', 'Near-certain', 'Alive', 'Eliminated', 'No path seen',
+                             'play-in', 'playoffs', 'play-in?', 'playoffs?']);
       const odd = r.chips.filter(c => !VOCAB.has(c));
       if (odd.length) throw new Error(`unexpected status chip: "${odd[0]}"`);
 
@@ -272,6 +275,8 @@ if (loaded) {
               out.push(`${team} is drawn above the cut line but marked Eliminated`);
             if (cut && !above && chip === 'Locked')
               out.push(`${team} is drawn below the cut line but marked Locked`);
+            if (above && /^play-?in/i.test(chip))
+              out.push(`${team} is drawn above the cut line but marked ${chip}`);
             // Range reads "3rd" or "5th=-8th"; the printed place must sit in it
             const ends = range.replace(/=/g, '').split('–').map(x => ORD[x.trim()]);
             if (Number.isFinite(place) && ends.length && ends.every(Number.isFinite)) {
