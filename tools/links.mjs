@@ -90,7 +90,7 @@ function collectURLs(value, path, into) {
 
 const C = readDataConstants();
 const urls = new Map();   // url -> [path, ...]
-for (const name of ['REGIONS', 'HONOURS', 'STORYLINES', 'POWER_RANKINGS']) {
+for (const name of ['REGIONS', 'EVENT', 'HONOURS', 'STORYLINES', 'POWER_RANKINGS']) {
   if (C[name] !== undefined) collectURLs(C[name], name, urls);
 }
 

@@ -228,7 +228,7 @@ if (m && !fails.length) {
   }
 
   if (C) {
-    const { REGIONS, HONOURS, STORYLINES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
+    const { REGIONS, EVENT, HONOURS, STORYLINES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
 
     /* -- FORMATS: the playoff bracket wirings ------------------------------ */
     if (FORMATS) {
@@ -367,6 +367,50 @@ if (m && !fails.length) {
               fail(`${at}.${label} has kind="${c.kind}"; expected "po" or "pi".`);
           }
         }
+      }
+    }
+
+    /* -- EVENT: the international-event tab -------------------------------- */
+    /* The event's slug is written down three times — in EVENT, in the nav
+       button's data-tab and in the page section's id — because switchTab()
+       resolves a tab to a section by name and neither half of the markup can
+       see the constant. Rolling the tab to the next event means editing all
+       three, and getting two of them right renders a tab that opens a blank
+       page and throws nothing. So they are held against each other here. */
+    if (EVENT) {
+      for (const field of ['slug', 'name', 'full', 'when', 'host', 'logo', 'wiki', 'liqui'])
+        if (!EVENT[field]) fail(`EVENT.${field} is missing.`);
+
+      if (EVENT.slug) {
+        if (REGIONS && REGIONS[EVENT.slug])
+          fail(`EVENT.slug is "${EVENT.slug}", which is also a REGIONS key.`,
+               `The event tab and the region page would fight over #page-${EVENT.slug}.`);
+        if (!new RegExp(`data-tab=["']${EVENT.slug}["']`).test(html))
+          fail(`No nav tab carries data-tab="${EVENT.slug}".`,
+               'switchTab() matches the button to the section by that name; without it the tab does not exist.');
+        if (!new RegExp(`id=["']page-${EVENT.slug}["']`).test(html))
+          fail(`No section carries id="page-${EVENT.slug}".`,
+               'buildEventPage() writes into it, and returns silently when it is not there.');
+      }
+
+      for (const field of ['start', 'end'])
+        if (EVENT[field] !== undefined && Number.isNaN(Date.parse(EVENT[field])))
+          fail(`EVENT.${field} is "${EVENT[field]}", which does not parse as a date.`);
+      if (EVENT.start && EVENT.end && Date.parse(EVENT.start) > Date.parse(EVENT.end))
+        fail(`EVENT.start (${EVENT.start}) is after EVENT.end (${EVENT.end}).`);
+
+      /* The mark is hotlinked rather than inlined, like every crest on the
+         page. Over http it would be blocked as mixed content and the tab would
+         quietly fall back to its text. */
+      if (EVENT.logo && !/^https:\/\//.test(EVENT.logo))
+        fail(`EVENT.logo is not an https URL: ${EVENT.logo}`);
+
+      if (EVENT.stages !== undefined) {
+        if (!Array.isArray(EVENT.stages) || !EVENT.stages.length) fail('EVENT.stages is not a non-empty array.');
+        else EVENT.stages.forEach((st, i) => {
+          if (!st.name) fail(`EVENT.stages[${i}] has no name.`);
+          if (!st.sub) fail(`EVENT.stages[${i}] (${st.name}) has no sub.`);
+        });
       }
     }
 

@@ -148,8 +148,10 @@ if (loaded) {
     // there is no data-tab=home button — home is the "All" chip, and the
     // .tab[data-tab=home] CSS rule is left over from an older nav
     await raceCrash(page.waitForSelector('.fchip[data-f=all]', { timeout: STEP_MS }));
+    // the four leagues, plus the international-event tab past the second rule
     const tabs = await page.$$eval('nav .tab', t => t.length);
-    if (tabs !== LEAGUE_COUNT) throw new Error(`nav has ${tabs} league tabs, expected ${LEAGUE_COUNT}`);
+    if (tabs !== LEAGUE_COUNT + 1) throw new Error(`nav has ${tabs} tabs, expected ${LEAGUE_COUNT + 1}`);
+    if (!await page.$('nav .tab-evt')) throw new Error('the international-event tab is missing from the nav');
     return await page.title() || 'untitled';
   }, { fatal: true });
 
@@ -293,6 +295,35 @@ if (loaded) {
     });
   }
 
+  /* ---- the international-event tab ---- */
+
+  /* Built from the EVENT constant and from nothing else, so it cannot fail the
+     way a league tab fails — there is no feed to be down. What it can do is go
+     blank: buildEventPage() returns silently when its section is missing, and
+     the tab would then open an empty page throwing nothing. check.mjs holds the
+     slug together across the constant and the markup; this holds the render. */
+  await check('event tab renders', async () => {
+    await page.click('.tab-evt');
+    const slug = await page.$eval('.tab-evt', b => b.dataset.tab);
+    await page.waitForSelector(`#page-${slug}.active`, { timeout: STEP_MS });
+    const r = await page.evaluate(s => {
+      const pg = document.querySelector(`#page-${s}`);
+      return {
+        panels: pg.querySelectorAll('.panel').length,
+        rows: pg.querySelectorAll('.nxt.tbd').length,
+        wip: !!pg.querySelector('.wip-badge'),
+        mark: !!document.querySelector('.tab-evt .evt-mark'),
+        label: document.querySelector('.tab-evt')?.getAttribute('aria-label') || '',
+      };
+    }, slug);
+    if (!r.panels) throw new Error('the event page rendered nothing');
+    if (!r.rows) throw new Error('no TBD fixtures on the event page');
+    if (!r.wip) throw new Error('the work-in-progress badge is missing — the page reads as broken without it');
+    if (!r.mark) throw new Error('the nav tab has no mark in it');
+    if (!r.label) throw new Error('the nav tab is a mark with no accessible name');
+    return `${r.label}: ${r.panels} panels, ${r.rows} TBD fixtures`;
+  });
+
   await check('back to home', async () => {
     await page.click('.fchip[data-f=all]');
     await page.waitForSelector('#page-home.active', { timeout: STEP_MS });
@@ -352,7 +383,10 @@ if (loaded) {
 
   await check('mobile: league tabs render', async () => {
     const seen = [];
-    for (const slug of LEAGUES) {
+    // the event tab last: it is the widest thing in the strip, being a wordmark
+    // rather than three letters, and so the likeliest to drag the nav sideways
+    const evt = await page.$eval('.tab-evt', b => b.dataset.tab).catch(() => null);
+    for (const slug of evt ? [...LEAGUES, evt] : LEAGUES) {
       await page.click(`.tab[data-tab=${slug}]`);
       await page.waitForSelector(`#page-${slug}.active`, { timeout: STEP_MS });
       await page.waitForTimeout(250);

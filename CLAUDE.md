@@ -62,6 +62,8 @@ Deployed via GitHub Pages straight from this repo.
     one number: `groupGames` where a league's groups are different sizes and so
     play different seasons (LPL Ascend 14, Nirvana 6), and `tableSpans` where the
     regular season is filed as more than one tournament (see below)
+  - `EVENT` — the international-event tab: the next major (Worlds 2026), its
+    dates, host, field, stages, wordmark and wiki links. See the section below
   - `HONOURS` — season honours board (tournament winners, runners-up, dates)
   - `STORYLINES` — home-tab narrative bullets
   - `POWER_RANKINGS` + `POWER_RANKINGS_ASOF` — mirror of lolesports.com Global Power
@@ -194,6 +196,39 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
   before reusing `raceCluster()` anywhere else: the cache keys on *who* won each game,
   which is a complete key while a scoreline's weights follow from its winner, and the
   wrong key the moment scorelines are pinned independently of it.
+
+## The international-event tab
+
+A sixth item sits in the nav past its own rule: one tab for the next major the
+four leagues feed into (right now Worlds 2026). It is driven by the `EVENT`
+constant and nothing else — there is no feed behind it yet, so the page is a
+deliberate placeholder: the home board's shape (Live Now, Next Up, Recent
+Games), a *Work in progress* badge saying so, and TBD wherever a time, a team or
+a result will go. Nothing on it is invented; the dates, host, field and stage
+structure come from Leaguepedia's tournament page and are linked from the hero.
+
+- **`EVENT` is not a `REGIONS` entry, on purpose.** Every `Object.keys(REGIONS)`
+  walk on this page — the home board, the refresh loop, the standings, the race,
+  the simulators — means "a league with a season", and a fifth key would have to
+  be special-cased out of all of them.
+- **The slug is written down three times**: in `EVENT.slug`, in the nav button's
+  `data-tab` and in the page section's `id`, because `switchTab()` resolves a tab
+  to a section by name and neither half of the markup can see the constant.
+  Rolling the tab on to the next event means editing all three — `check.mjs`
+  holds them to each other, so getting two of them right fails the build rather
+  than rendering a tab that opens a blank page.
+- **`stale.mjs` is what notices the tab has gone off.** Nothing on the page is
+  fetched, so nothing about it can break loudly: once the event it names has been
+  played, the tab advertises a finished tournament with TBD in every row while
+  every other check stays green. It reports STALE past `EVENT.end` and NOTE once
+  the event is under way and the page is still the placeholder.
+- **The mark is the event's own wordmark**, hotlinked from Leaguepedia's file
+  store like every other crest on the page, and inverted in CSS because Riot
+  draws it black-on-transparent for white backgrounds (`.evt-mark`). If a future
+  event's art arrives light, drop the invert rather than editing the file. It
+  falls back to the event's name if the image never loads, which is also what an
+  offline first visit sees. `links.mjs` checks it weekly along with the two wiki
+  links.
 
 ## Generated data: the DRAFTS block
 

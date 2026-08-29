@@ -139,9 +139,9 @@ export function extractFunctions(src, names) {
   return { sources: out, missing };
 }
 
-/** The five data constants both callers care about, in one call. */
+/** The data constants every caller cares about, in one call. */
 export const DATA_CONSTANTS =
-  ['REGIONS', 'HONOURS', 'STORYLINES', 'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'FORMATS'];
+  ['REGIONS', 'EVENT', 'HONOURS', 'STORYLINES', 'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'FORMATS'];
 
 export function readDataConstants() {
   const { html, src } = readIndex();

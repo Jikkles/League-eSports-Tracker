@@ -91,7 +91,7 @@ if (C.missing.length) {
   console.error(`Could not read ${C.missing.join(', ')} from index.html — run node tools/check.mjs first.`);
   process.exit(1);
 }
-const { REGIONS, HONOURS, POWER_RANKINGS, POWER_RANKINGS_ASOF } = C;
+const { REGIONS, EVENT, HONOURS, POWER_RANKINGS, POWER_RANKINGS_ASOF } = C;
 const NOW = Date.now();
 const YEAR = new Date(NOW).getUTCFullYear();
 
@@ -107,6 +107,31 @@ if (Number.isNaN(asOf)) {
     stale('POWER_RANKINGS', `The rankings mirror is ${age} days old (as of ${POWER_RANKINGS_ASOF}).`,
           'Re-mirror the Global Power Rankings from lolesports.com/gpr and update POWER_RANKINGS_ASOF.');
   else fine('POWER_RANKINGS', `mirror is ${age} day${age === 1 ? '' : 's'} old`);
+}
+
+/* ---- EVENT: the tab pointed at the next international event -------------- */
+
+/* Nothing on that page is fetched, so nothing about it can go wrong loudly:
+   once the event it names has been played, the tab sits there advertising a
+   finished tournament with TBD in every row, and every other check in this repo
+   stays green. This is the only thing that will ever say so. */
+if (EVENT) {
+  const ends = Date.parse(EVENT.end);
+  const starts = Date.parse(EVENT.start);
+  if (Number.isNaN(ends)) {
+    stale('EVENT', `EVENT.end ("${EVENT.end}") does not parse as a date.`,
+          'It is what tells this check whether the tab still points at something upcoming.');
+  } else if (NOW > ends) {
+    const days = Math.floor((NOW - ends) / 86400e3);
+    stale('EVENT', `${EVENT.name} finished ${days} day${days === 1 ? '' : 's'} ago (${EVENT.end}).`,
+          'Roll the EVENT constant on to the next international event — and with it the nav button\'s data-tab and the section id, which check.mjs holds to the slug.');
+  } else if (!Number.isNaN(starts) && NOW > starts) {
+    note('EVENT', `${EVENT.name} is under way (${EVENT.when}) and its page is still the TBD placeholder.`,
+         'Wire the page to the feed, or say on it that the results live on the league tabs.');
+  } else {
+    const days = Math.ceil((starts - NOW) / 86400e3);
+    fine('EVENT', `${EVENT.name} is ${days} day${days === 1 ? '' : 's'} away`);
+  }
 }
 
 /* ---- per-league checks --------------------------------------------------- */

@@ -102,6 +102,20 @@ nav{max-width:1900px;margin:0 auto;display:flex;gap:4px;padding:0 20px}
 .tab[data-tab=home]{--tabclr:var(--cyan)} .tab[data-tab=lec]{--tabclr:var(--lec)}
 .tab[data-tab=lck]{--tabclr:var(--lck)} .tab[data-tab=lpl]{--tabclr:var(--lpl)} .tab[data-tab=lcs]{--tabclr:var(--lcs)}
 
+/* The international-event tab (see EVENT) sits past its own rule in the nav,
+   because it is not a region. It carries the event's own wordmark instead of a
+   crest and a label: "WORLDS 26" is already both, and a 792x213 mark squeezed
+   into the 42px square the region crests use would be eleven pixels tall.
+   Keyed off the class, not the slug — the tab outlives this year's event.
+   Riot draws that mark black-on-transparent, for white backgrounds, so it is
+   inverted onto this page's black canvas; if a future event's art arrives
+   light, drop the invert rather than editing the file. */
+.tab-evt{--tabclr:var(--cyan);padding:14px 22px}
+.evt-mark{display:inline-flex;align-items:center;justify-content:center;height:36px;max-width:210px}
+.evt-mark img{height:100%;width:auto;max-width:100%;object-fit:contain;filter:invert(1);opacity:.62;transition:opacity .12s ease}
+.tab-evt:hover .evt-mark img,.tab-evt.active .evt-mark img{opacity:1}
+.evt-mark .ini{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:1.6px;color:inherit}
+
 /* ============ LAYOUT ============ */
 .wrap{max-width:1900px;margin:0 auto;padding:20px 24px}
 main{min-width:0}
@@ -582,6 +596,21 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .region-hero .sub{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.5px}
 .region-hero .links{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 
+/* ---- the international event page: the home board's shape, nothing in it yet ---- */
+.evt-hero .evt-mark{height:46px;max-width:280px}
+.evt-hero .evt-mark img{opacity:1}
+.wip-badge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.7px;text-transform:uppercase;
+  color:var(--cyan);border:1px dashed rgba(11,198,227,.45);border-radius:3px;padding:5px 9px;white-space:nowrap}
+.evt-note{font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--dim)}
+.evt-note b{color:#FFFFFF;font-weight:700}
+/* three stages, not four regions */
+.evt-stages{grid-template-columns:repeat(3,1fr)}
+/* nothing on this page is clickable yet, so nothing on it pretends to be */
+.ov-rg.tbd,.nxt.tbd{cursor:default}
+.ov-rg.tbd:hover{background:var(--panel);border-color:var(--line);border-top-color:var(--rg)}
+.nxt.tbd:hover{background:transparent}
+.ov-rg.tbd .n,.nxt.tbd .n-code,.nxt.tbd .n-time,.nxt.tbd .n-date{color:var(--faint)}
+
 .loading{font-family:var(--mono);font-size:11px;color:var(--faint);padding:14px;text-align:center}
 .err-msg{font-family:var(--mono);font-size:11px;color:var(--loss);padding:10px;border:1px dashed rgba(224,82,96,.4);margin:6px 0}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
@@ -994,13 +1023,18 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   #apiStatus{white-space:normal}
   #lastRefresh{display:none}
 
-  /* All five share the width instead of scrolling: LPL and LCS were off the
+  /* All six share the width instead of scrolling: LPL and LCS were off the
      right edge with nothing saying the strip moved, which hid half the site. */
   nav{display:flex;flex-wrap:nowrap;gap:2px;padding:0 6px}
   .nav-div{display:none}
   .fchip,.tab{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;
     font-size:14.5px;letter-spacing:.3px;padding:12px 2px;margin:4px 0 11px;white-space:nowrap}
   .tab .lgw{width:20px;height:20px}
+  /* the wordmark is the widest thing in the strip, so it is measured by height
+     and then clamped: object-fit keeps it letterboxed rather than squashed */
+  .tab-evt{padding:12px 2px}
+  .evt-mark{height:15px;max-width:100%}
+  .evt-hero .evt-mark{height:30px}
   .fchip::after,.tab::after{bottom:-6px;height:3px}
   .ov-regions{grid-template-columns:1fr 1fr}
   .ov-nums{gap:16px}
@@ -1127,6 +1161,11 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
     <button class="tab" data-tab="lck"><span class="lgw" data-lg="lck"></span>LCK</button>
     <button class="tab" data-tab="lpl"><span class="lgw" data-lg="lpl"></span>LPL</button>
     <button class="tab" data-tab="lcs"><span class="lgw" data-lg="lcs"></span>LCS</button>
+    <span class="nav-div"></span>
+    <!-- the next international event. Its slug lives in EVENT; data-tab here and
+         the section id below have to match it, and check.mjs holds all three
+         together so a half-finished rollover fails rather than going blank. -->
+    <button class="tab tab-evt" data-tab="worlds"><span class="evt-mark"></span></button>
   </nav>
   <div class="ticker"><div class="ticker-track" id="tickerTrack"></div></div>
 </header>
@@ -1216,6 +1255,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   <section class="page" id="page-lck"></section>
   <section class="page" id="page-lpl"></section>
   <section class="page" id="page-lcs"></section>
+  <section class="page evt-page" id="page-worlds"></section>
 
 </main>
 </div>
@@ -1337,6 +1377,45 @@ const REGIONS = {
         wiki:'https://lol.fandom.com/wiki/LCS/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LCS/2026/Summer',
         splitLabel:'Summer 2026', defaultGames:7, defFormat:'de6b',
         cuts:[{after:6, kind:'po'}] }    // single round robin of 8, top 6 -> playoffs
+};
+
+/* -------- The next international event --------
+   One tab for the major the four leagues feed into, sitting past its own rule
+   in the nav because it is not a region. Deliberately NOT a REGIONS entry:
+   every Object.keys(REGIONS) walk on this page — the home board, the refresh
+   loop, the standings, the race, the simulators — means "a league with a
+   season", and a fifth key would have to be special-cased out of all of them.
+
+   The page it builds is a placeholder. The draw does not exist yet, so every
+   fixture on it reads TBD and the banner says the page is unfinished, rather
+   than letting an empty board look like a broken one. When the event's own feed
+   arrives, this is where it gets wired in.
+
+   Rolling to the next event (MSI 2027, Worlds 2027 …) is an edit to this
+   constant — plus the nav button's data-tab and the section's id, which carry
+   the slug in markup. check.mjs holds those three to each other, so a
+   half-finished rollover fails the build instead of rendering a blank tab.
+
+   Verified Aug 2026 against Leaguepedia's 2026 Season World Championship:
+   15 Oct – 14 Nov 2026 in the United States, 19 teams (4 Korea, 4 China,
+   3 EMEA, 3 Asia-Pacific, 3 North America, 2 Brazil), a play-in into a Swiss
+   stage into an eight-team single-elimination knockout. */
+const EVENT = {
+  slug:'worlds', name:'Worlds 2026', full:'2026 Season World Championship',
+  when:'15 Oct – 14 Nov 2026', host:'United States',
+  start:'2026-10-15', end:'2026-11-14',
+  field:'19 teams · 4 Korea · 4 China · 3 EMEA · 3 Asia-Pacific · 3 North America · 2 Brazil',
+  /* Riot's own 2026 wordmark, from Leaguepedia's file store — black on
+     transparent, so the stylesheet inverts it (.evt-mark). links.mjs checks it
+     weekly along with the two wiki links below. */
+  logo:'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/0d/Worlds_2026.png/revision/latest?cb=20260322132449',
+  wiki:'https://lol.fandom.com/wiki/2026_Season_World_Championship',
+  liqui:'https://liquipedia.net/leagueoflegends/World_Championship/2026',
+  stages:[
+    {name:'Play-In',  sub:'4 TEAMS · DOUBLE ELIM · BO5'},
+    {name:'Swiss',    sub:'16 TEAMS · FIVE ROUNDS'},
+    {name:'Knockout', sub:'8 TEAMS · SINGLE ELIM · BO5'},
+  ],
 };
 
 /* -------- Baked-in 2026 season data (verified Aug 2026) -------- */
@@ -3452,6 +3531,128 @@ function buildRegionPage(slug) {
   renderWatch(slug, null);
   initSim(slug);
   initRace(slug);
+}
+
+/* =====================================================================
+   THE INTERNATIONAL EVENT PAGE  (work in progress)
+   Built from EVENT, and from nothing else: there is no feed behind it yet.
+   It keeps the home board's rhythm on purpose — live, then what is next, then
+   what has just been played — so what lands here later drops into a shape that
+   has already been looked at, and so the tab reads as unfinished rather than
+   broken while it waits.
+===================================================================== */
+
+/* The event's wordmark, with the same failure story every crest on this page
+   has: if the image never loads, the name behind it takes over rather than
+   leaving a hole — which is also what an offline first visit sees. */
+function eventMark(cls) {
+  return `<span class="evt-mark${cls ? ' ' + cls : ''}"><img src="${esc(EVENT.logo)}" alt="${esc(EVENT.name)}" loading="lazy"
+    onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ini" style="display:none">${esc(EVENT.name.toUpperCase())}</span></span>`;
+}
+
+/* A fixture nobody has drawn yet. The same four-column row the home board's
+   Next Up and Recent Games use, with TBD wherever a time, a team or a result
+   will go — a result row carrying the score column's "nothing published" dash,
+   because that is exactly what it is. */
+function evtRow(kind) {
+  const done = kind === 'done';
+  const blank = '<span class="n-lg"><span class="ini" style="display:flex">?</span></span>';
+  const mid = done
+    ? '<div class="n-sc tbc" title="The tournament has not been played yet">\u2013</div>'
+    : '<div class="n-vs">VS</div>';
+  return `<div class="nxt tbd">
+      <div class="n-when"><div class="${done ? 'n-date' : 'n-time'}">TBD</div><span class="n-cd">date TBD</span></div>
+      <div class="n-rg"><div><span class="nm">${esc(EVENT.name.split(' ')[0].toUpperCase())}</span><span class="sp">${esc(EVENT.name)}</span></div></div>
+      <div class="n-mid">
+        <div class="n-a"><span class="n-code">TBD</span>${blank}</div>
+        ${mid}
+        <div class="n-b">${blank}<span class="n-code">TBD</span></div>
+      </div>
+      <div class="n-meta">TBD</div>
+    </div>`;
+}
+
+function buildEventPage() {
+  const page = $('#page-' + EVENT.slug);
+  if (!page) return;                 // no section, no page — check.mjs catches that
+  page.style.setProperty('--rg', 'var(--cyan)');
+
+  /* The nav tab is a mark and nothing else, so it gets its accessible name the
+     way the crest-only filter buttons do rather than from text nobody drew. */
+  document.querySelectorAll('.tab-evt').forEach(btn => {
+    btn.innerHTML = eventMark();
+    btn.setAttribute('aria-label', EVENT.name);
+    btn.title = EVENT.full;
+  });
+
+  const rows = kind => Array.from({length: BOARD_ROWS}, () => evtRow(kind)).join('');
+  const opens = EVENT.when.split('\u2013')[0].trim() + ' ' + new Date(EVENT.start).getUTCFullYear();
+
+  page.innerHTML = `
+    <div class="region-hero evt-hero">
+      ${eventMark('evt-hero-mark')}
+      <div>
+        <div class="sub">${esc(EVENT.full)}</div>
+        <div class="sub" style="color:var(--cyan)">${esc(EVENT.when)} \u00B7 ${esc(EVENT.host)}</div>
+      </div>
+      <span class="wip-badge">Work in progress</span>
+      <div class="links">
+        <a class="btn small" href="${esc(EVENT.wiki)}" target="_blank" rel="noopener">Leaguepedia \u2197</a>
+        <a class="btn small" href="${esc(EVENT.liqui)}" target="_blank" rel="noopener">Liquipedia \u2197</a>
+      </div>
+    </div>
+
+    <div class="panel evt-note">
+      <b>This page is a work in progress.</b> It holds the shape the tournament board will take \u2014
+      what is on air, what is next, what has just been played \u2014 but nothing behind it is wired to a
+      feed yet, so every fixture below reads TBD. The four league tabs are unaffected.
+    </div>
+
+    <div class="ov-row">
+      <div class="ov-card">
+        <div class="ov-h">\u25A3 Tournament Overview</div>
+        <div class="ov-nums">
+          <div class="ov-n live"><b>TBD</b><span>LIVE</span></div>
+          <div class="ov-n up"><b>TBD</b><span>UPCOMING</span></div>
+          <div class="ov-n done"><b>TBD</b><span>COMPLETED</span></div>
+        </div>
+        <div class="ov-foot">${esc(EVENT.field)}</div>
+      </div>
+      <div class="ov-regions evt-stages">
+        ${EVENT.stages.map(st => `<div class="ov-rg tbd">
+          <div class="top">${esc(st.name)}</div>
+          <div class="n">TBD</div>
+          <div class="lbl">${esc(st.sub)}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="panel live-panel off">
+      <div class="p-head"><div class="p-title"><span class="dot-live"></span>Live Now</div>
+        <span class="p-sub">TBD</span></div>
+      <div class="live-grid" data-n="0">
+        <div class="lc-off"><span class="off-dot"></span><div>
+          <div class="off-h">No broadcast yet</div>
+          <div class="off-sub">${esc(EVENT.name)} opens ${esc(opens)}. Live games appear here once it does.</div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="duo">
+      <div class="panel">
+        <div class="p-head"><div class="p-title">Next Up</div>
+          <span class="p-sub">${esc(EVENT.name)}</span></div>
+        <div class="p-sub sub-line">the draw has not been made \u2014 fixtures land here when it is</div>
+        <div class="nxt-list">${rows('up')}</div>
+      </div>
+
+      <div class="panel">
+        <div class="p-head"><div class="p-title">Recent Games</div>
+          <span class="p-sub">${esc(EVENT.name)}</span></div>
+        <div class="p-sub sub-line">no games played yet</div>
+        <div class="nxt-list">${rows('done')}</div>
+      </div>
+    </div>`;
 }
 
 function regionHonourFilter(slug, h) {
@@ -5990,10 +6191,16 @@ $('#refreshBtn').addEventListener('click', () => refreshAll(true));
 
 /* boot */
 for (const slug of Object.keys(REGIONS)) buildRegionPage(slug);
+buildEventPage();
 renderLeagueChrome();
 renderHome();
 renderTicker();
-switchTab(lsRead(LS('tab')) || 'home');
+/* A saved tab can outlive its page. The event tab's slug changes every time it
+   rolls on to the next tournament, and someone who left the site on the old one
+   would come back to a nav with nothing selected and a main element with every
+   page hidden — blank, and silent about why. */
+const savedTab = lsRead(LS('tab'));
+switchTab(savedTab && document.getElementById('page-' + savedTab) ? savedTab : 'home');
 refreshAll(true);
 tickClocks();
 setInterval(tickClocks, 1000);                     // header clock + live match timers
