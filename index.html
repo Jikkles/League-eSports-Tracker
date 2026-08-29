@@ -4014,8 +4014,13 @@ function renderRegionData(slug) {
    team name beside its crest and score. */
 const BCOL_MIN = 158;
 
+/* `name` is the label in the simulator's format dropdown and nothing else, so
+   it has to carry whatever tells one bracket from another at a glance: the
+   league running it, and — where two share a team count — how they differ. The
+   LEC's and the LCK/LCS's are both six-team double elims, and read as the same
+   entry until the tail separates them. */
 const FORMATS = {
-  de6: { name:'6-team double elim', seeds:6, cols:5, matches:[
+  de6: { name:'6-team double elim, seeds 1–4 upper, 5–6 lower (LEC)', seeds:6, cols:5, matches:[
     {id:'M1', g:'Upper Bracket – Round 1', col:1,row:1, s:['seed:1','seed:4']},
     {id:'M2', g:'Upper Bracket – Round 1', col:1,row:1, s:['seed:2','seed:3']},
     {id:'M6', g:'Upper Bracket – Round 2', col:2,row:1, s:['w:M1','w:M2']},
