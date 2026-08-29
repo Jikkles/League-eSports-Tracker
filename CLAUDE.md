@@ -210,8 +210,9 @@ for the next major the four leagues feed into (right now Worlds 2026), sitting
 between the All chip and the leagues because it is the season's main event
 rather than a fifth league. It is driven by the `EVENT`
 constant and nothing else — there is no feed behind it yet. Above the fold it
-carries a real qualification board (see `EVENT.qual` below); under that it is
-still a deliberate placeholder: the home board's shape (Live Now, Next Up,
+carries Live Now and then a real qualification board (see `EVENT.qual` below),
+in that order, because what is on air outranks what is still to be decided;
+under those it is still a deliberate placeholder: the home board's shape (Live Now, Next Up,
 Recent Games), a *Work in progress* badge saying so, and TBD wherever a time, a
 team or a result will go. Nothing on it is invented; the dates, host, field,
 stage structure and qualification routes come from Leaguepedia's tournament page
@@ -243,7 +244,11 @@ and are linked from the hero.
   left on the board is what no logo can carry: the routes still to be run and
   their dates, with the league prefix stripped from each because the mark
   beside it already says LCK. What a qualified team won and when is its
-  tooltip and its crest's `alt`. Two things make that work: `LOGO_SLUGS`
+  tooltip and its crest's `alt`. The row is three columns rather than two, and
+  that is not decoration: with the routes underneath the badges they read as a
+  caption for the team above them rather than as the places still to be played.
+  The crest column is a fixed width so every region's routes start at the same
+  x, the ones with nobody through included. Two things make that work: `LOGO_SLUGS`
   widens the league-image harvest past the four `REGIONS` (LCP and CBLOL have
   no season here, but they have a crest), and each `thru` entry carries its own
   `logo` URL, seeded into the page's logo cache at boot — the cache is
