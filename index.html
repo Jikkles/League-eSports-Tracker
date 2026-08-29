@@ -1318,7 +1318,7 @@ const REGIONS = {
         yt:'https://www.youtube.com/@LPL_English/live', vods:'https://www.youtube.com/@LPL_English/streams',
 
         wiki:'https://lol.fandom.com/wiki/LPL/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026/Split_3',
-        splitLabel:'Split 3 2026', defaultGames:14, defFormat:'de10',
+        splitLabel:'Split 3 2026', defaultGames:14, defFormat:'de8b',
         /* The two groups are different sizes, so they play different seasons:
            Ascend is eight teams double round robin (14), Nirvana is four (6).
            One `defaultGames` for the region told every Nirvana team it had 8
@@ -3878,6 +3878,7 @@ function gamesForGroup(R, gname) {
    real qualifier (Dplus KIA) out of the bracket entirely. Groups whose cut is
    the same kind are genuine peers and fall back to place. */
 const CUT_RANK = { po: 0, pi: 1 };
+const MISSED_CUT = 3;   // ranked below every kind of qualifier
 const cutOrder = kind => (kind in CUT_RANK) ? CUT_RANK[kind] : 2;
 
 function cutsForGroup(R, gname) {
@@ -4061,6 +4062,27 @@ const FORMATS = {
     {id:'M16', g:'Lower Round 4', col:5,row:2, s:['w:M14','w:M15']},
     {id:'M17', g:'Lower Final', col:6,row:2, s:['w:M16','l:M9']},
     {id:'M18', g:'Grand Final', col:7,row:0, s:['w:M9','w:M17']} ]},
+  /* LPL Split 3 2026. Eight teams: Ascend 1-6 plus the two Knights Rivals
+     play-in winners, all Bo5. Seeds 1-2 bye into the upper semifinals and the
+     play-in winners come in at the foot of the lower bracket, which is what
+     makes it twelve matches rather than an even eight-team bracket's fourteen.
+     Verified against Riot's own schedule — the twelve matches, their dates and
+     every named side fit this wiring and no other — and against the published
+     previews: BLG and AL bye to the upper semis on 3/4 Sep, TES v LGD and
+     JDG v WE the upper quarterfinals. */
+  de8b: { name:'8-team double elim, top-2 byes (LPL Split 3)', seeds:8, cols:6, matches:[
+    {id:'M1', g:'Upper Quarterfinals', col:1,row:1, s:['seed:3','seed:6']},
+    {id:'M2', g:'Upper Quarterfinals', col:1,row:1, s:['seed:4','seed:5']},
+    {id:'M3', g:'Upper Semifinals', col:2,row:1, s:['seed:1','w:M1']},
+    {id:'M4', g:'Upper Semifinals', col:2,row:1, s:['seed:2','w:M2']},
+    {id:'M5', g:'Upper Final', col:3,row:1, s:['w:M3','w:M4']},
+    {id:'M6', g:'Lower Round 1', col:2,row:2, s:['seed:7','l:M1']},
+    {id:'M7', g:'Lower Round 1', col:2,row:2, s:['seed:8','l:M2']},
+    {id:'M8', g:'Lower Round 2', col:3,row:2, s:['w:M6','l:M4']},
+    {id:'M9', g:'Lower Round 2', col:3,row:2, s:['w:M7','l:M3']},
+    {id:'M10', g:'Lower Round 3', col:4,row:2, s:['w:M8','w:M9']},
+    {id:'M11', g:'Lower Final', col:5,row:2, s:['w:M10','l:M5']},
+    {id:'M12', g:'Grand Final', col:6,row:0, s:['w:M5','w:M11']} ]},
   se4: { name:'4-team single elim', seeds:4, cols:2, matches:[
     {id:'M1', g:'Semifinals', col:1,row:1, s:['seed:1','seed:4']},
     {id:'M2', g:'Semifinals', col:1,row:1, s:['seed:2','seed:3']},
@@ -4237,28 +4259,68 @@ function simTeamsAvailable(slug) {
    cannot tell different stories. raceToSim() answers the neighbouring question
    (who qualifies if the remaining games go to the model favourite); this one
    projects nothing. Returns null where there is no table to read. */
+/* Teams the feed has actually named in the playoff bracket — not in the
+   play-in that feeds it. A play-in is a knockout whose entrants are a
+   projection and whose survivors are a fact, and the two are different teams:
+   the LCK's had already sent BNK FEARX through to meet T1 while the table
+   still pointed at HANJIN BRION and NONGSHIM, the sides FEARX knocked out.
+   Empty until the bracket is drawn, which is the whole regular season. */
+const PLAYIN_RX = /play-?\s*in/i;
+function bracketField(slug) {
+  const names = new Set();
+  for (const ev of splitEvents(slug)) {
+    const b = ev.blockName || '';
+    if (!RACE_BLOCK_RX.test(b) || PLAYIN_RX.test(b)) continue;
+    for (const t of ev.match?.teams || [])
+      if (t.name && t.name !== 'TBD') names.add(nk(t.name));
+  }
+  return names;
+}
+
 function simSeedOrder(slug) {
   const C = raceCtx(slug);
   if (!C) return null;
   const wins = new Int16Array(C.n);
   C.teams.forEach(t => { wins[t.i] = t.w; });
   const ending = raceEnding(C, []);
-  const qual = [];
+
+  /* where the table leaves every team: its expected place in its own group
+     (so teams the rules cannot separate still seed in some order rather than
+     falling out of the bracket), and which cut it made, if any */
+  const pos = {}, kind = {};
   for (const g of C.groups) {
     const band = raceRank(C, g, wins, ending);
-    /* expected place, so teams the rules cannot separate still seed in some
-       order rather than falling out of the bracket */
     const at = ti => band[ti].dist.reduce((sum, e) => sum + e[0] * e[1], 0);
-    g.members.slice()
-      .filter(ti => !g.cut || band[ti].lo <= g.cut)
-      .sort((x, y) => at(x) - at(y))
-      .forEach(ti => qual.push({ name: C.teams[ti].name, pos: at(ti),
-                                 w: wins[ti], ord: cutOrder(g.kind) }));
+    for (const ti of g.members) {
+      pos[ti] = at(ti);
+      kind[ti] = (!g.cut || band[ti].lo <= g.cut) ? cutOrder(g.kind) : MISSED_CUT;
+    }
   }
-  if (!qual.length) return null;
-  qual.sort((x, y) => x.ord - y.ord || x.pos - y.pos || y.w - x.w
-                      || x.name.localeCompare(y.name));
-  return qual.map(q => q.name);
+  /* the merged, season-long table — how a league separates two teams who
+     reached the bracket out of different groups */
+  const seasonOrd = {};
+  (standingsCache[slug]?.rows || []).forEach(r => { seasonOrd[nk(r.name)] = r.ordinal || 99; });
+  const ordOf = ti => seasonOrd[C.teams[ti].k] ?? 99;
+
+  const field = bracketField(slug);
+  let pool;
+  if (field.size) {
+    /* The bracket is drawn, so the field is a fact and beats the projection.
+       Teams that qualified straight from the table keep their place; whoever
+       came through the play-in seeds behind them on the season table, which is
+       the order the LCK drew (kt Rolster 5th, BNK FEARX 6th) and the LPL too. */
+    pool = C.teams.filter(t => field.has(t.k)).map(t => t.i);
+    pool.sort((x, y) => (kind[x] === 0 ? 0 : 1) - (kind[y] === 0 ? 0 : 1)
+                        || (kind[x] === 0 ? pos[x] - pos[y] : ordOf(x) - ordOf(y))
+                        || ordOf(x) - ordOf(y)
+                        || C.teams[x].name.localeCompare(C.teams[y].name));
+  } else {
+    pool = C.teams.filter(t => kind[t.i] < MISSED_CUT).map(t => t.i);
+    pool.sort((x, y) => kind[x] - kind[y] || pos[x] - pos[y] || wins[y] - wins[x]
+                        || C.teams[x].name.localeCompare(C.teams[y].name));
+  }
+  if (!pool.length) return null;
+  return pool.map(ti => C.teams[ti].name);
 }
 
 function initSim(slug) {
