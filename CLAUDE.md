@@ -58,7 +58,10 @@ Deployed via GitHub Pages straight from this repo.
 - **Baked-in constants** go stale and need periodic research + patching:
   - `REGIONS` — per-region split label, regular-season game count, default playoff
     format, channel/wiki links, and `rank` (how the league orders its table — see
-    the playoff race section)
+    the playoff race section). Two optional fields cover leagues that do not fit
+    one number: `groupGames` where a league's groups are different sizes and so
+    play different seasons (LPL Ascend 14, Nirvana 6), and `tableSpans` where the
+    regular season is filed as more than one tournament (see below)
   - `HONOURS` — season honours board (tournament winners, runners-up, dates)
   - `STORYLINES` — home-tab narrative bullets
   - `POWER_RANKINGS` + `POWER_RANKINGS_ASOF` — mirror of lolesports.com Global Power
@@ -89,9 +92,36 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
   `RACE_ITERS` seasons and the panel changes its wording to match — an impossibility
   becomes "never seen". Never let sampled output claim mathematical certainty.
 - **Fixtures are separated from playoff games by quota**, not by block name: a team
-  gets `REGIONS[].defaultGames` regular-season games, and once its allowance is spent
-  every later fixture it appears in is a bracket game. Keep `defaultGames` current or
-  the panel silently races the wrong games.
+  gets its group's regular-season allowance (`gamesForGroup()` — `REGIONS[].groupGames`
+  where the groups are different sizes, `defaultGames` otherwise), and once that is
+  spent every later fixture it appears in is a bracket game. Keep those current or
+  the panel silently races the wrong games. Quota alone is no longer the whole story:
+  the completed-games walk also skips `RACE_BLOCK_RX` blocks, because a window that
+  spans a whole season contains mid-season knockouts (the LCK's Road to MSI) that
+  would otherwise eat the allowance before the later rounds were reached.
+
+- **`REGIONS[].tableSpans` is for a league whose regular season Riot files as more
+  than one tournament.** The LCK plays one four-round season; the API publishes
+  Rounds 1–2 and Rounds 3–4 as separate tournaments, each carrying only its own
+  records — but the Legend/Rise groups are ranked on all 26 games. That mismatch is
+  what made the panel disagree with the league: DN SOOPers went 5–3 in Rounds 3–4
+  and still finished last in Rise, having gone 1–17 before it, so the page drew them
+  below the qualification line and marked them clinched in the same row.
+  `tableSpans:2` makes `fetchStandings()` add the earlier tournament's records in and
+  widens `tableEvents()` — a window kept deliberately separate from `splitEvents()`,
+  because the table spans the season but "this split's results", the form dots and
+  the schedule modal still mean this split. Fed the whole season, the page's existing
+  ranking chain reproduces the feed's own ordinals exactly, in both groups.
+
+- **The feed's ordinal and the page's ranking must tell one story.** The rank column
+  and cut line are drawn from `standingsCache` ordinals; the Range column, the odds
+  and the status chips are computed. When those two disagree the panel renders a row
+  below the line labelled *Locked*, and every arithmetic check stays green — the odds
+  still sum to the number of places. `smoke.mjs`'s "race table agrees with itself"
+  check reads the rendered table back and holds the halves against each other. If it
+  fires, the question is which half is wrong: the feed is authoritative on a league's
+  own tiebreaks, so suspect the page's inputs (the games window, the game count)
+  before the ranking rule.
 - **Cuts come from `cutsForGroup()`**, shared with the standings table so the line one
   draws and the line the other measures against cannot drift apart. Grouped leagues
   (LCK Legend/Rise, LPL Ascend/Nirvana) race inside their group.

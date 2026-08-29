@@ -327,6 +327,32 @@ if (m && !fails.length) {
           }
         }
 
+        /* The regular season filed as more than one tournament (LCK rounds
+           1-4). The page adds the earlier tables in; a value below 2 means
+           nothing and a non-integer would silently disable the whole thing. */
+        if (r.tableSpans !== undefined && (!Number.isInteger(r.tableSpans) || r.tableSpans < 2))
+          fail(`${at}.tableSpans is ${r.tableSpans}; expected an integer of 2 or more, or the field left out.`,
+               'It counts tournaments the regular-season table spans, so 1 is the default and anything less is meaningless.');
+
+        /* Per-group season lengths, for a league whose groups are different
+           sizes (LPL Ascend 14, Nirvana 6). Every key has to match a groupCuts
+           key, because both are matched against the API's group name the same
+           way and a key that matches nothing is skipped in silence. */
+        if (r.groupGames !== undefined) {
+          const gg = r.groupGames;
+          if (!gg || typeof gg !== 'object' || !Object.keys(gg).length)
+            fail(`${at}.groupGames is not a non-empty object.`);
+          else {
+            for (const [g, n] of Object.entries(gg)) {
+              if (!Number.isInteger(n) || n < 1)
+                fail(`${at}.groupGames.${g} is ${n}; expected a positive integer.`);
+              if (r.groupCuts && !Object.keys(r.groupCuts).includes(g))
+                fail(`${at}.groupGames names group "${g}", which is not a groupCuts key.`,
+                     `Both are matched against the API's group name, so a key nothing matches falls back to defaultGames without saying so. groupCuts has: ${Object.keys(r.groupCuts).join(', ')}.`);
+            }
+          }
+        }
+
         const cutSets = [
           ...(r.cuts ? [['cuts', r.cuts]] : []),
           ...Object.entries(r.groupCuts || {}).map(([g, c]) => [`groupCuts.${g}`, c]),
