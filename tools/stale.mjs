@@ -165,6 +165,19 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
       stale('EVENT.qual', `${r.rg}: ${due.length} of its ${routes.length} places were settled by ${day(last)}, but only ${thru.length} team${thru.length === 1 ? ' is' : 's are'} on the board.`,
             `Patch EVENT.qual.regions[].thru for ${r.rg} from the participants table on ${EVENT.wiki}.`);
     }
+
+    /* A team can be through before its seed is drawn, and the board says so in
+       as many words. Once every place in the region has passed its date that
+       draw has happened, so a "seed to be drawn" still sitting there is one
+       nobody wrote down — and the count check above cannot see it, because the
+       region is full and its arithmetic is perfectly happy. */
+    const undrawn = thru.filter(t => !t.via);
+    if (undrawn.length && routes.length && routes.every(x => Date.parse(x.on) < NOW)) {
+      const last = routes.map(x => x.on).sort().pop();
+      stale('EVENT.qual', `${r.rg}: every place was settled by ${day(last)}, but ${undrawn.map(t => t.team).join(' and ')} ${undrawn.length === 1 ? 'still reads' : 'still read'} "seed to be drawn".`,
+            `Name the route each of them qualified by in EVENT.qual.regions[].thru, from the participants table on ${EVENT.wiki}.`);
+    }
+
     for (const x of routes) {
       const d = Math.ceil((Date.parse(x.on) - NOW) / 86400e3);
       if (d >= 0 && d <= SOON_DAYS) soon.push(`${x.via} (${day(x.on)})`);

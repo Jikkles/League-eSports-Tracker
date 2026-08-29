@@ -243,8 +243,11 @@ and are linked from the hero.
   that is already won as still open — and holds the place totals to the prose
   in `EVENT.field`, which is the same arithmetic written out twice on one
   screen. `stale.mjs` reads the `on` dates back: a place whose date has passed
-  while its region is still a team short is STALE, and one falling within a week
-  is a NOTE, so the board is chased rather than quietly rotting.
+  while its region is still a team short is STALE, one falling within a week is
+  a NOTE, and — the case the arithmetic cannot see — a team still reading
+  *seed to be drawn* after every place in its region has been settled is STALE
+  too, because a full region's counts stay perfectly happy while the board goes
+  on saying it does not know something the league decided days ago.
 - **`stale.mjs` is what notices the tab has gone off.** Nothing on the page is
   fetched, so nothing about it can break loudly: once the event it names has been
   played, the tab advertises a finished tournament with TBD in every row while
