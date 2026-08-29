@@ -4024,21 +4024,6 @@ const FORMATS = {
     {id:'M5', g:'Lower Bracket – Round 2', col:3,row:2, s:['w:M3','w:M4']},
     {id:'M7', g:'Lower Bracket – Round 3', col:4,row:2, s:['l:M6','w:M5']},
     {id:'M8', g:'Finals', col:5,row:0, s:['w:M6','w:M7']} ]},
-  de8: { name:'8-team double elim', seeds:8, cols:6, matches:[
-    {id:'M1', g:'Upper Quarterfinals', col:1,row:1, s:['seed:1','seed:8']},
-    {id:'M2', g:'Upper Quarterfinals', col:1,row:1, s:['seed:4','seed:5']},
-    {id:'M3', g:'Upper Quarterfinals', col:1,row:1, s:['seed:2','seed:7']},
-    {id:'M4', g:'Upper Quarterfinals', col:1,row:1, s:['seed:3','seed:6']},
-    {id:'M5', g:'Upper Semifinals', col:2,row:1, s:['w:M1','w:M2']},
-    {id:'M6', g:'Upper Semifinals', col:2,row:1, s:['w:M3','w:M4']},
-    {id:'M7', g:'Upper Final', col:3,row:1, s:['w:M5','w:M6']},
-    {id:'M8', g:'Lower Round 1', col:2,row:2, s:['l:M1','l:M2']},
-    {id:'M9', g:'Lower Round 1', col:2,row:2, s:['l:M3','l:M4']},
-    {id:'M10', g:'Lower Round 2', col:3,row:2, s:['w:M8','l:M6']},
-    {id:'M11', g:'Lower Round 2', col:3,row:2, s:['w:M9','l:M5']},
-    {id:'M12', g:'Lower Round 3', col:4,row:2, s:['w:M10','w:M11']},
-    {id:'M13', g:'Lower Final', col:5,row:2, s:['w:M12','l:M7']},
-    {id:'M14', g:'Grand Final', col:6,row:0, s:['w:M7','w:M13']} ]},
   de6b: { name:'6-team double elim, top-2 byes (LCK/LCS)', seeds:6, cols:6, matches:[
     {id:'M1', g:'Round 1', col:1,row:1, s:['seed:3','seed:6']},
     {id:'M2', g:'Round 1', col:1,row:1, s:['seed:4','seed:5']},
@@ -4050,25 +4035,6 @@ const FORMATS = {
     {id:'M8', g:'Lower Bracket – Round 3', col:4,row:2, s:['w:M7','l:M3']},
     {id:'M9', g:'Lower Bracket Final', col:5,row:2, s:['w:M8','l:M5']},
     {id:'M10', g:'Grand Final', col:6,row:0, s:['w:M5','w:M9']} ]},
-  de10: { name:'10-team double elim, top-2 byes', seeds:10, cols:7, matches:[
-    {id:'M1', g:'Upper Quarterfinals', col:1,row:1, s:['seed:3','seed:10']},
-    {id:'M2', g:'Upper Quarterfinals', col:1,row:1, s:['seed:4','seed:9']},
-    {id:'M3', g:'Upper Quarterfinals', col:1,row:1, s:['seed:5','seed:8']},
-    {id:'M4', g:'Upper Quarterfinals', col:1,row:1, s:['seed:6','seed:7']},
-    {id:'M5', g:'Upper Round 2', col:2,row:1, s:['w:M1','w:M2']},
-    {id:'M6', g:'Upper Round 2', col:2,row:1, s:['w:M3','w:M4']},
-    {id:'M7', g:'Upper Semifinals', col:3,row:1, s:['seed:1','w:M5']},
-    {id:'M8', g:'Upper Semifinals', col:3,row:1, s:['seed:2','w:M6']},
-    {id:'M9', g:'Upper Final', col:4,row:1, s:['w:M7','w:M8']},
-    {id:'M10', g:'Lower Round 1', col:2,row:2, s:['l:M1','l:M2']},
-    {id:'M11', g:'Lower Round 1', col:2,row:2, s:['l:M3','l:M4']},
-    {id:'M12', g:'Lower Round 2', col:3,row:2, s:['w:M10','l:M6']},
-    {id:'M13', g:'Lower Round 2', col:3,row:2, s:['w:M11','l:M5']},
-    {id:'M14', g:'Lower Round 3', col:4,row:2, s:['w:M12','l:M8']},
-    {id:'M15', g:'Lower Round 3', col:4,row:2, s:['w:M13','l:M7']},
-    {id:'M16', g:'Lower Round 4', col:5,row:2, s:['w:M14','w:M15']},
-    {id:'M17', g:'Lower Final', col:6,row:2, s:['w:M16','l:M9']},
-    {id:'M18', g:'Grand Final', col:7,row:0, s:['w:M9','w:M17']} ]},
   /* LPL Split 3 2026. Eight teams: Ascend 1-6 plus the two Knights Rivals
      play-in winners, all Bo5. Seeds 1-2 bye into the upper semifinals and the
      play-in winners come in at the foot of the lower bracket, which is what
@@ -4089,11 +4055,7 @@ const FORMATS = {
     {id:'M9', g:'Lower Round 2', col:3,row:2, s:['w:M7','l:M3']},
     {id:'M10', g:'Lower Round 3', col:4,row:2, s:['w:M8','w:M9']},
     {id:'M11', g:'Lower Final', col:5,row:2, s:['w:M10','l:M5']},
-    {id:'M12', g:'Grand Final', col:6,row:0, s:['w:M5','w:M11']} ]},
-  se4: { name:'4-team single elim', seeds:4, cols:2, matches:[
-    {id:'M1', g:'Semifinals', col:1,row:1, s:['seed:1','seed:4']},
-    {id:'M2', g:'Semifinals', col:1,row:1, s:['seed:2','seed:3']},
-    {id:'M3', g:'Final', col:2,row:0, s:['w:M1','w:M2']} ]}
+    {id:'M12', g:'Grand Final', col:6,row:0, s:['w:M5','w:M11']} ]}
 };
 
 /* ---------- win probability model ----------
@@ -4220,6 +4182,13 @@ function simLoad(slug) {
   if (!simState[slug]) {
     simState[slug] = lsJSON(LS('sim_'+slug), null)
       || { format: REGIONS[slug].defFormat, seeds:{}, winners:{}, pool:[] };
+    /* A viewer's saved format can name a bracket this build no longer carries:
+       FORMATS holds only the four leagues' current wirings, so a format drops
+       out of it the moment a league stops using one. Falling back to the
+       region default is what makes retiring a format safe — the saved bracket
+       resolves against the live one instead of rendering nothing. Winners
+       picked in the old bracket are pruned by simResolve(); they referenced
+       matches that no longer exist, and nothing can be done with them. */
     if (!FORMATS[simState[slug].format]) simState[slug].format = REGIONS[slug].defFormat;
   }
   return simState[slug];

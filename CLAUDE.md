@@ -66,7 +66,11 @@ Deployed via GitHub Pages straight from this repo.
   - `STORYLINES` — home-tab narrative bullets
   - `POWER_RANKINGS` + `POWER_RANKINGS_ASOF` — mirror of lolesports.com Global Power
     Rankings
-  - `FORMATS` — playoff bracket wirings (double/single elim graphs)
+  - `FORMATS` — playoff bracket wirings, one per bracket the four leagues
+    currently run and no more (`de6` LEC, `de6b` LCK/LCS, `de8b` LPL). Retiring
+    one is safe: `simLoad()` falls back to the region's default when a viewer's
+    saved format has gone, so add and remove them as the leagues change rather
+    than keeping a museum of past brackets in the dropdown
 - When patching baked-in data: research via web search / Leaguepedia (`lol.fandom.com`)
   / Liquipedia (`liquipedia.net`), never invent scores/points/formats — if a value can't
   be verified, leave it and say so. Make targeted string replacements, not rewrites.
