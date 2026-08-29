@@ -35,7 +35,7 @@ renaming it breaks Pages hosting.
 
 | Constant | What it holds | Update cadence |
 |---|---|---|
-| `POWER_RANKINGS` + `POWER_RANKINGS_ASOF` | Mirror of lolesports.com Global Power Rankings: team, region, pts, W/L, movement | Whenever Tom asks; weekly-ish |
+| `POWER_RANKINGS` + `POWER_RANKINGS_ASOF` | Mirror of lolesports.com Global Power Rankings: team, region, pts, W/L, movement | **Automated** — `tools/gpr.mjs`, nightly. Never hand-edit |
 | `HONOURS` | 2026 honours board: First Stand, LEC Versus/Spring, LPL splits, MSI, EWC, KeSPA Cup, Worlds | After each tournament concludes |
 | `STORYLINES` | 4-5 season narrative bullets on the Home tab | When honours change |
 | `FORMATS` | Playoff bracket wirings (de6 LEC, de6b LCK/LCS byes, de10 LPL, de8, se4) | If Riot changes a playoff format |
@@ -43,11 +43,12 @@ renaming it breaks Pages hosting.
 
 ## Research sourcing per area
 
-**Power rankings** — the official table lives at lolesports.com/power-rankings, which is JS-rendered and
-NOT fetchable. Strategy: (1) web_search for recent articles mirroring the current rankings (Sheep Esports,
-Dot Esports etc. cover big movements); (2) if search can't establish the full current top-10 with points,
-ASK TOM for a screenshot of the page — he does this happily, same as the HL fund desk workflow. Parse
-team/pts/W-L/movement from the screenshot. Never guess points. Update `POWER_RANKINGS_ASOF` to the date shown.
+**Power rankings** — no research needed any more, and no hand-editing. `tools/gpr.mjs` scrapes the
+official board at lolesports.com/en-GB/gpr/<year>/current and rewrites the whole `/* GPR:generated */`
+block nightly. If Tom asks for a rankings refresh, run `node tools/gpr.mjs` (add `--dry-run` first to
+show him what would change) and commit that — do not go looking for articles or ask for a screenshot.
+If the scrape fails, say so rather than filling the block in by hand; a hand-edit is overwritten on the
+next nightly run and the two sources then disagree.
 
 **Honours & winners** — web_search first, then Leaguepedia (`lol.fandom.com`) and Liquipedia
 (`liquipedia.net`) pages for the specific tournament. Record: winner, runner-up, series score,
@@ -98,6 +99,5 @@ fonts — Tom reads this at a glance, often on his phone.
 ## Delivery
 
 Commit updated `index.html` to `main` with a clear commit message, push, and confirm the push succeeded.
-Give Tom a chat changelog with sources. If power rankings came from a Tom screenshot, note the as-of date
-he gave. End by reminding him GitHub Pages takes about a minute to rebuild, and his phone (added to
+Give Tom a chat changelog with sources. End by reminding him GitHub Pages takes about a minute to rebuild, and his phone (added to
 home screen) may need a pull-to-refresh or a close-and-reopen to pick up the change since it's cached.

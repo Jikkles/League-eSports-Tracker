@@ -95,17 +95,22 @@ const { REGIONS, EVENT, HONOURS, POWER_RANKINGS, POWER_RANKINGS_ASOF } = C;
 const NOW = Date.now();
 const YEAR = new Date(NOW).getUTCFullYear();
 
-/* ---- POWER_RANKINGS freshness ------------------------------------------- */
+/* ---- POWER_RANKINGS freshness -------------------------------------------
+   The board is rebuilt nightly by tools/gpr.mjs, so this is no longer a nudge
+   to go and mirror it by hand — it is the backstop for that job having quietly
+   stopped. gpr.yml raises its own issue when a run *fails*; what it cannot see
+   is a run that succeeds against a board Riot has stopped publishing, which is
+   what this catches. */
 
 const asOf = Date.parse(POWER_RANKINGS_ASOF);
 if (Number.isNaN(asOf)) {
   stale('POWER_RANKINGS', `POWER_RANKINGS_ASOF ("${POWER_RANKINGS_ASOF}") does not parse as a date.`,
-        'Set it to the date printed on lolesports.com/gpr.');
+        'tools/gpr.mjs writes this from the dateCalculated on the board itself; a value it cannot have written means the block was edited by hand.');
 } else {
   const age = Math.floor((NOW - asOf) / 86400e3);
   if (age > MAX_AGE_DAYS)
     stale('POWER_RANKINGS', `The rankings mirror is ${age} days old (as of ${POWER_RANKINGS_ASOF}).`,
-          'Re-mirror the Global Power Rankings from lolesports.com/gpr and update POWER_RANKINGS_ASOF.');
+          'Run `node tools/gpr.mjs --dry-run`. If it reports the same date, lolesports.com has stopped publishing a current board and the home tab should say so; if it reports a newer one, the nightly gpr.yml run is not landing.');
   else fine('POWER_RANKINGS', `mirror is ${age} day${age === 1 ? '' : 's'} old`);
 }
 

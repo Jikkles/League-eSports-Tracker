@@ -20,6 +20,9 @@
  *   - the DRAFTS:generated / DRAFTS:end markers are intact and the block
  *     between them is still valid JSON (tools/drafts.mjs rewrites it wholesale
  *     and a malformed write would take the whole script down)
+ *   - the GPR:generated / GPR:end markers are intact and still wrap both of
+ *     the constants tools/gpr.mjs rewrites (a block that loses its markers
+ *     renders fine and silently stops being refreshed)
  *   - no duplicate element IDs, which silently break getElementById wiring
  *   - index.html is still the only file the browser loads
  *   - the file has not blown past its size budget (a warning, not a failure)
@@ -173,6 +176,29 @@ if (startMark === -1 || endMark === -1) {
       fail('The DRAFTS block is not valid JSON.', e.message);
     }
   }
+}
+
+/* ---- the generated GPR block -------------------------------------------- */
+
+/* Only the markers are checked here; the contents are POWER_RANKINGS, which is
+   validated as data further down like every other constant. A block missing its
+   markers still parses and still renders — it just quietly stops being
+   refreshed, which is exactly the kind of silent rot this file exists to catch. */
+
+const gprStart = src.indexOf('/* GPR:generated */');
+const gprEnd = src.indexOf('/* GPR:end */');
+
+if (gprStart === -1 || gprEnd === -1)
+  fail('The GPR:generated / GPR:end markers are missing.',
+       'tools/gpr.mjs rewrites POWER_RANKINGS between them and cannot find it without both.');
+else if (gprEnd < gprStart)
+  fail('The GPR markers are in the wrong order.');
+else {
+  const block = src.slice(gprStart, gprEnd);
+  for (const name of ['POWER_RANKINGS_ASOF', 'POWER_RANKINGS'])
+    if (!block.includes(`const ${name}`))
+      fail(`${name} is not inside the GPR markers.`,
+           'tools/gpr.mjs replaces everything between them, so a declaration left outside would be orphaned.');
 }
 
 /* ---- duplicate element IDs --------------------------------------------- */

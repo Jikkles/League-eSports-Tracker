@@ -1,0 +1,107 @@
+name: Refresh power rankings
+
+# The home tab's rankings board is a mirror of lolesports.com's official Global
+# Power Rankings, which is a Next.js page rather than an API: 2 MB of
+# server-rendered payload, behind a GraphQL endpoint that only accepts persisted
+# operation IDs. The page can never fetch that itself, so this bakes it in — the
+# same arrangement drafts.yml has with gol.gg.
+#
+# 07:45 UTC, after Riot's own board recalculates overnight and before stale.yml
+# runs at 08:00, so a fresh mirror is what the staleness report sees.
+
+on:
+  schedule:
+    - cron: '45 7 * * *'
+  workflow_dispatch:
+    inputs:
+      top:
+        description: How many teams the board carries
+        type: string
+        required: false
+        default: '10'
+
+# index.html is rewritten in place; never let two jobs race for it
+concurrency:
+  group: gpr
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write        # to raise a failed scrape rather than leave it in the Actions tab
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Scrape the Global Power Rankings and patch index.html
+        id: scrape
+        run: |
+          if node tools/gpr.mjs --top "${{ inputs.top || '10' }}" > gpr-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat gpr-log.txt
+          {
+            echo '```'
+            cat gpr-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write the report
+        if: steps.scrape.outputs.healthy == 'false'
+        run: |
+          {
+            echo "The daily power-rankings refresh failed, so the board on the home tab of [index.html](../blob/main/index.html) is frozen at whatever it last mirrored."
+            echo
+            echo "Nothing on the page is broken — it renders the rankings it already has, with the \`as of\` date to say how old they are. lolesports.com being briefly unreachable is the usual cause and clears on its own."
+            echo
+            echo "If it does not clear, the likely cause is the one this scrape cannot survive: lolesports.com is a Next.js app and the board is read out of the Apollo payload its HTML ships inline. A redesign that moves or renames that payload shows up here as \`No teamGPR payload\`, and \`sliceJSONArray\` in [tools/gpr.mjs](../blob/main/tools/gpr.mjs) is what needs re-pointing."
+            echo
+            echo '```'
+            cat gpr-log.txt
+            echo '```'
+            echo
+            echo "Reproduce locally with \`node tools/gpr.mjs --dry-run\`."
+            echo
+            echo "<sub>Posted by [gpr.yml](../blob/main/.github/workflows/gpr.yml). Updated in place on each run, and closed automatically once a scrape succeeds.</sub>"
+          } > gpr-report.md
+
+      - name: Report
+        uses: ./.github/actions/report-issue
+        with:
+          healthy: ${{ steps.scrape.outputs.healthy }}
+          label: gpr-failing
+          title: 'Power rankings: the lolesports GPR mirror is failing'
+          body-file: gpr-report.md
+          color: FBCA04
+          description: Raised automatically when the daily Global Power Rankings scrape cannot complete
+          token: ${{ github.token }}
+
+      - name: Stop here if the scrape failed
+        if: steps.scrape.outputs.healthy == 'false'
+        run: exit 1
+
+      # The block is rewritten wholesale, so a bad write is a broken page. Check
+      # before committing, not after.
+      - name: Check the page still parses
+        run: node tools/check.mjs
+
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "board unchanged; nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Refresh the power rankings from lolesports.com"
+          git push

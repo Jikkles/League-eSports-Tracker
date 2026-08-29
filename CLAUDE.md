@@ -8,9 +8,10 @@ Deployed via GitHub Pages straight from this repo.
 ## Ground rules
 
 - **Single file.** Everything the browser loads — markup, CSS, JS, data — lives in
-  `index.html`. No build step, no bundler, no package.json. Edit it directly. The one
-  thing outside it is `tools/drafts.mjs` (see below), which is tooling, not part of the
-  page: it *writes into* `index.html` rather than shipping a second file to the browser.
+  `index.html`. No build step, no bundler, no package.json. Edit it directly. The
+  things outside it are the scripts in `tools/` — `drafts.mjs` and `gpr.mjs` (see
+  below) — which are tooling, not part of the page: they *write into* `index.html`
+  rather than shipping a second file to the browser.
 - **File must stay named `index.html`** — GitHub Pages serves that filename specifically;
   renaming it breaks the deployed site.
 - **Never rename the `nexusdesk_` localStorage prefix** (see `LS()` helper near the top
@@ -67,7 +68,10 @@ Deployed via GitHub Pages straight from this repo.
   - `HONOURS` — season honours board (tournament winners, runners-up, dates)
   - `STORYLINES` — home-tab narrative bullets
   - `POWER_RANKINGS` + `POWER_RANKINGS_ASOF` — mirror of lolesports.com Global Power
-    Rankings
+    Rankings. **No longer hand-maintained** — `tools/gpr.mjs` rewrites both nightly
+    (see the GPR block below). Left in this list because everything else here reads
+    it: `isTop10()` badges a top-10 clash on the schedule, and the simulator's
+    `rating()` uses `pts` as a team's base strength
   - `FORMATS` — playoff bracket wirings, one per bracket the four leagues
     currently run and no more (`de6` LEC, `de6b` LCK/LCS, `de8b` LPL). Retiring
     one is safe: `simLoad()` falls back to the region's default when a viewer's
@@ -236,7 +240,14 @@ structure come from Leaguepedia's tournament page and are linked from the hero.
   URI it is not an http link, so `links.mjs` does not check it; nothing can rot.
   Keep the two wiki links, which it does check.
 
-## Generated data: the DRAFTS block
+## Generated data
+
+Two blocks in the script are written by tooling rather than by hand, both fenced
+by markers `check.mjs` holds you to. Rewriting a whole block is deliberate: a
+generated region with a hard edge cannot be half-edited, and a hand-tweak inside
+one is simply overwritten on the next run rather than silently kept.
+
+### The DRAFTS block
 
 `DRAFTS` sits between `/* DRAFTS:generated */` and `/* DRAFTS:end */` markers in the
 script. **Never hand-edit it** — `tools/drafts.mjs` rewrites the whole block.
@@ -270,6 +281,53 @@ on an explicit flag (or the `prune` input on the workflow's manual dispatch), an
 refuses to delete anything if enumeration was incomplete, since a partial list would
 take the live split with it. Run it once after a rollover.
 
+### The GPR block
+
+`POWER_RANKINGS_ASOF` and `POWER_RANKINGS` sit between `/* GPR:generated */` and
+`/* GPR:end */`. **Never hand-edit them** — `tools/gpr.mjs` rewrites the whole
+block from lolesports.com's official Global Power Rankings.
+
+- `node tools/gpr.mjs --dry-run` — print the board it would write, change nothing
+- `node tools/gpr.mjs` — patch `index.html` in place
+- `node tools/gpr.mjs --top 10` — how many teams the board carries (default 10)
+- `node tools/gpr.mjs --year 2026` — override the season
+- `.github/workflows/gpr.yml` runs it daily at 07:45 UTC and commits any change
+
+**It is baked in rather than fetched, for the same reason DRAFTS is.**
+lolesports.com/gpr is a Next.js page, not an API: the rankings arrive as ~2 MB of
+server-rendered React payload, which is not something to make a phone download,
+and the GraphQL endpoint behind it (`/api/gql`) refuses freeform queries —
+persisted operation IDs only, and those change with every deploy of their site.
+So don't try to move this to a runtime fetch; it was checked.
+
+- **The board is read out of the page's Apollo cache, not its markup.** The HTML
+  ships the whole `teamGPR` array inline for hydration; `sliceJSONArray()` finds
+  that key and bracket-matches to the end of the array, so what comes back is the
+  real JSON Riot's own client renders from. Scraping the rendered table instead
+  would mean parsing a wall of generated class names that changes on any restyle.
+  If a redesign moves that payload the scrape fails loudly (`No teamGPR payload`),
+  which is the point — a silent empty board would be worse.
+- **`t` is taken from `/getTeams` by team id, not from the GPR payload.** Riot
+  spells the same team differently in different places, and the page matches
+  rankings to fixtures *by name*: `isTop10()` and the simulator's `rating()` both
+  key on `nk(name)`. The team-list API uses the same spelling the schedule feed
+  does, so taking the name from there is what keeps that join working. This was a
+  live bug — the hand-mirrored board said `Gen.G` where every feed says
+  `Gen.G Esports`, so Gen.G's games were never badged a top-10 clash and the
+  simulator rated them off the fallback. Don't "tidy" a name back.
+- **`wl` is the match record, not the game record** (`teamMatchRecord`), which is
+  what the GPR table prints beside the score. Both are in the payload.
+- **`move` is the rank change over 7 days**, from `teamGPRHistory`. Riot's own
+  `previousTeamGPR` is the day before, which is flat for around 90% of teams and
+  makes the ▲/▼ column say nothing; the history is published roughly every ten
+  days and reproduces the movement the board carried when it was mirrored by
+  hand. `MOVE_DAYS` in `gpr.mjs` is that window, and the generated comment in
+  `index.html` states it so the column's meaning is written down.
+- **`stale.mjs` still checks the age**, but it now means something different: not
+  "go and mirror this" but "the nightly job has quietly stopped, or Riot has
+  stopped publishing a current board". `gpr.yml` raises its own issue when a run
+  *fails*; what it cannot see is a run succeeding against a frozen board.
+
 ## Automation
 
 These run without anyone asking:
@@ -278,6 +336,7 @@ These run without anyone asking:
 - `.github/workflows/smoke.yml` — `tools/smoke.mjs` on every push and PR, and daily at 07:30 UTC
 - `.github/workflows/drafts.yml` — `tools/drafts.mjs` daily at 06:00 UTC, commits changes
 - `.github/workflows/api-canary.yml` — `tools/api-canary.mjs` daily at 07:00 UTC
+- `.github/workflows/gpr.yml` — `tools/gpr.mjs` daily at 07:45 UTC, commits changes
 - `.github/workflows/stale.yml` — `tools/stale.mjs` daily at 08:00 UTC
 - `.github/workflows/links.yml` — `tools/links.mjs` weekly, Wednesdays at 08:15 UTC
 - `.github/workflows/deployed.yml` — `tools/deployed.mjs` after each push to `main`, and daily at 08:45 UTC
@@ -319,7 +378,7 @@ canary issue is the explanation when that happens.
 that opens one labelled issue per check, updates it in place on subsequent runs, and
 closes it once the check passes again — so a multi-day problem is one issue, not a pile,
 and a recovery needs no cleanup. Each check owns a label: `api-canary`, `stale-data`,
-`smoke-failing`, `drafts-failing`, `deploy-stale`, `links-dead`. Scheduled jobs report through it;
+`smoke-failing`, `drafts-failing`, `gpr-failing`, `deploy-stale`, `links-dead`. Scheduled jobs report through it;
 push and PR runs deliberately don't, because a red check is already in front of whoever
 caused it.
 
@@ -340,3 +399,7 @@ Typical session: `node tools/stale.mjs` to see what has actually drifted → res
 current LoL esports state → patch the relevant constant(s) → `node tools/check.mjs` →
 `node tools/smoke.mjs` if anything touched rendering → commit → push. GitHub Pages
 rebuilds automatically in ~1 minute, and `deployed.yml` confirms it landed.
+
+Two of those constants are not yours to patch: `DRAFTS` and the GPR block. If a
+session wants either refreshed now rather than at its next scheduled run, run
+`tools/drafts.mjs` or `tools/gpr.mjs` and commit what it writes.

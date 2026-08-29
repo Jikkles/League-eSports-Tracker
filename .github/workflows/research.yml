@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       focus:
-        description: Narrow the brief (e.g. "power rankings only", "add the LEC summer final to HONOURS")
+        description: Narrow the brief (e.g. "storylines only", "add the LEC summer final to HONOURS")
         required: false
         default: ''
 
@@ -91,8 +91,6 @@ jobs:
             Read it first and treat anything it flags as the priority.
 
             IN SCOPE — these constants only:
-              - POWER_RANKINGS and POWER_RANKINGS_ASOF (mirror of lolesports.com's
-                Global Power Rankings — copy it, do not compute your own)
               - STORYLINES (the home-tab narrative bullets)
               - HONOURS (add tournaments that have concluded since the last update)
               - REGIONS splitLabel / defaultGames / defFormat / cuts, but only when
@@ -100,6 +98,8 @@ jobs:
 
             OUT OF SCOPE — do not touch:
               - the DRAFTS block (tools/drafts.mjs owns it; hand-edits are forbidden)
+              - the GPR block, POWER_RANKINGS and POWER_RANKINGS_ASOF included
+                (tools/gpr.mjs mirrors it nightly; a hand-edit is overwritten)
               - anything in tools/ or .github/
               - CSS, markup, or any rendering code
               - the nexusdesk_ localStorage prefix and any existing element ID

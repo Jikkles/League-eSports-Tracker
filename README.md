@@ -38,15 +38,18 @@ Riot Games or any league.
 - **Live data** — schedules, live game state, standings and team logos are pulled at runtime from
   the same unofficial public API that powers lolesports.com. If a browser blocks the direct
   request, the app automatically falls back through a couple of public CORS proxies.
-- **Baked-in data** — things that don't come from that API (global power rankings, the honours
-  board, season storylines, playoff bracket formats) are hand-researched and stored as constants
-  in the file, refreshed periodically from [Leaguepedia](https://lol.fandom.com) and
-  [Liquipedia](https://liquipedia.net).
+- **Baked-in data** — things that don't come from that API (the honours board, season storylines,
+  playoff bracket formats) are hand-researched and stored as constants in the file, refreshed
+  periodically from [Leaguepedia](https://lol.fandom.com) and [Liquipedia](https://liquipedia.net).
 - **Drafts** — the LoL Esports API publishes no pick/ban order, and about 1% of completed games
   are missing from its live-stats feed altogether. [gol.gg](https://gol.gg) has both but sends no
   CORS headers, so the page can't fetch it at runtime. `tools/drafts.mjs` scrapes it and bakes the
   result into `index.html`; a GitHub Action re-runs it daily, so the site keeps itself current
   with no manual step.
+- **Power rankings** — the official [Global Power Rankings](https://lolesports.com/en-GB/gpr) live
+  on a page that ships two megabytes of server-rendered payload and sits behind a GraphQL endpoint
+  that only accepts pre-registered queries, so the page can't fetch it either. `tools/gpr.mjs`
+  reads the board out of that payload and bakes the top ten in; a GitHub Action re-runs it nightly.
 - **State** — your saved playoff-bracket simulations and caches persist locally in your browser
   via `localStorage`. Nothing is sent to a server; there is no backend.
 - **Keeping itself honest** — because there's no build step, a broken hand-edit would otherwise
