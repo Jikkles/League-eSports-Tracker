@@ -346,23 +346,25 @@ if (loaded) {
         return { err: `${rows.length} region rows drawn for ${q.regions.length} in the constant` };
       let pips = 0, on = 0;
       for (let i = 0; i < rows.length; i++) {
-        const p = rows[i].querySelectorAll('.q-pip');
+        const p = rows[i].querySelectorAll('.q-slot');
         if (p.length !== q.regions[i].routes.length)
-          return { err: `${q.regions[i].rg} drew ${p.length} pips for ${q.regions[i].routes.length} places` };
+          return { err: `${q.regions[i].rg} drew ${p.length} slots for ${q.regions[i].routes.length} places` };
         pips += p.length;
-        on += rows[i].querySelectorAll('.q-pip.on').length;
+        on += rows[i].querySelectorAll('.q-slot.on').length;
       }
       const want = q.regions.reduce((n, x) => n + x.thru.length, 0);
       if (on !== want) return { err: `${on} places drawn as filled, ${want} teams on the board` };
 
-      /* Crests do all the naming on this board, so a slot that draws nothing
-         is a team with no name at all. An initials fallback counts as drawn —
-         that is the offline answer — but an empty box does not. */
-      const badges = [...document.querySelectorAll('.qual-panel .q-team')];
-      if (badges.length !== want)
-        return { err: `${badges.length} team crests drawn for ${want} teams through` };
+      /* Crests do all the naming on this board, so a filled slot that draws
+         nothing is a team with no name at all. An initials fallback counts as
+         drawn — that is the offline answer — but an empty box does not. Every
+         slot, filled or not, has to say what it is: the words this board does
+         not print are the ones a pointer and a screen reader ask for. */
+      const badges = [...document.querySelectorAll('.qual-panel .q-slot.on')];
       const blank = badges.filter(b => !b.querySelector('img, .ini'));
       if (blank.length) return { err: `${blank.length} team crest slot(s) drew nothing` };
+      const untitled = [...document.querySelectorAll('.qual-panel .q-slot')].filter(b => !b.title.trim());
+      if (untitled.length) return { err: `${untitled.length} slot(s) carry no title` };
       const marks = [...document.querySelectorAll('.qual-panel .q-lg')].filter(b => b.querySelector('img, .ini'));
       if (marks.length !== q.regions.length)
         return { err: `${marks.length} league marks drawn for ${q.regions.length} regions` };
@@ -371,7 +373,7 @@ if (loaded) {
     });
     if (r.err) throw new Error(r.err);
     if (!r.sub.includes(`${r.on} of ${r.pips}`))
-      throw new Error(`the panel's count reads "${r.sub}" against ${r.on} of ${r.pips} pips`);
+      throw new Error(`the panel's count reads "${r.sub}" against ${r.on} of ${r.pips} slots`);
     return r.sub;
   });
 

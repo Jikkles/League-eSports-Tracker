@@ -211,8 +211,10 @@ between the All chip and the leagues because it is the season's main event
 rather than a fifth league. It is driven by the `EVENT`
 constant and nothing else — there is no feed behind it yet. Above the fold it
 carries Live Now and then a real qualification board (see `EVENT.qual` below),
-in that order, because what is on air outranks what is still to be decided;
-under those it is still a deliberate placeholder: the home board's shape (Live Now, Next Up,
+in that order, because what is on air outranks what is still to be decided; the
+board shares its row with the power rankings and the stage strip sits under it,
+which is what keeps the left of the page from ending halfway up that column.
+Under those it is still a deliberate placeholder: the home board's shape (Live Now, Next Up,
 Recent Games), a *Work in progress* badge saying so, and TBD wherever a time, a
 team or a result will go. Nothing on it is invented; the dates, host, field,
 stage structure and qualification routes come from Leaguepedia's tournament page
@@ -237,35 +239,40 @@ and are linked from the hero.
   not the same list.** When this was written the LCP's final had not been
   played, so both its finalists were through with neither seed assigned; filing
   each of them under a seed row would have been inventing the result of a game
-  nobody had played. So the pips count `thru` against `routes`, a `thru` entry
-  names its route only once that is settled, and the panel says "all 3 places
-  taken · seeding settled 30 Aug" rather than guessing. **Crests do the naming, not words.** A league mark stands in for
-  the region and a team's badge for every place it has taken, so the only prose
-  left on the board is what no logo can carry: the routes still to be run and
-  their dates, with the league prefix stripped from each because the mark
-  beside it already says LCK. What a qualified team won and when is its
-  tooltip and its crest's `alt`. The row is three columns rather than two, and
-  that is not decoration: with the routes underneath the badges they read as a
-  caption for the team above them rather than as the places still to be played.
-  The crest column is a fixed width so every region's routes start at the same
-  x, the ones with nobody through included. Two things make that work: `LOGO_SLUGS`
-  widens the league-image harvest past the four `REGIONS` (LCP and CBLOL have
-  no season here, but they have a crest), and each `thru` entry carries its own
-  `logo` URL, seeded into the page's logo cache at boot — the cache is
-  otherwise filled from fixtures, and half this board plays in leagues the page
-  never fetches. Those URLs are inside `EVENT`, so `links.mjs` already checks
-  them weekly. `check.mjs` holds a
-  `thru`'s route name to the region's `routes` — a misspelt one renders a route
-  that is already won as still open — requires each region's `slug` and an
-  https `logo` (http would be blocked as mixed content and silently fall back
-  to initials), and holds the place totals to the prose
-  in `EVENT.field`, which is the same arithmetic written out twice on one
-  screen. `stale.mjs` reads the `on` dates back: a place whose date has passed
-  while its region is still a team short is STALE, one falling within a week is
-  a NOTE, and — the case the arithmetic cannot see — a team still reading
-  *seed to be drawn* after every place in its region has been settled is STALE
-  too, because a full region's counts stay perfectly happy while the board goes
-  on saying it does not know something the league decided days ago.
+  nobody had played.
+- **The board is drawn and not written.** A league mark per region, then one
+  slot per place that region sends: a filled slot carries a team's badge, an
+  empty one is the dashed outline of a place still to be played. Slots fill
+  left to right, which is a count and not an assignment — see the LCP above.
+  Nothing is printed, because the routes used to sit under the badges where
+  they read as a caption for the team above them; what each slot means is its
+  `title`, so a pointer and a screen reader get the words the board does not
+  show. Six regions are laid out two-across, and the whole panel takes three
+  quarters of the row with the Global Power Rankings in the last quarter —
+  `renderRanks()` draws every `[data-ranks]` element on the page rather than
+  the one id it used to own, so both boards come from one function and one
+  constant.
+- **Two things make the crests work.** `LOGO_SLUGS` widens the league-image
+  harvest past the four `REGIONS` (LCP and CBLOL have no season here, but they
+  have a crest), and each `thru` entry carries its own `logo` URL, seeded into
+  the page's logo cache at boot — that cache is otherwise filled from the
+  fixtures of four leagues, and half this board plays in leagues the page never
+  fetches. Being inside `EVENT`, those URLs are already checked weekly by
+  `links.mjs`.
+- **What holds it together.** `check.mjs` holds a `thru`'s route name to its
+  region's `routes` (a misspelt one renders a place that is already won as
+  still open), requires each region's `slug` and an https `logo` (http would be
+  blocked as mixed content and fall back to initials on a board where the crest
+  is the only name), and holds the place totals to the prose in `EVENT.field`,
+  which is the same arithmetic written out twice on one screen. `smoke.mjs`
+  reads the slots back against the constant and fails on one that drew nothing
+  or carries no title. `stale.mjs` reads the `on` dates back: a place whose
+  date has passed while its region is still a team short is STALE, one falling
+  within a week is a NOTE, and — the case the arithmetic cannot see — a team
+  still reading *seed to be drawn* after every place in its region has been
+  settled is STALE too, because a full region's counts stay perfectly happy
+  while the board goes on saying it does not know something the league decided
+  days ago.
 - **`stale.mjs` is what notices the tab has gone off.** Nothing on the page is
   fetched, so nothing about it can break loudly: once the event it names has been
   played, the tab advertises a finished tournament with TBD in every row while

@@ -610,42 +610,41 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .ov-rg.tbd:hover{background:var(--panel);border-color:var(--line);border-top-color:var(--rg)}
 .nxt.tbd:hover{background:transparent}
 .ov-rg.tbd .n,.nxt.tbd .n-code,.nxt.tbd .n-time,.nxt.tbd .n-date{color:var(--faint)}
-/* ---- the qualification board: the one part of this tab with facts on it ----
-   Crests do the naming here — a league mark on the left, a team's badge for
-   every place it has taken — so the only words left are the ones no logo can
-   carry: what is still to be played, and when. Each row puts its region's
-   colour in --qc; the two regions this page has no league colour for take the
-   event's own cyan rather than borrowing someone else's. */
+/* ---- the qualification board -------------------------------------------
+   Crests do all of it: a league mark per region, then one slot per place that
+   region sends. A filled slot carries the team's badge, an empty one is the
+   dashed outline of a place still to be played, and what either of them means
+   is in its title rather than printed underneath — the routes used to sit
+   below the badges, where they read as a caption for the team above them.
+   Each row puts its region's colour in --qc; the two regions this page has no
+   league colour for take the event's own cyan. */
 .qual-note{font-family:var(--mono);font-size:10.5px;line-height:1.7;color:var(--faint);
-  padding-bottom:4px}
-/* every row is ruled off, the first one included: that top rule is what parts
-   the board from the note above it */
-/* three columns, not two: the crests took the second and the routes the row
-   underneath, which read as a caption for the badge above it rather than as
-   the places still to be played. Beside them, they read as what they are. The
-   crest column is a fixed width so every region's routes start at the same x,
-   including the ones with nobody through yet. */
-.q-rg{display:grid;grid-template-columns:92px 300px 1fr;gap:10px 18px;align-items:center;
-  padding:13px 0;border-top:1px solid var(--line)}
-.q-who{display:flex;flex-direction:column;gap:9px;align-items:flex-start}
-.qual-panel .q-lg{width:52px;height:52px}
+  padding-bottom:6px}
+/* six regions two-across: one column of them left a board of crests adrift in
+   a panel three quarters of the page wide */
+.q-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 26px}
+.q-rg{display:flex;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+.qual-panel .q-lg{width:52px;height:52px;flex:none}
 .q-lg .ini{font-size:11px;letter-spacing:.5px;color:var(--qc)}
-.q-pips{display:flex;align-items:center;gap:5px}
-.q-pip{width:9px;height:9px;border-radius:50%;border:1px solid var(--line2)}
-.q-pip.on{background:var(--qc);border-color:var(--qc)}
-.q-count{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;color:var(--faint);margin-left:4px;white-space:nowrap}
-.q-body{min-width:0}
-.q-teams{display:flex;flex-wrap:wrap;gap:10px}
-/* a badge in a box, drawn at the size the home board gives a fixture crest;
-   the coloured edge is the only thing tying it back to its region */
-.q-team{width:64px;height:64px;display:flex;align-items:center;justify-content:center;padding:8px;
-  background:var(--panel2);border:1px solid var(--line);border-bottom:2px solid var(--qc);border-radius:3px}
-.q-team img{max-width:100%;max-height:100%;object-fit:contain;display:block}
-.q-team .ini{font-size:12px;border:0}
-.q-open{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:5px 20px}
-.q-open li{font-family:var(--mono);font-size:11px;color:var(--dim)}
-.q-on{color:var(--faint)}
-.q-done{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.q-slots{display:flex;flex-wrap:wrap;gap:8px}
+/* an empty place is drawn, not counted: the dashes are how many are left */
+.q-slot{width:64px;height:64px;display:flex;align-items:center;justify-content:center;padding:8px;
+  border:1px dashed var(--line2);border-radius:3px;box-sizing:border-box}
+.q-slot.on{background:var(--panel2);border:1px solid var(--line);border-bottom:2px solid var(--qc)}
+.q-slot img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.q-slot .ini{font-size:12px;border:0}
+
+/* the rankings board beside it, narrowed to the column it now lives in: the
+   meter is the first thing to go, being the one column that carries no number */
+.evt-duo{display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:start;margin-bottom:16px}
+/* the stage strip rides under the board rather than below the whole row: the
+   rankings are a tall column, and the left of the page was ending halfway up it */
+.evt-main{min-width:0}
+.evt-ranks .rk2{grid-template-columns:18px 30px 1fr 40px 22px;gap:8px}
+.evt-ranks .rk2 .meter{display:none}
+.evt-ranks .rk2 .p{font-size:18px}
+.evt-ranks .rk2 .lgw{width:30px;height:30px}
+.evt-ranks .rk2 .nm{font-size:13.5px}
 
 .loading{font-family:var(--mono);font-size:11px;color:var(--faint);padding:14px;text-align:center}
 .err-msg{font-family:var(--mono);font-size:11px;color:var(--loss);padding:10px;border:1px dashed rgba(224,82,96,.4);margin:6px 0}
@@ -1071,8 +1070,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .tab-evt{padding:12px 2px}
   .evt-mark{height:15px;max-width:100%}
   .evt-hero .evt-mark{height:30px}
-  .q-rg{grid-template-columns:1fr;gap:9px}
-  .q-teams:empty{display:none}
+  .q-grid{grid-template-columns:1fr}
+  .evt-duo{grid-template-columns:1fr}
   .fchip::after,.tab::after{bottom:-6px;height:3px}
   .ov-regions{grid-template-columns:1fr 1fr}
   .ov-nums{gap:16px}
@@ -1271,8 +1270,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
       <div class="panel">
         <div class="p-head"><div class="p-title" style="font-size:19px">🏆 Global Power Rankings</div>
           <div class="right"><a class="mini" href="https://lolesports.com/en-GB/power-rankings" target="_blank" rel="noopener">lolesports ↗</a></div></div>
-        <div id="rankList"></div>
-        <div class="rk-note" id="rkNote"></div>
+        <div id="rankList" data-ranks></div>
+        <div class="rk-note" id="rkNote" data-rknote></div>
       </div>
 
       <div class="panel">
@@ -3752,38 +3751,38 @@ function evtQual() {
   const taken  = q.regions.reduce((n, r) => n + r.thru.length, 0);
 
   const rows = q.regions.map(r => {
-    const n = r.thru.length, of = r.routes.length;
-    const pips = r.routes.map((_, i) => `<span class="q-pip${i < n ? ' on' : ''}"></span>`).join('');
+    const n = r.thru.length;
 
-    /* The crest carries the league, so the route drops the prefix it repeats:
+    /* The crest carries the league, so a route drops the prefix it repeats:
        under the LCK's mark, "Season Playoffs champion" says everything "LCK
        Season Playoffs champion" did. The constant keeps the long form, because
        stale.mjs quotes it in a report that has no crest to lean on. */
     const short = via => via.startsWith(r.lg + ' ') ? via.slice(r.lg.length + 1) : via;
-
-    /* A qualified team is its crest and nothing else. What it won and when is
-       the tooltip and the crest's alt text, which is also what a screen reader
-       and an offline first visit get. */
-    const teams = r.thru.map(t =>
-      `<span class="q-team" data-crest="${esc(t.team)}" title="${esc(t.team)} \u2014 ${esc(t.via ? short(t.via) : 'seed to be drawn')} \u00B7 ${day(t.on)}"></span>`).join('');
-
-    /* Only the places still open are listed. A route beside the team that
-       already won it says the same thing twice, and a region whose places are
-       all taken has nothing left to run \u2014 only seeds left to draw. */
     const claimed = new Set(r.thru.map(t => t.via).filter(Boolean));
     const open = r.routes.filter(x => !claimed.has(x.via));
-    const rest = n === of
-      ? `<div class="q-done">all ${of} places taken \u00B7 seeding settled ${day(r.routes[0].on)}</div>`
-      : `<ul class="q-open">${open.map(x =>
-          `<li>${esc(short(x.via))} <span class="q-on">${day(x.on)}</span></li>`).join('')}</ul>`;
+
+    /* One slot per place, filled left to right — which is a count, not an
+       assignment. A team is placed in the first empty slot rather than in the
+       seed it won, because half of them have not been given a seed yet: both
+       LCP finalists are through with the draw still to come, and putting
+       either of them on a particular seed would invent it.
+
+       So the slot's title says what that slot knows. A filled one names its
+       team and how it got in; an empty one names the place still to be played
+       and the day it is settled. Nothing is printed — the board is crests, and
+       the words are what a pointer or a screen reader asks for. */
+    const slots = r.routes.map((_, i) => {
+      if (i < n) {
+        const t = r.thru[i];
+        return `<span class="q-slot on" data-crest="${esc(t.team)}" title="${esc(t.team)} \u2014 ${esc(t.via ? short(t.via) : 'seed to be drawn')} \u00B7 ${day(t.on)}"></span>`;
+      }
+      const x = open[i - n];
+      return `<span class="q-slot" title="${x ? esc(short(x.via)) + ' \u00B7 ' + day(x.on) : 'place still open'}"></span>`;
+    }).join('');
 
     return `<div class="q-rg" style="--qc:${esc(r.color)}">
-        <div class="q-who">
-          <span class="lgw q-lg" data-lg="${esc(r.slug)}" data-lgn="${esc(r.lg)}" title="${esc(r.rg)} \u00B7 ${esc(r.lg)}"></span>
-          <div class="q-pips">${pips}<span class="q-count">${n} / ${of}</span></div>
-        </div>
-        <div class="q-teams">${teams}</div>
-        <div class="q-body">${rest}</div>
+        <span class="lgw q-lg" data-lg="${esc(r.slug)}" data-lgn="${esc(r.lg)}" title="${esc(r.rg)} \u00B7 ${esc(r.lg)}"></span>
+        <div class="q-slots">${slots}</div>
       </div>`;
   }).join('');
 
@@ -3791,7 +3790,7 @@ function evtQual() {
       <div class="p-head"><div class="p-title">Qualification</div>
         <span class="p-sub">${taken} of ${places} places filled</span></div>
       <div class="qual-note">${esc(q.note)}</div>
-      ${rows}
+      <div class="q-grid">${rows}</div>
     </div>`;
 }
 
@@ -3844,7 +3843,9 @@ function buildEventPage() {
       </div>
     </div>
 
-    ${evtQual()}
+    <div class="evt-duo">
+      <div class="evt-main">
+      ${evtQual()}
 
     <div class="ov-regions evt-stages">
       ${EVENT.stages.map(st => `<div class="ov-rg tbd">
@@ -3852,6 +3853,19 @@ function buildEventPage() {
         <div class="n">TBD</div>
         <div class="lbl">${esc(st.sub)}</div>
       </div>`).join('')}
+    </div>
+      </div>
+
+      <!-- The same board the home tab carries, drawn from the same constant by
+           the same function — it is the one thing on this page that already
+           ranks the teams this tab is about, and the column beside the
+           qualification board is exactly its shape. -->
+      <div class="panel evt-ranks">
+        <div class="p-head"><div class="p-title">🏆 Global Power Rankings</div>
+          <div class="right"><a class="mini" href="https://lolesports.com/en-GB/power-rankings" target="_blank" rel="noopener">lolesports ↗</a></div></div>
+        <div data-ranks></div>
+        <div class="rk-note" data-rknote></div>
+      </div>
     </div>
 
     <div class="duo">
@@ -5013,10 +5027,14 @@ function renderTicker() {
 /* =====================================================================
    POWER RANKINGS (editable, persisted)
 ===================================================================== */
+/* Two boards read from POWER_RANKINGS now — the home tab's and the slim one
+   beside the qualification panel — so this draws every element that asks for
+   one rather than the single id it used to own. A board that is not on the
+   page yet is simply not in the list. */
 function renderRanks() {
-  const list = $('#rankList');
-  if (!list) return;
-  list.innerHTML = '';
+  const lists = [...document.querySelectorAll('[data-ranks]')];
+  if (!lists.length) return;
+  for (const l of lists) l.innerHTML = '';
   const pts = POWER_RANKINGS.map(r => r.pts);
   const hi = Math.max(...pts), lo = Math.min(...pts);
   const rows = POWER_RANKINGS;
@@ -5029,15 +5047,16 @@ function renderRanks() {
     const mv = r.move > 0 ? `<span class="mv up">▲${r.move}</span>`
              : r.move < 0 ? `<span class="mv down">▼${-r.move}</span>`
              : `<span class="mv flat">–</span>`;
-    const row = el('div','rk2');
-    row.innerHTML = `<div class="p">${i+1}</div>
+    const html = `<div class="p">${i+1}</div>
       <span class="lgw">${crestInner(r.t)}</span>
       <div class="nm">${esc(r.t)}<span class="sub">${esc(r.r)} · ${esc(r.wl)}</span></div>
       <div class="meter">${meter}</div>
       <div class="pts">${r.pts}</div>${mv}`;
-    list.appendChild(row);
+    for (const list of lists) { const row = el('div','rk2'); row.innerHTML = html; list.appendChild(row); }
   });
-  $('#rkNote').textContent = 'Mirrors the official lolesports Global Power Rankings · as of ' + POWER_RANKINGS_ASOF;
+  document.querySelectorAll('[data-rknote]').forEach(n => {
+    n.textContent = 'Mirrors the official lolesports Global Power Rankings · as of ' + POWER_RANKINGS_ASOF;
+  });
 }
 
 
