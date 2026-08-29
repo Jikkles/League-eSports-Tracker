@@ -458,7 +458,7 @@ if (m && !fails.length) {
 
           q.regions.forEach((r, i) => {
             const at = `EVENT.qual.regions[${i}]${r.rg ? ` (${r.rg})` : ''}`;
-            for (const field of ['rg', 'lg', 'color'])
+            for (const field of ['rg', 'lg', 'slug', 'color'])
               if (!r[field]) fail(`${at} has no ${field}.`);
 
             if (!Array.isArray(r.routes) || !r.routes.length) {
@@ -487,6 +487,13 @@ if (m && !fails.length) {
 
             thru.forEach((t, j) => {
               if (!t.team) { fail(`${at}.thru[${j}] has no team.`); return; }
+              /* The board names its teams with a crest and nothing else, so a
+                 crest that cannot load takes the name with it. http would be
+                 blocked as mixed content and show the initials fallback on a
+                 page nobody would think to check. */
+              if (t.logo && !/^https:\/\//.test(t.logo))
+                fail(`${at}.thru[${j}] (${t.team}) has a logo that is not an https URL: ${t.logo.slice(0, 60)}`,
+                     'The page is served over https, so anything else is blocked as mixed content.');
               if (!t.on || Number.isNaN(Date.parse(t.on)))
                 fail(`${at}.thru[${j}] (${t.team}) has no parseable date: ${t.on}`);
               if (t.via !== undefined && !vias.has(t.via))

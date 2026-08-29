@@ -354,6 +354,19 @@ if (loaded) {
       }
       const want = q.regions.reduce((n, x) => n + x.thru.length, 0);
       if (on !== want) return { err: `${on} places drawn as filled, ${want} teams on the board` };
+
+      /* Crests do all the naming on this board, so a slot that draws nothing
+         is a team with no name at all. An initials fallback counts as drawn —
+         that is the offline answer — but an empty box does not. */
+      const badges = [...document.querySelectorAll('.qual-panel .q-team')];
+      if (badges.length !== want)
+        return { err: `${badges.length} team crests drawn for ${want} teams through` };
+      const blank = badges.filter(b => !b.querySelector('img, .ini'));
+      if (blank.length) return { err: `${blank.length} team crest slot(s) drew nothing` };
+      const marks = [...document.querySelectorAll('.qual-panel .q-lg')].filter(b => b.querySelector('img, .ini'));
+      if (marks.length !== q.regions.length)
+        return { err: `${marks.length} league marks drawn for ${q.regions.length} regions` };
+
       return { pips, on, sub: document.querySelector('.qual-panel .p-sub')?.textContent.trim() || '' };
     });
     if (r.err) throw new Error(r.err);

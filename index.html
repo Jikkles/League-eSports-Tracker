@@ -610,33 +610,37 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .ov-rg.tbd:hover{background:var(--panel);border-color:var(--line);border-top-color:var(--rg)}
 .nxt.tbd:hover{background:transparent}
 .ov-rg.tbd .n,.nxt.tbd .n-code,.nxt.tbd .n-time,.nxt.tbd .n-date{color:var(--faint)}
-/* ---- the qualification board: the one part of this tab with facts in it ----
-   Each row carries its region's colour in --qc so the pips and the team chips
-   pick it up without six rules; the two regions this page has no league colour
-   for take the event's own cyan rather than borrowing someone else's. */
+/* ---- the qualification board: the one part of this tab with facts on it ----
+   Crests do the naming here — a league mark on the left, a team's badge for
+   every place it has taken — so the only words left are the ones no logo can
+   carry: what is still to be played, and when. Each row puts its region's
+   colour in --qc; the two regions this page has no league colour for take the
+   event's own cyan rather than borrowing someone else's. */
 .qual-note{font-family:var(--mono);font-size:10.5px;line-height:1.7;color:var(--faint);
   padding-bottom:4px}
 /* every row is ruled off, the first one included: that top rule is what parts
    the board from the note above it */
-.q-rg{display:grid;grid-template-columns:150px 1fr;gap:10px 16px;align-items:start;
+.q-rg{display:grid;grid-template-columns:92px 1fr;gap:10px 16px;align-items:center;
   padding:13px 0;border-top:1px solid var(--line)}
-.q-who{display:flex;flex-direction:column;gap:7px}
-.q-who .nm{font-family:var(--body);font-weight:800;font-size:15px;letter-spacing:.3px;color:var(--qc)}
-.q-who .lg{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;color:var(--dim)}
+.q-who{display:flex;flex-direction:column;gap:9px;align-items:flex-start}
+.qual-panel .q-lg{width:40px;height:40px}
+.q-lg .ini{font-size:11px;letter-spacing:.5px;color:var(--qc)}
 .q-pips{display:flex;align-items:center;gap:5px}
 .q-pip{width:9px;height:9px;border-radius:50%;border:1px solid var(--line2)}
 .q-pip.on{background:var(--qc);border-color:var(--qc)}
-.q-count{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;color:var(--faint);margin-left:4px}
-.q-body{display:flex;flex-direction:column;gap:9px;min-width:0}
-.q-teams{display:flex;flex-wrap:wrap;gap:8px}
-.q-team{display:flex;flex-direction:column;gap:3px;padding:7px 10px;background:var(--panel2);
-  border:1px solid var(--line);border-left:2px solid var(--qc);border-radius:3px}
-.q-team b{font-family:var(--body);font-weight:700;font-size:13px}
-.q-team i{font-family:var(--mono);font-style:normal;font-size:9.5px;letter-spacing:.5px;color:var(--faint)}
+.q-count{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;color:var(--faint);margin-left:4px;white-space:nowrap}
+.q-body{display:flex;flex-direction:column;gap:10px;min-width:0}
+.q-teams{display:flex;flex-wrap:wrap;gap:10px}
+/* a badge in a box, sized like the crests on the home board's fixtures; the
+   coloured edge is the only thing tying it back to its region */
+.q-team{width:48px;height:48px;display:flex;align-items:center;justify-content:center;padding:6px;
+  background:var(--panel2);border:1px solid var(--line);border-bottom:2px solid var(--qc);border-radius:3px}
+.q-team img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.q-team .ini{font-size:11px;border:0}
 .q-open{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:5px 20px}
 .q-open li{font-family:var(--mono);font-size:11px;color:var(--dim)}
 .q-on{color:var(--faint)}
-.q-none{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.q-done{font-family:var(--mono);font-size:11px;color:var(--faint)}
 
 .loading{font-family:var(--mono);font-size:11px;color:var(--faint);padding:14px;text-align:center}
 .err-msg{font-family:var(--mono);font-size:11px;color:var(--loss);padding:10px;border:1px dashed rgba(224,82,96,.4);margin:6px 0}
@@ -1063,7 +1067,6 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .evt-mark{height:15px;max-width:100%}
   .evt-hero .evt-mark{height:30px}
   .q-rg{grid-template-columns:1fr;gap:9px}
-  .q-team{flex:1 1 auto}
   .fchip::after,.tab::after{bottom:-6px;height:3px}
   .ov-regions{grid-template-columns:1fr 1fr}
   .ov-nums{gap:16px}
@@ -1472,25 +1475,34 @@ const EVENT = {
      inventing the result of a game nobody has played, so the pips count
      `thru` against `routes` and the seeds stay open until they are drawn.
      A `thru` entry names its route only once that is settled; check.mjs holds
-     those names to `routes` and the place totals to EVENT.field. */
+     those names to `routes` and the place totals to EVENT.field.
+
+     `logo` is the team's crest from Riot's CDN, carried here rather than
+     looked up. The page's logo cache is filled from the fixtures it fetches,
+     and it fetches four leagues — so an LCP or CBLOL team would never appear
+     in it, and this board names its teams with a crest and nothing else. The
+     URLs are seeded into that cache at boot, which also means the board draws
+     on first paint, before any request has been made. */
   qual:{
     note:'The MSI champion\u2019s seed only counts if that team also reaches its domestic playoffs or season finals. China\u2019s fourth place is the extra seed for finishing MSI 2026 as the second-best region.',
     regions:[
-      {rg:'Korea', lg:'LCK', color:'var(--lck)',
+      {rg:'Korea', lg:'LCK', slug:'lck', color:'var(--lck)',
        routes:[{via:'LCK Season Playoffs champion',    on:'2026-09-13'},
                {via:'LCK Season Playoffs runner-up',   on:'2026-09-13'},
                {via:'LCK Season Playoffs third place', on:'2026-09-12'},
                {via:'MSI 2026 champion',               on:'2026-08-15'}],
-       thru:[{team:'Hanwha Life Esports', via:'MSI 2026 champion', on:'2026-08-15'}]},
+       thru:[{team:'Hanwha Life Esports', via:'MSI 2026 champion', on:'2026-08-15',
+              logo:'https://static.lolesports.com/teams/1631819564399_hle-2021-worlds.png'}]},
 
-      {rg:'China', lg:'LPL', color:'var(--lpl)',
+      {rg:'China', lg:'LPL', slug:'lpl', color:'var(--lpl)',
        routes:[{via:'LPL Grand Finals champion',     on:'2026-09-13'},
                {via:'LPL championship points',       on:'2026-08-13'},
                {via:'LPL Regional Finals winner',    on:'2026-09-17'},
                {via:'LPL Regional Finals runner-up', on:'2026-09-19'}],
-       thru:[{team:'BILIBILI GAMING', via:'LPL championship points', on:'2026-08-13'}]},
+       thru:[{team:'BILIBILI GAMING', via:'LPL championship points', on:'2026-08-13',
+              logo:'https://static.lolesports.com/teams/1682322954525_Bilibili_Gaming_logo_20211.png'}]},
 
-      {rg:'EMEA', lg:'LEC', color:'var(--lec)',
+      {rg:'EMEA', lg:'LEC', slug:'lec', color:'var(--lec)',
        routes:[{via:'LEC Summer Playoffs champion',    on:'2026-09-20'},
                {via:'LEC Summer Playoffs runner-up',   on:'2026-09-20'},
                {via:'LEC Summer Playoffs third place', on:'2026-09-19'}],
@@ -1498,21 +1510,24 @@ const EVENT = {
 
       /* Three places, three teams, no seeds: MVK took the points place, and
          the Split 3 final decides which of the other two is the first seed. */
-      {rg:'Asia-Pacific', lg:'LCP', color:'var(--cyan)',
+      {rg:'Asia-Pacific', lg:'LCP', slug:'lcp', color:'var(--cyan)',
        routes:[{via:'LCP Split 3 champion',    on:'2026-08-30'},
                {via:'LCP Split 3 runner-up',   on:'2026-08-30'},
                {via:'LCP championship points', on:'2026-08-29'}],
-       thru:[{team:'Team Secret Whales', on:'2026-08-02'},
-             {team:'MVK Esports', via:'LCP championship points', on:'2026-08-22'},
-             {team:'CTBC Flying Oyster', on:'2026-08-29'}]},
+       thru:[{team:'Team Secret Whales', on:'2026-08-02',
+              logo:'https://static.lolesports.com/teams/1774598000328_White_EyeText_600p.png'},
+             {team:'MVK Esports', via:'LCP championship points', on:'2026-08-22',
+              logo:'https://static.lolesports.com/teams/1767089709161_White_Logo.png'},
+             {team:'CTBC Flying Oyster', on:'2026-08-29',
+              logo:'https://static.lolesports.com/teams/1656307849320_CFO_Logo.png'}]},
 
-      {rg:'North America', lg:'LCS', color:'var(--lcs)',
+      {rg:'North America', lg:'LCS', slug:'lcs', color:'var(--lcs)',
        routes:[{via:'LCS Summer Playoffs champion',    on:'2026-10-04'},
                {via:'LCS Summer Playoffs runner-up',   on:'2026-10-04'},
                {via:'LCS Summer Playoffs third place', on:'2026-10-03'}],
        thru:[]},
 
-      {rg:'Brazil', lg:'CBLOL', color:'var(--cyan)',
+      {rg:'Brazil', lg:'CBLOL', slug:'cblol-brazil', color:'var(--cyan)',
        routes:[{via:'CBLOL Split 2 Playoffs champion',  on:'2026-10-10'},
                {via:'CBLOL Split 2 Playoffs runner-up', on:'2026-10-10'}],
        thru:[]},
@@ -2237,6 +2252,15 @@ function addLogo(name, code, url) {
   teamLogos[nk(name)] = url;
   if (code) teamLogos[nk(code)] = url;
 }
+/* The qualification board carries its own crests, and they go in here so the
+   rest of the page can use them too: findLogo() is what every crest on this
+   page goes through, and seeding it at boot means the board draws before any
+   request has been made rather than showing initials until one lands. It has
+   to be seeded rather than harvested — the harvest walks fixtures from four
+   leagues, and half that board plays in leagues this page never fetches. */
+for (const r of EVENT.qual?.regions || [])
+  for (const t of r.thru || []) addLogo(t.team, null, t.logo);
+
 function harvestLogos(events) {
   for (const ev of events||[])
     for (const t of ev.match?.teams||[]) addLogo(t.name, t.code, t.image);
@@ -2272,25 +2296,42 @@ function logoHTML(name) {
 
 /* big crest for the home board: a sized box holding the badge, with the
    team's initials as the placeholder if the image is missing or 404s */
-function crestInner(name) {
+/* `alt` is empty by default because almost every crest on this page sits
+   beside the team's name and would otherwise be read out twice. The
+   qualification board is the exception — there the crest IS the name — so it
+   passes one in. */
+function crestInner(name, alt) {
   const url = findLogo(name);
   const ini = esc(String(name||'?').split(/\s+/).map(w=>w[0]||'').join('').slice(0,3).toUpperCase());
-  if (!url) return `<span class="ini" style="display:flex">${ini}</span>`;
-  return `<img src="${esc(url)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ini" style="display:none">${ini}</span>`;
+  if (!url) return `<span class="ini" style="display:flex" title="${esc(alt||'')}">${ini}</span>`;
+  return `<img src="${esc(url)}" alt="${esc(alt||'')}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ini" style="display:none">${ini}</span>`;
 }
 function crestHTML(name, cls) { return `<span class="${cls}">${crestInner(name)}</span>`; }
 
 /* -------- region crests (from the API's league images, cached) -------- */
 let leagueLogos = lsJSON(LS('leagueLogos'), {});   // slug -> url
-function leagueLogoHTML(slug) {
+function leagueLogoHTML(slug, label) {
+  /* The slug is not always the name: CBLOL's is `cblol-brazil`, which sliced to
+     three letters spells CBL. A caller outside REGIONS says what its crest is
+     called rather than letting the fallback guess. */
   const url = leagueLogos[slug];
-  const nm = esc((REGIONS[slug]?.name || slug).toUpperCase().slice(0,3));
+  const nm = esc(label || (REGIONS[slug]?.name || slug).toUpperCase().slice(0,3));
   if (!url) return `<span class="ini" style="display:flex">${nm}</span>`;
   return `<img src="${esc(url)}" alt="${nm}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="ini" style="display:none">${nm}</span>`;
 }
 /* fill every static crest slot in the chrome (nav, footer, region heroes) */
 function renderLeagueChrome() {
-  document.querySelectorAll('[data-lg]').forEach(box => { box.innerHTML = leagueLogoHTML(box.dataset.lg); });
+  document.querySelectorAll('[data-lg]').forEach(box => {
+    box.innerHTML = leagueLogoHTML(box.dataset.lg, box.dataset.lgn);
+  });
+  /* The qualification board names its teams with a crest and nothing else, and
+     it is built from a constant at boot — before any logo has been fetched. So
+     its slots are filled by the same sweep as the chrome's, which runs again on
+     every refresh: the crests arrive when the logos do, and until then each box
+     shows the initials every other crest on this page falls back to. */
+  document.querySelectorAll('[data-crest]').forEach(box => {
+    box.innerHTML = crestInner(box.dataset.crest, box.dataset.crest);
+  });
 }
 
 /* =====================================================================
@@ -2375,22 +2416,28 @@ let allLeagues = lsJSON(LS('allLeagues'), {}); // every slug -> id
    they were fetched for — adding one invalidates the cache exactly once — and a
    missing logo is allowed to retry once a session rather than on every tick. */
 const REGION_SLUGS = Object.keys(REGIONS);
+/* Crests are drawn for more leagues than this page has seasons for: the
+   qualification board on the event tab carries one per qualifying region, LCP
+   and CBLOL included. Their ids are no use here — there is no season to fetch
+   — but their images are, so the harvest below is widened to them while
+   `out` stays the four leagues the rest of the page walks. */
+const LOGO_SLUGS = [...new Set([...REGION_SLUGS,
+  ...((EVENT.qual?.regions || []).map(r => r.slug).filter(Boolean))])];
 let leaguesResolvedFor = lsRead(LS('leaguesFor')) || '';
 let leaguesTried = false;
 async function resolveLeagues() {
-  const want = REGION_SLUGS.join(',');
+  const want = LOGO_SLUGS.join(',');
   if (leagueIds && Object.keys(allLeagues).length && leaguesResolvedFor === want
-      && (leaguesTried || REGION_SLUGS.every(s => leagueLogos[s]))) return leagueIds;
+      && (leaguesTried || LOGO_SLUGS.every(s => leagueLogos[s]))) return leagueIds;
   leaguesTried = true;
   const data = await api('/getLeagues');
   const out = {};
   for (const lg of data.data.leagues) {
     const slug = (lg.slug||'').toLowerCase();
     allLeagues[slug] = lg.id;
-    if (REGIONS[slug]) {
-      out[slug] = lg.id;
-      if (lg.image) leagueLogos[slug] = String(lg.image).replace(/^http:/,'https:');
-    }
+    if (REGIONS[slug]) out[slug] = lg.id;
+    if (lg.image && LOGO_SLUGS.includes(slug))
+      leagueLogos[slug] = String(lg.image).replace(/^http:/,'https:');
   }
   if (Object.keys(out).length) {
     leagueIds = out;
@@ -3702,27 +3749,34 @@ function evtQual() {
     const n = r.thru.length, of = r.routes.length;
     const pips = r.routes.map((_, i) => `<span class="q-pip${i < n ? ' on' : ''}"></span>`).join('');
 
-    const teams = n
-      ? r.thru.map(t => `<span class="q-team"><b>${esc(t.team)}</b>
-          <i>${esc(t.via || 'seed to be drawn')} \u00B7 ${day(t.on)}</i></span>`).join('')
-      : '<span class="q-none">nobody through yet</span>';
+    /* The crest carries the league, so the route drops the prefix it repeats:
+       under the LCK's mark, "Season Playoffs champion" says everything "LCK
+       Season Playoffs champion" did. The constant keeps the long form, because
+       stale.mjs quotes it in a report that has no crest to lean on. */
+    const short = via => via.startsWith(r.lg + ' ') ? via.slice(r.lg.length + 1) : via;
+
+    /* A qualified team is its crest and nothing else. What it won and when is
+       the tooltip and the crest's alt text, which is also what a screen reader
+       and an offline first visit get. */
+    const teams = r.thru.map(t =>
+      `<span class="q-team" data-crest="${esc(t.team)}" title="${esc(t.team)} \u2014 ${esc(t.via ? short(t.via) : 'seed to be drawn')} \u00B7 ${day(t.on)}"></span>`).join('');
 
     /* Only the places still open are listed. A route beside the team that
        already won it says the same thing twice, and a region whose places are
-       all taken has nothing left to run — only seeds left to draw. */
+       all taken has nothing left to run \u2014 only seeds left to draw. */
     const claimed = new Set(r.thru.map(t => t.via).filter(Boolean));
     const open = r.routes.filter(x => !claimed.has(x.via));
     const rest = n === of
-      ? `<span class="q-none">all ${of} places taken \u00B7 seeding settled ${day(r.routes[0].on)}</span>`
+      ? `<div class="q-done">all ${of} places taken \u00B7 seeding settled ${day(r.routes[0].on)}</div>`
       : `<ul class="q-open">${open.map(x =>
-          `<li>${esc(x.via)} <span class="q-on">${day(x.on)}</span></li>`).join('')}</ul>`;
+          `<li>${esc(short(x.via))} <span class="q-on">${day(x.on)}</span></li>`).join('')}</ul>`;
 
     return `<div class="q-rg" style="--qc:${esc(r.color)}">
         <div class="q-who">
-          <div><div class="nm">${esc(r.rg)}</div><div class="lg">${esc(r.lg)}</div></div>
+          <span class="lgw q-lg" data-lg="${esc(r.slug)}" data-lgn="${esc(r.lg)}" title="${esc(r.rg)} \u00B7 ${esc(r.lg)}"></span>
           <div class="q-pips">${pips}<span class="q-count">${n} / ${of}</span></div>
         </div>
-        <div class="q-body"><div class="q-teams">${teams}</div>${rest}</div>
+        <div class="q-body">${teams ? `<div class="q-teams">${teams}</div>` : ''}${rest}</div>
       </div>`;
   }).join('');
 

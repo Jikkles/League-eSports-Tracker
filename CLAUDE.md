@@ -238,9 +238,22 @@ and are linked from the hero.
   each of them under a seed row would have been inventing the result of a game
   nobody had played. So the pips count `thru` against `routes`, a `thru` entry
   names its route only once that is settled, and the panel says "all 3 places
-  taken · seeding settled 30 Aug" rather than guessing. `check.mjs` holds a
+  taken · seeding settled 30 Aug" rather than guessing. **Crests do the naming, not words.** A league mark stands in for
+  the region and a team's badge for every place it has taken, so the only prose
+  left on the board is what no logo can carry: the routes still to be run and
+  their dates, with the league prefix stripped from each because the mark
+  beside it already says LCK. What a qualified team won and when is its
+  tooltip and its crest's `alt`. Two things make that work: `LOGO_SLUGS`
+  widens the league-image harvest past the four `REGIONS` (LCP and CBLOL have
+  no season here, but they have a crest), and each `thru` entry carries its own
+  `logo` URL, seeded into the page's logo cache at boot — the cache is
+  otherwise filled from fixtures, and half this board plays in leagues the page
+  never fetches. Those URLs are inside `EVENT`, so `links.mjs` already checks
+  them weekly. `check.mjs` holds a
   `thru`'s route name to the region's `routes` — a misspelt one renders a route
-  that is already won as still open — and holds the place totals to the prose
+  that is already won as still open — requires each region's `slug` and an
+  https `logo` (http would be blocked as mixed content and silently fall back
+  to initials), and holds the place totals to the prose
   in `EVENT.field`, which is the same arithmetic written out twice on one
   screen. `stale.mjs` reads the `on` dates back: a place whose date has passed
   while its region is still a team short is STALE, one falling within a week is
