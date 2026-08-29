@@ -102,17 +102,16 @@ nav{max-width:1900px;margin:0 auto;display:flex;gap:4px;padding:0 20px}
 .tab[data-tab=home]{--tabclr:var(--cyan)} .tab[data-tab=lec]{--tabclr:var(--lec)}
 .tab[data-tab=lck]{--tabclr:var(--lck)} .tab[data-tab=lpl]{--tabclr:var(--lpl)} .tab[data-tab=lcs]{--tabclr:var(--lcs)}
 
-/* The international-event tab (see EVENT) sits past its own rule in the nav,
-   because it is not a region. It carries the event's own wordmark instead of a
+/* The international-event tab (see EVENT) leads the tabs, fenced off by a rule
+   on either side, because it is not a region — it is the event the four of them
+   feed into, and the one most people are opening the page for while it is on.
+   It carries the event's own wordmark instead of a
    crest and a label: "WORLDS 26" is already both, and a 792x213 mark squeezed
    into the 42px square the region crests use would be eleven pixels tall.
-   Keyed off the class, not the slug — the tab outlives this year's event.
-   Riot draws that mark black-on-transparent, for white backgrounds, so it is
-   inverted onto this page's black canvas; if a future event's art arrives
-   light, drop the invert rather than editing the file. */
+   Keyed off the class, not the slug — the tab outlives this year's event. */
 .tab-evt{--tabclr:var(--cyan);padding:14px 22px}
 .evt-mark{display:inline-flex;align-items:center;justify-content:center;height:36px;max-width:210px}
-.evt-mark img{height:100%;width:auto;max-width:100%;object-fit:contain;filter:invert(1);opacity:.62;transition:opacity .12s ease}
+.evt-mark img{height:100%;width:auto;max-width:100%;object-fit:contain;opacity:.62;transition:opacity .12s ease}
 .tab-evt:hover .evt-mark img,.tab-evt.active .evt-mark img{opacity:1}
 .evt-mark .ini{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:1.6px;color:inherit}
 
@@ -603,8 +602,9 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
   color:var(--cyan);border:1px dashed rgba(11,198,227,.45);border-radius:3px;padding:5px 9px;white-space:nowrap}
 .evt-note{font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--dim)}
 .evt-note b{color:#FFFFFF;font-weight:700}
-/* three stages, not four regions */
-.evt-stages{grid-template-columns:repeat(3,1fr)}
+/* three stages, and nothing beside them: the overview card that used to share
+   this row read TBD three times over, which is a lot of panel for no facts */
+.evt-stages{grid-template-columns:repeat(3,1fr);margin-bottom:16px}
 /* nothing on this page is clickable yet, so nothing on it pretends to be */
 .ov-rg.tbd,.nxt.tbd{cursor:default}
 .ov-rg.tbd:hover{background:var(--panel);border-color:var(--line);border-top-color:var(--rg)}
@@ -1157,15 +1157,17 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   <nav>
     <button class="fchip active" data-f="all">All</button>
     <span class="nav-div"></span>
+    <!-- The next international event, first of the tabs and fenced off by a rule
+         on either side: it is the season's main event, not a fifth league.
+         Its slug lives in EVENT; the data-tab here and the section id below have
+         to match it, and check.mjs holds all three together so a half-finished
+         rollover fails rather than going blank. -->
+    <button class="tab tab-evt" data-tab="worlds"><span class="evt-mark"></span></button>
+    <span class="nav-div"></span>
     <button class="tab" data-tab="lec"><span class="lgw" data-lg="lec"></span>LEC</button>
     <button class="tab" data-tab="lck"><span class="lgw" data-lg="lck"></span>LCK</button>
     <button class="tab" data-tab="lpl"><span class="lgw" data-lg="lpl"></span>LPL</button>
     <button class="tab" data-tab="lcs"><span class="lgw" data-lg="lcs"></span>LCS</button>
-    <span class="nav-div"></span>
-    <!-- the next international event. Its slug lives in EVENT; data-tab here and
-         the section id below have to match it, and check.mjs holds all three
-         together so a half-finished rollover fails rather than going blank. -->
-    <button class="tab tab-evt" data-tab="worlds"><span class="evt-mark"></span></button>
   </nav>
   <div class="ticker"><div class="ticker-track" id="tickerTrack"></div></div>
 </header>
@@ -1380,8 +1382,10 @@ const REGIONS = {
 };
 
 /* -------- The next international event --------
-   One tab for the major the four leagues feed into, sitting past its own rule
-   in the nav because it is not a region. Deliberately NOT a REGIONS entry:
+   One tab for the major the four leagues feed into, leading the nav's tabs with
+   a rule on either side of it because it is not a region — it is the season's
+   main event, and the first thing to reach for while it is on. Deliberately NOT
+   a REGIONS entry:
    every Object.keys(REGIONS) walk on this page — the home board, the refresh
    loop, the standings, the race, the simulators — means "a league with a
    season", and a fifth key would have to be special-cased out of all of them.
@@ -1405,10 +1409,20 @@ const EVENT = {
   when:'15 Oct – 14 Nov 2026', host:'United States',
   start:'2026-10-15', end:'2026-11-14',
   field:'19 teams · 4 Korea · 4 China · 3 EMEA · 3 Asia-Pacific · 3 North America · 2 Brazil',
-  /* Riot's own 2026 wordmark, from Leaguepedia's file store — black on
-     transparent, so the stylesheet inverts it (.evt-mark). links.mjs checks it
-     weekly along with the two wiki links below. */
-  logo:'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/0d/Worlds_2026.png/revision/latest?cb=20260322132449',
+  /* Riot's own 2026 wordmark (Leaguepedia's File:Worlds 2026.png), recoloured
+     white for this page's black canvas, scaled to twice the size it is ever
+     drawn at and inlined as WebP — 8 KB of the file's budget.
+
+     Hotlinked, it 404'd for the CI runner while serving fine from a desktop:
+     Fandom's CDN answers some networks and not others, and every viewer it
+     refuses gets the text fallback instead of the logo. The rest of the crests
+     on this page are hotlinked from Riot's own CDN and can afford to be — they
+     are one league badge among many, and the page has a placeholder for each.
+     This one is the tab, so it travels with the file, which also means it is
+     the only mark on the page that survives an offline first visit. Being a
+     data: URI it is not an http link, so links.mjs does not check it — nothing
+     can rot. */
+  logo:'data:image/webp;base64,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',
   wiki:'https://lol.fandom.com/wiki/2026_Season_World_Championship',
   liqui:'https://liquipedia.net/leagueoflegends/World_Championship/2026',
   stages:[
@@ -3594,6 +3608,7 @@ function buildEventPage() {
       <div>
         <div class="sub">${esc(EVENT.full)}</div>
         <div class="sub" style="color:var(--cyan)">${esc(EVENT.when)} \u00B7 ${esc(EVENT.host)}</div>
+        <div class="sub">${esc(EVENT.field)}</div>
       </div>
       <span class="wip-badge">Work in progress</span>
       <div class="links">
@@ -3608,23 +3623,12 @@ function buildEventPage() {
       feed yet, so every fixture below reads TBD. The four league tabs are unaffected.
     </div>
 
-    <div class="ov-row">
-      <div class="ov-card">
-        <div class="ov-h">\u25A3 Tournament Overview</div>
-        <div class="ov-nums">
-          <div class="ov-n live"><b>TBD</b><span>LIVE</span></div>
-          <div class="ov-n up"><b>TBD</b><span>UPCOMING</span></div>
-          <div class="ov-n done"><b>TBD</b><span>COMPLETED</span></div>
-        </div>
-        <div class="ov-foot">${esc(EVENT.field)}</div>
-      </div>
-      <div class="ov-regions evt-stages">
-        ${EVENT.stages.map(st => `<div class="ov-rg tbd">
-          <div class="top">${esc(st.name)}</div>
-          <div class="n">TBD</div>
-          <div class="lbl">${esc(st.sub)}</div>
-        </div>`).join('')}
-      </div>
+    <div class="ov-regions evt-stages">
+      ${EVENT.stages.map(st => `<div class="ov-rg tbd">
+        <div class="top">${esc(st.name)}</div>
+        <div class="n">TBD</div>
+        <div class="lbl">${esc(st.sub)}</div>
+      </div>`).join('')}
     </div>
 
     <div class="panel live-panel off">

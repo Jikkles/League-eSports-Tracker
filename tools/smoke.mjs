@@ -120,7 +120,15 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const crashes = [];
 const consoleErrors = [];
 page.on('pageerror', e => crashes.push(e.message.split('\n')[0]));
-page.on('console', m => { if (m.type() === 'error') consoleErrors.push(m.text().split('\n')[0].slice(0, 200)); });
+/* A failed request logs "Failed to load resource: ... 404" and names nothing,
+   which is a poor thing to find in a CI log — it was a hotlinked logo, and
+   working that out took a bisect. The URL is on the message's location. */
+page.on('console', m => {
+  if (m.type() !== 'error') return;
+  const url = m.location()?.url || '';
+  const line = m.text().split('\n')[0] + (url ? ` [${url.slice(0, 120)}]` : '');
+  consoleErrors.push(line.slice(0, 320));
+});
 
 /* If the page has thrown, whatever we are waiting for is probably never going
    to arrive — say why now rather than after another timeout. */
@@ -148,7 +156,7 @@ if (loaded) {
     // there is no data-tab=home button — home is the "All" chip, and the
     // .tab[data-tab=home] CSS rule is left over from an older nav
     await raceCrash(page.waitForSelector('.fchip[data-f=all]', { timeout: STEP_MS }));
-    // the four leagues, plus the international-event tab past the second rule
+    // the four leagues, plus the international-event tab leading them
     const tabs = await page.$$eval('nav .tab', t => t.length);
     if (tabs !== LEAGUE_COUNT + 1) throw new Error(`nav has ${tabs} tabs, expected ${LEAGUE_COUNT + 1}`);
     if (!await page.$('nav .tab-evt')) throw new Error('the international-event tab is missing from the nav');
@@ -383,7 +391,7 @@ if (loaded) {
 
   await check('mobile: league tabs render', async () => {
     const seen = [];
-    // the event tab last: it is the widest thing in the strip, being a wordmark
+    // the event tab too: it is the widest thing in the strip, being a wordmark
     // rather than three letters, and so the likeliest to drag the nav sideways
     const evt = await page.$eval('.tab-evt', b => b.dataset.tab).catch(() => null);
     for (const slug of evt ? [...LEAGUES, evt] : LEAGUES) {

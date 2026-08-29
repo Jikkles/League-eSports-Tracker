@@ -399,11 +399,13 @@ if (m && !fails.length) {
       if (EVENT.start && EVENT.end && Date.parse(EVENT.start) > Date.parse(EVENT.end))
         fail(`EVENT.start (${EVENT.start}) is after EVENT.end (${EVENT.end}).`);
 
-      /* The mark is hotlinked rather than inlined, like every crest on the
-         page. Over http it would be blocked as mixed content and the tab would
-         quietly fall back to its text. */
-      if (EVENT.logo && !/^https:\/\//.test(EVENT.logo))
-        fail(`EVENT.logo is not an https URL: ${EVENT.logo}`);
+      /* Inlined as a data: URI so the tab's mark cannot 404 — it used to, for
+         the CI runner but not for a desktop, which is the worst version of a
+         broken image. A remote one is still allowed, but only over https: the
+         page is served over https and http would be blocked as mixed content,
+         leaving the tab silently showing its text fallback. */
+      if (EVENT.logo && !/^(https:\/\/|data:image\/[a-z+]+;base64,)/.test(EVENT.logo))
+        fail(`EVENT.logo is neither an https URL nor an inline data:image URI: ${EVENT.logo.slice(0, 60)}…`);
 
       if (EVENT.stages !== undefined) {
         if (!Array.isArray(EVENT.stages) || !EVENT.stages.length) fail('EVENT.stages is not a non-empty array.');

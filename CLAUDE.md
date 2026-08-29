@@ -199,8 +199,10 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
 
 ## The international-event tab
 
-A sixth item sits in the nav past its own rule: one tab for the next major the
-four leagues feed into (right now Worlds 2026). It is driven by the `EVENT`
+A sixth item leads the nav's tabs, fenced off by a rule on either side: one tab
+for the next major the four leagues feed into (right now Worlds 2026), sitting
+between the All chip and the leagues because it is the season's main event
+rather than a fifth league. It is driven by the `EVENT`
 constant and nothing else — there is no feed behind it yet, so the page is a
 deliberate placeholder: the home board's shape (Live Now, Next Up, Recent
 Games), a *Work in progress* badge saying so, and TBD wherever a time, a team or
@@ -222,13 +224,17 @@ structure come from Leaguepedia's tournament page and are linked from the hero.
   played, the tab advertises a finished tournament with TBD in every row while
   every other check stays green. It reports STALE past `EVENT.end` and NOTE once
   the event is under way and the page is still the placeholder.
-- **The mark is the event's own wordmark**, hotlinked from Leaguepedia's file
-  store like every other crest on the page, and inverted in CSS because Riot
-  draws it black-on-transparent for white backgrounds (`.evt-mark`). If a future
-  event's art arrives light, drop the invert rather than editing the file. It
-  falls back to the event's name if the image never loads, which is also what an
-  offline first visit sees. `links.mjs` checks it weekly along with the two wiki
-  links.
+- **The mark is the event's own wordmark, inlined.** `EVENT.logo` is a data:
+  URI — Riot's 2026 wordmark recoloured white for the black canvas, scaled to
+  twice the size it is ever drawn at, WebP, about 8 KB of the file budget. It
+  was hotlinked from Leaguepedia first and that 404'd for the CI runner while
+  serving fine from a desktop: Fandom's CDN answers some networks and not
+  others, and every viewer it refuses would have got the text fallback. The
+  other crests can afford to be hotlinked — they are one badge among many, each
+  with a placeholder — but this one is a whole tab, and inlining also makes it
+  the only mark on the page that survives an offline first visit. Being a data:
+  URI it is not an http link, so `links.mjs` does not check it; nothing can rot.
+  Keep the two wiki links, which it does check.
 
 ## Generated data: the DRAFTS block
 
