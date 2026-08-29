@@ -213,7 +213,10 @@ constant and nothing else — there is no feed behind it yet. Above the fold it
 carries Live Now and then a real qualification board (see `EVENT.qual` below),
 in that order, because what is on air outranks what is still to be decided; the
 board shares its row with the power rankings and the stage strip sits under it,
-which is what keeps the left of the page from ending halfway up that column.
+taking whatever height is left over — the rankings are a tall column, and the
+left of the row otherwise stopped halfway up it and left a hole above the
+fixtures. The column stretches rather than starting, the board keeps its
+natural size, and the three stage cards grow into the difference.
 Under those it is still a deliberate placeholder: the home board's shape (Live Now, Next Up,
 Recent Games), a *Work in progress* badge saying so, and TBD wherever a time, a
 team or a result will go. Nothing on it is invented; the dates, host, field,

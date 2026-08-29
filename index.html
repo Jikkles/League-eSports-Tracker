@@ -636,10 +636,17 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 
 /* the rankings board beside it, narrowed to the column it now lives in: the
    meter is the first thing to go, being the one column that carries no number */
-.evt-duo{display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:start;margin-bottom:16px}
-/* the stage strip rides under the board rather than below the whole row: the
-   rankings are a tall column, and the left of the page was ending halfway up it */
-.evt-main{min-width:0}
+/* The rankings are a tall column and the board is not, so the left of the row
+   used to stop halfway up it and leave a hole above the fixtures. The stage
+   strip rides under the board and takes whatever height is left over: the
+   column stretches instead of starting, the board keeps its natural size, and
+   the three stage cards grow into the difference. */
+.evt-duo{display:grid;grid-template-columns:3fr 1fr;gap:16px;align-items:stretch;margin-bottom:16px}
+.evt-main{min-width:0;display:flex;flex-direction:column;gap:16px}
+.evt-main .qual-panel{flex:none;margin-bottom:0}
+.evt-main .evt-stages{flex:1;margin-bottom:0}
+/* a card with room in it spreads rather than pooling its type at the top */
+.evt-stages .ov-rg{display:flex;flex-direction:column;justify-content:space-between;gap:10px}
 .evt-ranks .rk2{grid-template-columns:18px 30px 1fr 40px 22px;gap:8px}
 .evt-ranks .rk2 .meter{display:none}
 .evt-ranks .rk2 .p{font-size:18px}
