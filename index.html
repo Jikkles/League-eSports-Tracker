@@ -1297,8 +1297,18 @@ const REGIONS = {
         // @LCK is the Korean-language channel; @LCKglobal carries the English cast
         yt:'https://www.youtube.com/@LCKglobal/live', twitch:'https://www.twitch.tv/lck', vods:'https://www.youtube.com/@LCKglobal/videos',
         wiki:'https://lol.fandom.com/wiki/LCK/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LCK/2026',
-        splitLabel:'Rounds 3–4 2026', defaultGames:8, defFormat:'de6b',
-        // double round robin inside a group of five = 8 games each
+        splitLabel:'Rounds 3–4 2026', defaultGames:26, defFormat:'de6b',
+        /* The LCK plays ONE four-round regular season; Riot just files it as two
+           tournaments — Rounds 1–2 (`lck_split_2_2026`) and Rounds 3–4. The
+           Legend/Rise groups are ranked on all 26 games, not on the 8 played
+           inside the group, which is the whole reason this panel used to
+           disagree with the league: DN SOOPers went 5–3 in Rounds 3–4 and still
+           finished last in Rise, having gone 1–17 before it. `tableSpans` pulls
+           the earlier tournament's table and games in so the page ranks the
+           season the league actually ranks. Take it out and the feed's own
+           ordinals stop matching anything this page computes. */
+        tableSpans:2,
+        // double round robin inside a group of five = 8 of those 26 games
         // Legend: 1-4 -> playoffs, 5 -> play-in. Rise: 1-3 -> play-in, 4-5 out
         groupCuts:{ legend:[{after:4, kind:'po'}], rise:[{after:3, kind:'pi'}] } },
   lpl:{ name:'LPL', full:'League of Legends Pro League', color:'var(--lpl)', slug:'lpl',
@@ -1309,6 +1319,11 @@ const REGIONS = {
 
         wiki:'https://lol.fandom.com/wiki/LPL/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LPL/2026/Split_3',
         splitLabel:'Split 3 2026', defaultGames:14, defFormat:'de10',
+        /* The two groups are different sizes, so they play different seasons:
+           Ascend is eight teams double round robin (14), Nirvana is four (6).
+           One `defaultGames` for the region told every Nirvana team it had 8
+           games still to come after its season had finished. */
+        groupGames:{ ascend:14, nirvana:6 },
         // Ascend: 1-6 -> playoffs, 7-8 -> Knights Rivals play-in. Nirvana: 1-2 -> play-in, rest out
         groupCuts:{ ascend:[{after:6, kind:'po'}], nirvana:[{after:2, kind:'pi'}] } },
   lcs:{ name:'LCS', full:'League Championship Series', color:'var(--lcs)', slug:'lcs',
@@ -2227,6 +2242,44 @@ async function fetchLive() {
 /* -------- official standings -------- */
 let standingsCache = lsJSON(LS('standings'), {}); // slug -> [{ordinal,name,code,wins,losses}]
 
+/* The biggest stage in a standings payload, flattened to rows. Group-split
+   seasons (LCK Legend/Rise, LPL Ascend/Nirvana) return one section per group,
+   so taking just the biggest section would drop half the league. */
+function standingsRows(sData) {
+  let bestStage = null, bestCount = 0;
+  for (const s of sData?.data?.standings || [])
+    for (const stage of s.stages || []) {
+      const seen = new Set();
+      for (const sec of stage.sections || [])
+        for (const rk of sec.rankings || [])
+          for (const t of rk.teams || []) seen.add(t.id || t.name);
+      if (seen.size > bestCount) { bestCount = seen.size; bestStage = stage; }
+    }
+  const secs = (bestStage?.sections || []).filter(sec => sec.rankings?.length);
+  if (!secs.length) return null;
+  const rows = [];
+  const dup = new Set();
+  for (const sec of secs) {
+    const gname = sec.name || '';
+    for (const rk of sec.rankings) {
+      for (const t of rk.teams || []) {
+        const k = t.id || t.name;
+        if (dup.has(k)) continue; dup.add(k);
+        addLogo(t.name, t.code, t.image);
+        rows.push({ ordinal: rk.ordinal, gordinal: rk.ordinal, group: gname,
+                    name: t.name, code: t.code,
+                    wins: t.record?.wins ?? 0, losses: t.record?.losses ?? 0 });
+      }
+    }
+  }
+  return { rows, merged: secs.length > 1 };
+}
+
+async function standingsPayload(id) {
+  try { return await api('/getStandingsV3', { tournamentId: id }); }
+  catch(e) { return await api('/getStandings', { tournamentId: id }); }
+}
+
 async function fetchStandings(slug) {
   const id = leagueIds?.[slug];
   if (!id) return null;
@@ -2237,40 +2290,37 @@ async function fetchStandings(slug) {
     let cur = tours.find(t => Date.parse(t.startDate) <= now && now <= Date.parse(t.endDate) + 86400e3);
     if (!cur) cur = tours.filter(t => Date.parse(t.startDate) <= now).sort((a,b)=>Date.parse(b.startDate)-Date.parse(a.startDate))[0];
     if (!cur) return null;
-    let sData;
-    try { sData = await api('/getStandingsV3', { tournamentId: cur.id }); }
-    catch(e) { sData = await api('/getStandings', { tournamentId: cur.id }); }
-    // pick the STAGE covering the most unique teams, then merge all of its
-    // sections — group-split seasons (e.g. LCK Split 3) return one section
-    // per group, and taking just the biggest section drops half the league
-    let bestStage = null, bestCount = 0;
-    for (const s of sData.data?.standings || [])
-      for (const stage of s.stages || []) {
-        const seen = new Set();
-        for (const sec of stage.sections || [])
-          for (const rk of sec.rankings || [])
-            for (const t of rk.teams || []) seen.add(t.id || t.name);
-        if (seen.size > bestCount) { bestCount = seen.size; bestStage = stage; }
+    const got = standingsRows(await standingsPayload(cur.id));
+    if (!got) return null;
+    const rows = got.rows, merged = got.merged;
+
+    /* A league whose regular season Riot files as more than one tournament
+       (REGIONS[].tableSpans) is ranked on the lot, so the earlier tournament's
+       records have to be added in before anything reads them — see the note
+       on REGIONS.lck. Only the records carry over: the ordinal already covers
+       the whole season, because it is the league's own. If the earlier table
+       cannot be fetched the current one still renders, just ranked on the
+       games this page can see. */
+    let tableStart = cur.startDate || '';
+    let spanned = 0, earlier = cur;
+    for (let back = 1; back < (REGIONS[slug]?.tableSpans || 1); back++) {
+      const prev = tours.filter(t => Date.parse(t.startDate) < Date.parse(earlier.startDate))
+                        .sort((a,b) => Date.parse(b.startDate) - Date.parse(a.startDate))[0];
+      if (!prev) break;
+      let prevRows = null;
+      try { prevRows = standingsRows(await standingsPayload(prev.id))?.rows; } catch(e) {}
+      if (!prevRows) break;
+      const by = {};
+      prevRows.forEach(r => { by[nk(r.name)] = r; });
+      for (const r of rows) {
+        const pr = by[nk(r.name)];
+        if (!pr) continue;
+        r.wins += pr.wins; r.losses += pr.losses;
       }
-    if (!bestStage) return null;
-    const secs = (bestStage.sections || []).filter(sec => sec.rankings?.length);
-    if (!secs.length) return null;
-    const rows = [];
-    const dup = new Set();
-    for (const sec of secs) {
-      const gname = sec.name || '';
-      for (const rk of sec.rankings) {
-        for (const t of rk.teams || []) {
-          const k = t.id || t.name;
-          if (dup.has(k)) continue; dup.add(k);
-          addLogo(t.name, t.code, t.image);
-          rows.push({ ordinal: rk.ordinal, gordinal: rk.ordinal, group: gname,
-                      name: t.name, code: t.code,
-                      wins: t.record?.wins ?? 0, losses: t.record?.losses ?? 0 });
-        }
-      }
+      tableStart = prev.startDate || tableStart;
+      earlier = prev; spanned++;
     }
-    const merged = secs.length > 1;
+
     if (merged) {
       // group ordinals aren't comparable across groups — re-rank by record
       rows.sort((a,b) => (b.wins - a.wins) || (a.losses - b.losses) || String(a.name).localeCompare(b.name));
@@ -2280,7 +2330,10 @@ async function fetchStandings(slug) {
       });
     }
     if (rows.length) {
-      standingsCache[slug] = { tourn: (cur.slug || '') + (merged ? ' \u00B7 groups combined' : ''), start: cur.startDate || '', rows };
+      standingsCache[slug] = { tourn: (cur.slug || '')
+                                 + (spanned ? ' · full season' : '')
+                                 + (merged ? ' · groups combined' : ''),
+                               start: cur.startDate || '', tableStart, rows };
       lsWrite(LS('standings'), JSON.stringify(standingsCache));
     }
     return standingsCache[slug];
@@ -2798,6 +2851,19 @@ function computeRecords(events) {
 function splitEvents(slug) {
   const all = scheduleCache[slug] || [];
   const st = standingsCache[slug]?.start ? Date.parse(standingsCache[slug].start) : NaN;
+  if (!isFinite(st)) return all;
+  return all.filter(ev => Date.parse(ev.startTime) >= st - 86400e3);
+}
+
+/* The games the STANDINGS TABLE is built from, which is a wider window than
+   the current split wherever REGIONS[].tableSpans says the league ranks on
+   more than one tournament (the LCK's four-round season). Deliberately kept
+   separate from splitEvents(): the table spans the season, but "this split's
+   results", the form dots and the schedule modal all still mean this split. */
+function tableEvents(slug) {
+  const all = scheduleCache[slug] || [];
+  const c = standingsCache[slug];
+  const st = Date.parse(c?.tableStart || c?.start || '');
   if (!isFinite(st)) return all;
   return all.filter(ev => Date.parse(ev.startTime) >= st - 86400e3);
 }
@@ -3793,6 +3859,27 @@ function nextEventFor(slug) {
 /* cut config for a group name, matched loosely against REGIONS[].groupCuts.
    Shared by the standings table and the race panel, so the line one draws and
    the line the other measures qualification against cannot drift apart. */
+/* How many regular-season games a team in this group plays. The LPL's two
+   groups are different sizes and so play different seasons (Ascend 14,
+   Nirvana 6); everywhere else the region-wide number is the answer. */
+function gamesForGroup(R, gname) {
+  if (R.groupGames) {
+    const k = nk(gname || '');
+    if (k) for (const [key, n] of Object.entries(R.groupGames)) if (k.includes(key)) return n;
+  }
+  return R.defaultGames || 0;
+}
+
+/* Seeding order across two groups that do not qualify on equal terms. The
+   LCK's Legend group sends its top four straight to the playoffs while Rise's
+   top three only reach a play-in, and the LPL is the same shape — so a
+   group's cut KIND outranks the place within it, and a Rise winner seeds below
+   a Legend fourth. Ordering on place alone interleaved the two, which pushed a
+   real qualifier (Dplus KIA) out of the bracket entirely. Groups whose cut is
+   the same kind are genuine peers and fall back to place. */
+const CUT_RANK = { po: 0, pi: 1 };
+const cutOrder = kind => (kind in CUT_RANK) ? CUT_RANK[kind] : 2;
+
 function cutsForGroup(R, gname) {
   if (!R.groupCuts) return R.cuts || null;
   const k = nk(gname || '');
@@ -3852,9 +3939,9 @@ function renderRegionData(slug) {
     const c = cuts.find(c => c.after === rank);
     return c ? (c.kind === 'pi' ? ' cutline-pi' : ' cutline') : '';
   };
-  const rowHTML = (name, rank, w, l, cls) => {
+  const rowHTML = (name, rank, w, l, cls, gname) => {
     const g = w + l;
-    const gl = Math.max(0, (R2.defaultGames||0) - g);
+    const gl = Math.max(0, gamesForGroup(R2, gname || '') - g);
     return `<tr class="t-click${cls}" data-tname="${esc(name)}" title="All ${esc(name)} games this split">
       <td class="rank-cell">${rank}</td>
       <td>${logoHTML(name)}${esc(name)}</td>
@@ -3877,7 +3964,7 @@ function renderRegionData(slug) {
         const cuts = cutsFor(gname);
         html += `<div class="grp-head">${esc(gname)}</div>` + HEAD;
         rows.forEach((r,i) => {
-          html += rowHTML(r.name, r.gordinal ?? i+1, r.wins, r.losses, cutClass(cuts, i+1, rows.length));
+          html += rowHTML(r.name, r.gordinal ?? i+1, r.wins, r.losses, cutClass(cuts, i+1, rows.length), gname);
         });
         html += '</table>';
       }
@@ -4144,16 +4231,52 @@ function simTeamsAvailable(slug) {
   return names;
 }
 
+/* The qualifiers as the table stands today, group by group, each group's own
+   cut applied, ordered by the league's ranking rule — the same engine the
+   race panel ranks with, so the bracket this seeds and the table above it
+   cannot tell different stories. raceToSim() answers the neighbouring question
+   (who qualifies if the remaining games go to the model favourite); this one
+   projects nothing. Returns null where there is no table to read. */
+function simSeedOrder(slug) {
+  const C = raceCtx(slug);
+  if (!C) return null;
+  const wins = new Int16Array(C.n);
+  C.teams.forEach(t => { wins[t.i] = t.w; });
+  const ending = raceEnding(C, []);
+  const qual = [];
+  for (const g of C.groups) {
+    const band = raceRank(C, g, wins, ending);
+    /* expected place, so teams the rules cannot separate still seed in some
+       order rather than falling out of the bracket */
+    const at = ti => band[ti].dist.reduce((sum, e) => sum + e[0] * e[1], 0);
+    g.members.slice()
+      .filter(ti => !g.cut || band[ti].lo <= g.cut)
+      .sort((x, y) => at(x) - at(y))
+      .forEach(ti => qual.push({ name: C.teams[ti].name, pos: at(ti),
+                                 w: wins[ti], ord: cutOrder(g.kind) }));
+  }
+  if (!qual.length) return null;
+  qual.sort((x, y) => x.ord - y.ord || x.pos - y.pos || y.w - x.w
+                      || x.name.localeCompare(y.name));
+  return qual.map(q => q.name);
+}
+
 function initSim(slug) {
   const S = simLoad(slug);
   const fmtSel = $('#simFmt-'+slug);
   fmtSel.value = S.format;
   fmtSel.addEventListener('change', () => { S.format = fmtSel.value; S.winners = {}; simSave(slug); renderSim(slug); });
   $('#simSeed-'+slug).addEventListener('click', () => {
-    const teams = simTeamsAvailable(slug);
     const F = FORMATS[S.format];
+    /* Who actually qualifies, in the order the league ranks them — not the
+       first N of a flat list. A grouped league qualifies inside its group, so
+       the flat list both seeded the wrong teams and dropped real qualifiers:
+       the LCK's T1 went to the playoffs from 4th in Legend while sitting 8th
+       on a merged table, so the button used to build a bracket without them.
+       Falls back to the flat list only where there is no table to rank. */
+    const seeded = simSeedOrder(slug) || simTeamsAvailable(slug);
     S.seeds = {};
-    teams.slice(0, F.seeds).forEach((n,i) => S.seeds[i+1] = n);
+    seeded.slice(0, F.seeds).forEach((n,i) => S.seeds[i+1] = n);
     S.winners = {};
     simSave(slug); renderSim(slug);
   });
@@ -4533,8 +4656,17 @@ function raceCtx(slug) {
   const gw = new Int16Array(n * n);
   const gwT = new Int16Array(n), glT = new Int16Array(n);
   const spent = teams.map(t => t.w + t.l);
-  const done = spEvents.filter(ev => ev.state === 'completed' && (ev.match?.teams || []).length === 2)
-                       .sort((x, y) => Date.parse(x.startTime) - Date.parse(y.startTime));
+  /* tableEvents(), not splitEvents(): where the table spans two tournaments the
+     earlier one's games are what the earlier records were won in, and without
+     them every tiebreak below match wins is computed off half a season.
+     The block filter matters for the same reason — quota alone kept the
+     bracket out while the window held one split, but a window that spans a
+     season also holds the mid-season knockouts (the LCK's Road to MSI), and
+     those would eat the allowance before the later rounds were reached. */
+  const done = tableEvents(slug)
+    .filter(ev => ev.state === 'completed' && (ev.match?.teams || []).length === 2
+                  && !RACE_BLOCK_RX.test(ev.blockName || ''))
+    .sort((x, y) => Date.parse(x.startTime) - Date.parse(y.startTime));
   for (const ev of done) {
     const a = ev.match.teams[0], b = ev.match.teams[1];
     const ia = idx[nk(a.name || '')], ib = idx[nk(b.name || '')];
@@ -4553,7 +4685,10 @@ function raceCtx(slug) {
      is kept out by quota rather than by reading block names: a team gets
      REGIONS[].defaultGames regular-season games and no more, and once its
      allowance is spent, every later fixture it appears in is a playoff game. */
-  const quota = teams.map(t => R.defaultGames ? Math.max(0, R.defaultGames - t.w - t.l) : Infinity);
+  const quota = teams.map(t => {
+    const g = gamesForGroup(R, t.group);
+    return g ? Math.max(0, g - t.w - t.l) : Infinity;
+  });
   const fixtures = [];
   for (const ev of remainingFixtures(slug)) {
     if (RACE_BLOCK_RX.test(ev.blockName || '')) continue;
@@ -5576,10 +5711,12 @@ function raceToSim(slug) {
     const at = ti => band[ti].dist.reduce((s, e) => s + e[0] * e[1], 0);
     g.members.slice().sort((x, y) => at(x) - at(y))
       .filter(ti => band[ti].lo <= g.cut)
-      .forEach(ti => qual.push({ ti, wins: wins[ti], pos: at(ti) }));
+      .forEach(ti => qual.push({ ti, wins: wins[ti], pos: at(ti), ord: cutOrder(g.kind) }));
   }
   if (!qual.length) return;
-  qual.sort((x, y) => x.pos - y.pos || y.wins - x.wins);
+  // a group that qualifies straight to the playoffs seeds above one that only
+  // reaches a play-in — see cutOrder()
+  qual.sort((x, y) => x.ord - y.ord || x.pos - y.pos || y.wins - x.wins);
   const Sim = simLoad(slug), F = FORMATS[Sim.format];
   Sim.seeds = {}; Sim.winners = {};
   qual.slice(0, F.seeds).forEach((q, i) => { Sim.seeds[i + 1] = C.teams[q.ti].name; });

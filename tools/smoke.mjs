@@ -237,6 +237,55 @@ if (loaded) {
       return `${r.rows} rows, ${r.fixtures} games left, ${r.exact ? 'exact' : 'sampled'}, `
         + `odds sum to ${r.groups.map(g => g.places).join(' + ')}`;
     });
+
+    /* The odds can add up perfectly while the table still contradicts itself,
+       because the panel draws its rows in one order and computes everything
+       else in another: the row number and the cut line come from the standings
+       feed's ordinal, the Range column and the status chip from this page's
+       own ranking. When the two disagree you get a row printed below the
+       qualification line and labelled "Locked" — which is how the LCK read for
+       a week, its feed ranking the whole four-round season while the page
+       ranked the eight games of one group. Nothing else here notices: the
+       arithmetic above was green throughout.
+
+       So: read what the panel actually rendered and hold the two halves against
+       each other. A team drawn above the line cannot be eliminated, one drawn
+       below it cannot be locked in, and the place printed in the rank column
+       has to be a place its own Range says is available. */
+    await check(`${slug}: race table agrees with itself`, async () => {
+      const bad = await page.evaluate(s => {
+        const ORD = { '1st':1,'2nd':2,'3rd':3,'4th':4,'5th':5,'6th':6,'7th':7,'8th':8,'9th':9,'10th':10,
+                      '11th':11,'12th':12,'13th':13,'14th':14 };
+        const out = [];
+        const cuts = raceRun(s)?.C.groups || [];
+        let gi = -1;
+        for (const tbl of document.querySelectorAll(`#raceTable-${s} table.tbl-race`)) {
+          gi++;
+          const cut = cuts[gi]?.cut || 0;
+          const rows = [...tbl.querySelectorAll('tr.race-row')];
+          rows.forEach((tr, i) => {
+            const cell = n => tr.children[n]?.textContent.trim() || '';
+            const team = cell(1), range = cell(4), chip = cell(6);
+            const place = parseInt(cell(0), 10);
+            const above = cut && i < cut;
+            if (above && chip === 'Eliminated')
+              out.push(`${team} is drawn above the cut line but marked Eliminated`);
+            if (cut && !above && chip === 'Locked')
+              out.push(`${team} is drawn below the cut line but marked Locked`);
+            // Range reads "3rd" or "5th=-8th"; the printed place must sit in it
+            const ends = range.replace(/=/g, '').split('–').map(x => ORD[x.trim()]);
+            if (Number.isFinite(place) && ends.length && ends.every(Number.isFinite)) {
+              const lo = ends[0], hi = ends[ends.length - 1];
+              if (place < lo || place > hi)
+                out.push(`${team} is drawn ${place} but its range is ${range}`);
+            }
+          });
+        }
+        return out;
+      }, slug);
+      if (bad.length) throw new Error(bad[0] + (bad.length > 1 ? ` (and ${bad.length - 1} more)` : ''));
+      return 'rank, cut line and status tell one story';
+    });
   }
 
   await check('back to home', async () => {

@@ -218,14 +218,73 @@ for (const [slug, R] of Object.entries(REGIONS)) {
     (sec.rankings || []).flatMap(rk => rk.teams || []));
   for (const t of allTeams) if (t.name) apiTeamNames.add(t.name);
 
-  // games per team: only an overshoot means anything mid-split
-  const played = allTeams
-    .map(t => (t.record ? (t.record.wins || 0) + (t.record.losses || 0) : 0));
-  const most = Math.max(0, ...played);
-  if (most > R.defaultGames)
-    stale(R.name, `A team has played ${most} regular-season series but defaultGames is ${R.defaultGames}.`,
-          `The split length changed — update REGIONS.${slug}.defaultGames (and defFormat if the playoff size moved with it).`);
-  else fine(R.name, `defaultGames ${R.defaultGames} holds (most played: ${most})`);
+  /* Games per team: only an overshoot means anything mid-split.
+     Two wrinkles, both of them REGIONS fields the page reads:
+       - groupGames, where a league's groups are different sizes and so play
+         different seasons (LPL Ascend 14, Nirvana 6). Comparing every group
+         against one number reports the small group as an overshoot or lets a
+         real one through, so each group is measured against its own.
+       - tableSpans, where the league's regular season is filed as more than
+         one tournament (the LCK's four rounds). This payload only holds the
+         latest one, so the games already played in the earlier tournaments
+         have to be added back before the count means anything. */
+  const spanned = [];
+  if ((R.tableSpans || 1) > 1) {
+    let earlier = cur;
+    const allTours = toursBySlug[slug] || [];
+    for (let back = 1; back < R.tableSpans; back++) {
+      const prev = allTours.filter(t => Date.parse(t.startDate) < Date.parse(earlier.startDate))
+                        .sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate))[0];
+      if (!prev) break;
+      let ps = null;
+      try { ps = (await apiJSON('/getStandingsV3', { tournamentId: prev.id }))?.data?.standings; }
+      catch { try { ps = (await apiJSON('/getStandings', { tournamentId: prev.id }))?.data?.standings; } catch {} }
+      if (!ps) break;
+      let pst = null, pn = 0;
+      for (const x of ps) for (const st of x.stages || []) {
+        const n = new Set((st.sections || []).flatMap(sec =>
+          (sec.rankings || []).flatMap(rk => (rk.teams || []).map(t => t.id || t.name)))).size;
+        if (n > pn) { pn = n; pst = st; }
+      }
+      if (!pst) break;
+      const by = {};
+      for (const sec of pst.sections || []) for (const rk of sec.rankings || [])
+        for (const t of rk.teams || [])
+          by[nk(t.name)] = (t.record ? (t.record.wins || 0) + (t.record.losses || 0) : 0);
+      spanned.push(by);
+      earlier = prev;
+    }
+    if (spanned.length < R.tableSpans - 1)
+      note(R.name, `tableSpans is ${R.tableSpans} but only ${spanned.length + 1} tournament table(s) could be read.`,
+           `The page falls back to ranking on the games it can see. Check REGIONS.${slug}.tableSpans still matches how the league files its season.`);
+  }
+  const carried = name => spanned.reduce((sum, by) => sum + (by[nk(name)] || 0), 0);
+
+  const gamesFor = gname => {
+    if (R.groupGames) {
+      const k = nk(gname || '');
+      if (k) for (const [key, n] of Object.entries(R.groupGames)) if (k.includes(key)) return n;
+    }
+    return R.defaultGames;
+  };
+  let worst = null;
+  for (const sec of stage.sections || []) {
+    const want = gamesFor(sec.name || '');
+    for (const rk of sec.rankings || []) for (const t of rk.teams || []) {
+      const n = (t.record ? (t.record.wins || 0) + (t.record.losses || 0) : 0) + carried(t.name);
+      if (n > want && (!worst || n - want > worst.n - worst.want))
+        worst = { n, want, sec: sec.name || 'the table', team: t.name };
+    }
+  }
+  if (worst)
+    stale(R.name, `${worst.team} has played ${worst.n} regular-season series but ${worst.sec} is set to ${worst.want}.`,
+          `The split length changed — update REGIONS.${slug}.${R.groupGames ? 'groupGames' : 'defaultGames'} (and defFormat if the playoff size moved with it).`);
+  else {
+    const shown = R.groupGames
+      ? Object.entries(R.groupGames).map(([g, n]) => `${g} ${n}`).join(', ')
+      : String(R.defaultGames);
+    fine(R.name, `games per team (${shown}) holds${spanned.length ? ` across ${spanned.length + 1} tournaments` : ''}`);
+  }
 
   // group names, matched exactly the way the renderer matches them
   if (R.groupCuts) {
