@@ -3063,6 +3063,11 @@ function gameBoardHTML(game, win, rosterOf, tinfo, winnerId, order) {
 
 const BAN_NOTE = 'Line-ups, champions and scores come straight from the LoL Esports live-stats feed. It publishes no pick/ban order — no endpoint on the API does — so the draft isn\'t shown.';
 
+const seriesOpenIds = new Set();       // match ids currently expanded — refreshAll()
+                                        // rebuilds these lists every minute, and without
+                                        // this it silently closes whatever was open
+const seriesPanelCache = new Map();    // match id -> rendered panel HTML, so reopening
+                                        // after a refresh doesn't refetch a finished series
 async function toggleSeries(row, ev) {
   const caret = row.querySelector('.drill');
   const open = row.nextElementSibling && row.nextElementSibling.classList.contains('sdet');
@@ -3070,19 +3075,27 @@ async function toggleSeries(row, ev) {
     row.nextElementSibling.remove();
     row.classList.remove('open');
     if (caret) caret.textContent = '▾ Games';
+    seriesOpenIds.delete(ev.match.id);
     return;
   }
   if (row.dataset.loading) return;
-  const panel = el('div','sdet','<div class="sdet-msg">Loading the games…</div>');
+  seriesOpenIds.add(ev.match.id);
+  const cached = seriesPanelCache.get(ev.match.id);
+  const panel = el('div','sdet', cached || '<div class="sdet-msg">Loading the games…</div>');
   row.classList.add('open');
-  row.dataset.loading = '1';
   if (caret) caret.textContent = '▴ Games';
   row.parentNode.insertBefore(panel, row.nextSibling);
+  if (cached) return;
+  row.dataset.loading = '1';
   try {
     const [details] = await Promise.all([api('/getEventDetails', { id: ev.match.id }), loadChampDex()]);
     const match = details.data?.event?.match || {};
     const games = (match.games || []).filter(g => g.state === 'completed');
-    if (!games.length) { panel.innerHTML = `<div class="sdet-msg">No game data published for this series.</div>`; return; }
+    if (!games.length) {
+      panel.innerHTML = `<div class="sdet-msg">No game data published for this series.</div>`;
+      seriesPanelCache.set(ev.match.id, panel.innerHTML);
+      return;
+    }
     const tinfo = {};
     for (const t of match.teams || []) if (t.id) tinfo[t.id] = t;
     const wins = await Promise.all(games.map(g => gameWindow(g.id, ev.startTime).catch(() => null)));
@@ -3119,6 +3132,7 @@ async function toggleSeries(row, ev) {
     const winners = assignGameWinners(board, order, target);
     panel.innerHTML = games.map((g,i) => gameBoardHTML(g, wins[i], rosterOf, tinfo, winners[i], order)).join('')
       + `<div class="hint">${BAN_NOTE}</div>`;
+    seriesPanelCache.set(ev.match.id, panel.innerHTML);
   } catch(e) {
     panel.innerHTML = `<div class="sdet-msg">Couldn't reach the stats feed for this series — try again in a moment.</div>`;
   } finally {
@@ -3566,6 +3580,8 @@ function renderRecent() {
     if (ev.match?.id) row.addEventListener('click', () => toggleSeries(row, ev));
     else row.addEventListener('click', () => switchTab(slug));
     strip.appendChild(row);
+    // a periodic refresh must not silently collapse a series someone has open
+    if (ev.match?.id && seriesOpenIds.has(ev.match.id)) toggleSeries(row, ev);
   }
   padRows(strip, done.length, recentExpanded);
 }
@@ -4418,7 +4434,12 @@ function renderRegionData(slug) {
 
   const resEl = $('#results-'+slug);
   resEl.innerHTML = '';
-  if (done.length) done.forEach(e => resEl.appendChild(matchRow(e, ph(e))));
+  if (done.length) done.forEach(e => {
+    const row = matchRow(e, ph(e));
+    resEl.appendChild(row);
+    // a periodic refresh must not silently collapse a series someone has open
+    if (e.match?.id && seriesOpenIds.has(e.match.id)) toggleSeries(row, e);
+  });
   else resEl.innerHTML = '<div class="loading">No completed games fetched yet.</div>';
 
   const tbl = $('#table-'+slug);
