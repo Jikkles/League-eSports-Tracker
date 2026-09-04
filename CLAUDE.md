@@ -295,6 +295,15 @@ and are linked from the hero.
   range* has been settled is STALE too, because a full region's counts stay
   perfectly happy while the board goes on saying it does not know something the
   league decided days ago.
+- **A stale place names the game that settled it.** The board itself cannot be
+  fetched, but the *results* behind it can: `getSchedule` serves the LCP and the
+  CBLOL as happily as the four leagues with a season on the page, so `stale.mjs`
+  quotes the completed knockout games alongside the finding — `30 Aug · Finals ·
+  Team Secret Whales 3–0 CTBC Flying Oyster` — and the patch is a lookup rather
+  than a research session. It quotes and does not conclude: which route a result
+  fills is the rulebook's business, not the feed's, so nothing is written for
+  you. Findings carry this as an optional `evidence` array, rendered `<br>`-joined
+  in the issue because a newline inside a table cell ends the row.
 - **`stale.mjs` is what notices the tab has gone off.** Nothing on the page is
   fetched, so nothing about it can break loudly: once the event it names has been
   played, the tab advertises a finished tournament with TBD in every row while

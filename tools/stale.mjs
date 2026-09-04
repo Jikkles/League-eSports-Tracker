@@ -58,9 +58,13 @@ const MAX_AGE_DAYS = Number(arg('--max-age') || 21);
 const nk = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const findings = [];
-const stale = (area, what, fix) => findings.push({ level: 'STALE', area, what, fix });
-const note  = (area, what, fix) => findings.push({ level: 'NOTE',  area, what, fix });
-const fine  = (area, what)      => findings.push({ level: 'ok',    area, what });
+/* `evidence` is the lines a finding can quote from a feed — the games behind
+   it, in the words the API used. A check that says what is wrong sends you
+   researching; one that also says what the feed already knows turns the patch
+   into a lookup. Optional, because most checks have nothing to quote. */
+const stale = (area, what, fix, evidence) => findings.push({ level: 'STALE', area, what, fix, evidence });
+const note  = (area, what, fix, evidence) => findings.push({ level: 'NOTE',  area, what, fix, evidence });
+const fine  = (area, what)                => findings.push({ level: 'ok',    area, what });
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -139,6 +143,19 @@ if (EVENT) {
   }
 }
 
+/* Every league the API knows, not just the four with a season on the page:
+   the qualification board below reaches into the LCP and the CBLOL, which have
+   no REGIONS entry and so were being dropped here. Callers below index it by a
+   REGIONS slug, and extra keys cost them nothing. */
+let leagueIds = {};
+try {
+  const leagues = (await apiJSON('/getLeagues'))?.data?.leagues || [];
+  for (const lg of leagues) leagueIds[String(lg.slug || '').toLowerCase()] = lg.id;
+} catch (e) {
+  console.error(`getLeagues failed (${e.message}) — the API canary is the place to look, not this.`);
+  process.exit(1);
+}
+
 /* ---- EVENT.qual: the qualification board --------------------------------- */
 
 /* The board is the one part of that tab with facts on it, and it rots on a
@@ -152,6 +169,42 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
   const day = iso => new Date(iso).toLocaleDateString('en-GB', {day:'numeric', month:'short', timeZone:'UTC'});
   let filled = 0, places = 0, soon = [];
 
+  /* The board cannot be fetched — Riot publishes no qualification feed, which
+     is the whole reason it is hand-patched. The *results* that settle it can
+     be: they are in the same schedule endpoint the page already reads, and it
+     serves all six of these leagues rather than only the four with a season
+     here. So a place this check calls stale can also name the game that
+     settled it and who won, which is the difference between "go and find out"
+     and "copy this in". It cannot say which route a result fills — that is the
+     rulebook's business, not the feed's — so it quotes and does not conclude. */
+  const DECIDES_RX = /final|playoff|knockout|qualifier|regional|grand/i;
+  const EVIDENCE_MAX = 5, WINDOW_DAYS = 45;
+
+  const resultLine = e => {
+    const [x, y] = e.match?.teams || [];
+    if (!x || !y) return null;
+    const wx = x.result?.gameWins ?? 0, wy = y.result?.gameWins ?? 0;
+    const [w, l, ws, ls] = wx >= wy ? [x, y, wx, wy] : [y, x, wy, wx];
+    return `${day(e.startTime)} \u00B7 ${e.blockName || 'match'} \u00B7 ${w.name} ${ws}\u2013${ls} ${l.name}`;
+  };
+
+  /* Completed knockout games in that league since the earliest date at issue,
+     newest first. A region whose slug the API does not know, or a fetch that
+     fails, simply reports without evidence — this is a courtesy, never a
+     check of its own, and it must not turn a real finding into a crash. */
+  const decided = async (slug, since) => {
+    const id = leagueIds[String(slug || '').toLowerCase()];
+    if (!id) return [];
+    const from = Math.max(since, NOW - WINDOW_DAYS * 86400e3);
+    let events = [];
+    try { events = await scheduleSince(id, from); } catch { return []; }
+    return events
+      .filter(e => e.state === 'completed' && DECIDES_RX.test(e.blockName || '')
+                && Date.parse(e.startTime) >= from)
+      .sort((a, b) => Date.parse(b.startTime) - Date.parse(a.startTime))
+      .map(resultLine).filter(Boolean).slice(0, EVIDENCE_MAX);
+  };
+
   for (const r of EVENT.qual.regions) {
     const routes = r.routes || [], thru = r.thru || [];
     places += routes.length; filled += thru.length;
@@ -163,7 +216,8 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
     if (due.length > thru.length) {
       const last = due.map(x => x.on).sort().pop();
       stale('EVENT.qual', `${r.rg}: ${due.length} of its ${routes.length} places were settled by ${day(last)}, but only ${thru.length} team${thru.length === 1 ? ' is' : 's are'} on the board.`,
-            `Patch EVENT.qual.regions[].thru for ${r.rg} from the participants table on ${EVENT.wiki}.`);
+            `Patch EVENT.qual.regions[].thru for ${r.rg} from the participants table on ${EVENT.wiki}. The ${r.lg} results since then:`,
+            await decided(r.slug, Math.min(...due.map(x => Date.parse(x.on)))));
     }
 
     /* A team can be through before its seed is drawn, and the board says so —
@@ -183,9 +237,11 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
       return seats.length > 1 && seats.every(n => routes[n - 1] && Date.parse(routes[n - 1].on) < NOW);
     });
     if (undrawn.length) {
+      const dates = undrawn.flatMap(t => seedsOf(t).map(n => Date.parse(routes[n - 1].on)));
       const last = undrawn.flatMap(t => seedsOf(t).map(n => routes[n - 1].on)).sort().pop();
       stale('EVENT.qual', `${r.rg}: every place open to ${undrawn.map(t => t.team).join(' and ')} was settled by ${day(last)}, but the board ${undrawn.length === 1 ? 'still draws it' : 'still draws them'} across a range of seeds.`,
-            `Write the seed each of them took into EVENT.qual.regions[].thru, from the participants table on ${EVENT.wiki}.`);
+            `Write the seed each of them took into EVENT.qual.regions[].thru, from the participants table on ${EVENT.wiki}. The ${r.lg} results that decided it:`,
+            await decided(r.slug, Math.min(...dates)));
     }
 
     for (const x of routes) {
@@ -206,18 +262,6 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
 }
 
 /* ---- per-league checks --------------------------------------------------- */
-
-let leagueIds = {};
-try {
-  const leagues = (await apiJSON('/getLeagues'))?.data?.leagues || [];
-  for (const lg of leagues) {
-    const slug = String(lg.slug || '').toLowerCase();
-    if (REGIONS[slug]) leagueIds[slug] = lg.id;
-  }
-} catch (e) {
-  console.error(`getLeagues failed (${e.message}) — the API canary is the place to look, not this.`);
-  process.exit(1);
-}
 
 const apiTeamNames = new Set();
 const toursBySlug = {};
@@ -618,15 +662,19 @@ const notes = findings.filter(f => f.level === 'NOTE');
 const stamp = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
 
 for (const f of findings) {
-  if (f.level === 'ok') console.log(`  ok    ${f.area} — ${f.what}`);
-  else console.log(`  ${f.level === 'STALE' ? 'STALE' : 'note '} ${f.area} — ${f.what}\n        ${f.fix}`);
+  if (f.level === 'ok') { console.log(`  ok    ${f.area} — ${f.what}`); continue; }
+  console.log(`  ${f.level === 'STALE' ? 'STALE' : 'note '} ${f.area} — ${f.what}\n        ${f.fix}`);
+  for (const e of f.evidence || []) console.log(`          ${e}`);
 }
 console.log(stales.length
   ? `\n${stales.length} thing${stales.length > 1 ? 's are' : ' is'} out of date${notes.length ? `, plus ${notes.length} worth a look` : ''}.`
   : `\nNothing is provably stale${notes.length ? `, but ${notes.length} thing${notes.length > 1 ? 's are' : ' is'} worth a look` : ''}.`);
 
 if (reportPath) {
-  const rows = list => list.map(f => `| \`${f.area}\` | ${f.what} | ${f.fix} |`);
+  /* <br> rather than newlines: a finding's fix is one cell of a table, and a
+     newline inside one ends the row. */
+  const rows = list => list.map(f => `| \`${f.area}\` | ${f.what} | ${
+    [f.fix, ...(f.evidence || []).map(e => `\`${e}\``)].join('<br>')} |`);
   const lines = [
     `The baked-in data in [index.html](../blob/main/index.html) has drifted from what the live sources say.`,
     ``,
