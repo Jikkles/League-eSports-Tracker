@@ -78,7 +78,8 @@ Deployed via GitHub Pages straight from this repo.
     currently run and no more (`de6` LEC, `de6b` LCK/LCS, `de8b` LPL). Retiring
     one is safe: `simLoad()` falls back to the region's default when a viewer's
     saved format has gone, so add and remove them as the leagues change rather
-    than keeping a museum of past brackets in the dropdown
+    than keeping a museum of past brackets in the dropdown.
+    **Not every edge in a bracket is a wire** — see the `pick` section below
 - When patching baked-in data: research via web search / Leaguepedia (`lol.fandom.com`)
   / Liquipedia (`liquipedia.net`), never invent scores/points/formats — if a value can't
   be verified, leave it and say so. Make targeted string replacements, not rewrites.
@@ -202,6 +203,37 @@ region page, and answer "who qualifies?" rather than "who wins the bracket?".
   before reusing `raceCluster()` anywhere else: the cache keys on *who* won each game,
   which is a complete key while a scoreline's weights follow from its winner, and the
   wrong key the moment scorelines are pinned independently of it.
+
+## A bracket with a choice in it
+
+`FORMATS.de6b` (LCK/LCS) carries a `pick`, and it is the one thing in the
+simulator that is not a graph. The LCK's top seed picks its Round 2 opponent
+from the two Round 1 winners and the second seed takes whoever is left — a
+decision made on a stage, which no wiring can hold. In 2026 Gen.G took KT and
+left T1 to Hanwha Life; the fixed wiring drew Gen.G vs T1, and a viewer trying
+to replay the split had no way to correct it.
+
+- **`pick` names the two slots that may trade**, as `a: [matchId, slotIndex]`
+  and `b: [...]`, plus the button's `label` and a `note` saying whose rule it
+  is. `simState[slug].pick` is the boolean recording whether they have.
+- **The swap happens before anything resolves, not after.** `simResolve()`
+  copies every match's sources, trades the two named slots in that copy, and
+  only then walks the bracket — so one swap at the top re-routes the lower
+  bracket and the final along with it. Swapping the resolved pairs instead
+  would fix Round 2 and leave everything downstream drawing the old bracket.
+- **Winners survive a swap.** `simResolve()` already drops the ones the change
+  orphans, so a viewer who has played the bracket out does not lose it to a
+  pairing correction. Changing *format* still clears both.
+- **The note names the LCK and only the LCK.** Both leagues on this format give
+  their top seed some bracket-side choice, but only the LCK's is published in a
+  form this repo has verified, so that is all the note claims. The button itself
+  asserts nothing — it lets a viewer set a pairing, which a simulator may always
+  do.
+- **`check.mjs` holds the pick to the bracket**: a match id the format does not
+  have, or a slot index that is not 0 or 1, swaps nothing at all — the button
+  sits there doing nothing while the bracket quietly draws the pairing the
+  league did not play. It also requires the label and the note, because a
+  control that changes what the bracket claims happened may not be unlabelled.
 
 ## The international-event tab
 

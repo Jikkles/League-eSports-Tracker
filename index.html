@@ -69,6 +69,10 @@ header{border-bottom:1px solid var(--line);background:#0C0C0C;position:sticky;to
 .btn:hover{background:#2A2A2A;border-color:#3A3A3A;color:#FFFFFF}
 .btn.pri,.btn:active{background:var(--cyan);border-color:var(--cyan);color:#001014}
 .btn.small{padding:3px 9px;font-size:10px}
+/* A toggle rather than an action: the Round 2 swap stays lit while it is on,
+   because a viewer needs to see at a glance which pairing the bracket is
+   drawing. Uses the accent the rest of the page reserves for live state. */
+.btn.small.on{background:var(--cyan);border-color:var(--cyan);color:#001014}
 
 /* ticker */
 .ticker{border-top:1px solid var(--line);overflow:hidden;position:relative;background:#000000}
@@ -3781,6 +3785,9 @@ function buildRegionPage(slug) {
       <div class="right">
         <button class="btn small" id="simSeed-${slug}">Seed from standings</button>
         <button class="btn small" id="simFav-${slug}">Sim favourites</button>
+        <!-- shown only for a format whose bracket has a choice in it; see
+             FORMATS.de6b.pick. renderSim() sets the label and the hidden flag. -->
+        <button class="btn small" id="simPick-${slug}" hidden></button>
         <button class="btn small" id="simClearW-${slug}">Clear results</button>
         <button class="btn small" id="simReset-${slug}">Reset all</button>
       </div></div>
@@ -4665,7 +4672,21 @@ const FORMATS = {
     {id:'M5', g:'Lower Bracket – Round 2', col:3,row:2, s:['w:M3','w:M4']},
     {id:'M7', g:'Lower Bracket – Round 3', col:4,row:2, s:['l:M6','w:M5']},
     {id:'M8', g:'Finals', col:5,row:0, s:['w:M6','w:M7']} ]},
-  de6b: { name:'6-team double elim, top-2 byes (LCK/LCS)', seeds:6, cols:6, matches:[
+  /* Not every edge in this bracket is a wire. The top seed picks its Round 2
+     opponent from the two Round 1 winners and the second seed takes whoever is
+     left — a choice made on a stage, which no graph can hold. In 2026 Gen.G
+     took KT and left T1 to Hanwha Life, so the fixed wiring drew the opposite
+     of what the league played and there was no way to correct it.
+
+     `pick` names the two slots that may trade places, as [match, slot index],
+     and the simulator carries a boolean saying whether they have. Only the
+     LCK's rule is quoted in the note, because that is the one this repo has a
+     published source for; the control itself claims nothing beyond letting a
+     viewer set the pairing, which a simulator may always do. */
+  de6b: { name:'6-team double elim, top-2 byes (LCK/LCS)', seeds:6, cols:6,
+    pick:{ a:['M3',1], b:['M4',1], label:'Swap Round 2',
+           note:'The LCK\u2019s top seed picks its Round 2 opponent from the two Round 1 winners, and the second seed takes the other. Swap to set the pairing the league actually drew.' },
+    matches:[
     {id:'M1', g:'Round 1', col:1,row:1, s:['seed:3','seed:6']},
     {id:'M2', g:'Round 1', col:1,row:1, s:['seed:4','seed:5']},
     {id:'M3', g:'Round 2', col:2,row:1, s:['seed:1','w:M1']},
@@ -4841,6 +4862,19 @@ function simResolve(slug) {
   const S = simLoad(slug);
   const F = FORMATS[S.format];
   const resolved = {}; // matchId -> [nameA|null, nameB|null]
+
+  /* Sources are copied before anything is resolved so that a format's `pick`
+     can rewrite them. Trading the two slots here rather than after the fact is
+     what carries the choice through the rest of the bracket: every later match
+     reads its sides out of these, so one swap at the top re-routes the lower
+     bracket and the final along with it. */
+  const src = {};
+  for (const m of F.matches) src[m.id] = m.s.slice();
+  if (F.pick && S.pick) {
+    const [am, ai] = F.pick.a, [bm, bi] = F.pick.b;
+    if (src[am] && src[bm]) [src[am][ai], src[bm][bi]] = [src[bm][bi], src[am][ai]];
+  }
+
   const get = src => {
     const [kind, key] = src.split(':');
     if (kind === 'seed') return S.seeds[key] || null;
@@ -4851,7 +4885,7 @@ function simResolve(slug) {
     return kind === 'w' ? win : (pair[0] === win ? pair[1] : pair[0]);
   };
   for (const m of F.matches) {
-    resolved[m.id] = [get(m.s[0]), get(m.s[1])];
+    resolved[m.id] = [get(src[m.id][0]), get(src[m.id][1])];
     const w = S.winners[m.id];
     if (w && !resolved[m.id].includes(w)) delete S.winners[m.id]; // stale after upstream change
   }
@@ -4962,7 +4996,9 @@ function initSim(slug) {
   const S = simLoad(slug);
   const fmtSel = $('#simFmt-'+slug);
   fmtSel.value = S.format;
-  fmtSel.addEventListener('change', () => { S.format = fmtSel.value; S.winners = {}; simSave(slug); renderSim(slug); });
+  fmtSel.addEventListener('change', () => {
+    S.format = fmtSel.value; S.winners = {}; S.pick = false; simSave(slug); renderSim(slug);
+  });
   $('#simSeed-'+slug).addEventListener('click', () => {
     /* Who actually qualifies, in the order the league ranks them — not the
        first N of a flat list. A grouped league qualifies inside its group, so
@@ -4978,6 +5014,12 @@ function initSim(slug) {
     simSave(slug); renderSim(slug);
   });
   $('#simFav-'+slug).addEventListener('click', () => simFavourites(slug));
+  /* Winners are left alone: simResolve() already drops the ones the swap has
+     orphaned, and keeping the rest means a viewer who has played the bracket
+     out does not lose it to a pairing correction. */
+  $('#simPick-'+slug).addEventListener('click', () => {
+    S.pick = !S.pick; simSave(slug); renderSim(slug);
+  });
   const addInp = $('#simAdd-'+slug), addBtn = $('#simAddBtn-'+slug);
   const doAdd = () => {
     const n = (addInp.value||'').trim();
@@ -5000,6 +5042,18 @@ function renderSim(slug) {
   buildSimCtx(slug);
   const resolved = simResolve(slug);
   const seededNames = Object.values(S.seeds);
+
+  /* The swap button belongs to the format, not the page, so it appears and
+     disappears with the bracket in the dropdown rather than sitting there
+     inert over one that has no choice in it. */
+  const pickBtn = $('#simPick-'+slug);
+  pickBtn.hidden = !F.pick;
+  if (F.pick) {
+    pickBtn.textContent = F.pick.label;
+    pickBtn.title = F.pick.note;
+    pickBtn.classList.toggle('on', !!S.pick);
+    pickBtn.setAttribute('aria-pressed', S.pick ? 'true' : 'false');
+  }
 
   /* pool chips */
   const pool = $('#simPool-'+slug);

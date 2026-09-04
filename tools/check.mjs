@@ -273,6 +273,35 @@ if (m && !fails.length) {
         const seedsUsed = [];
         const winnerRefs = new Map();
 
+        /* `pick` is the one part of a bracket that is a choice rather than a
+           wire — the top seed picking its next opponent. It is applied by
+           swapping two slots before anything resolves, so a match id that does
+           not exist, or a slot index off the end, swaps nothing at all and the
+           button sits there doing nothing while the bracket quietly draws the
+           pairing the league did not play. That is the failure this catches. */
+        if (f.pick !== undefined) {
+          const p = f.pick;
+          const ends = [['a', p.a], ['b', p.b]];
+          for (const [nm, e] of ends) {
+            if (!Array.isArray(e) || e.length !== 2) {
+              fail(`${at}.pick.${nm} is not a [matchId, slot] pair.`);
+              continue;
+            }
+            if (!known.has(e[0]))
+              fail(`${at}.pick.${nm} names match "${e[0]}", which this format does not have.`,
+                   'The swap would silently do nothing.');
+            if (e[1] !== 0 && e[1] !== 1)
+              fail(`${at}.pick.${nm} has slot ${e[1]}; a match has slots 0 and 1.`);
+          }
+          if (Array.isArray(p.a) && Array.isArray(p.b) && p.a[0] === p.b[0] && p.a[1] === p.b[1])
+            fail(`${at}.pick swaps a slot with itself (${p.a[0]} slot ${p.a[1]}).`);
+          /* The label is on a button and the note is its only explanation of
+             whose rule this is; neither is optional on a control that changes
+             what the bracket claims happened. */
+          if (!p.label) fail(`${at}.pick has no label for its button.`);
+          if (!p.note) fail(`${at}.pick has no note explaining the rule behind it.`);
+        }
+
         for (const mt of f.matches) {
           const where = `${at} ${mt.id || '(no id)'}`;
           if (!mt.id) fail(`${where} has no id.`);
