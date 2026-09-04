@@ -491,11 +491,35 @@ Worlds Updates* post on lolesports.com; and the bracket from the API.
 ## The spoiler guard
 
 Somebody who opens this page to see when their team plays next should not have
-last night's result thrown at them on the way past. So every results board on
-the site — the home board's **Recent Games**, the event tab's, and each region
-page's **Recent Results** — draws the fixture in full and withholds only the
-score, behind a click. Everything else stays: the date, both crests, both team
-codes, the round, the Bo.
+last night's result thrown at them on the way past. One switch in the header —
+**Scores hidden** — governs the whole page, and it is on by default.
+
+**The line it draws is a specific match result versus aggregate season state**,
+and that line is the whole design. "T1 beat HLE 3–1 on Tuesday" destroys a game
+you have not watched; "T1 are 17–9, third in Legend Group" tells you almost
+nothing about any single game and is the reason you opened the tab. Guarding by
+*panel* instead recurses without end — hide the standings and the race panel
+below it still says ELIMINATED, hide that and the simulator seeds from the
+table — so panels are never the unit. Anything new on the page gets asked the
+one question instead: does this reveal a match, or a season?
+
+What that puts on the guarded side:
+
+- **Every results board** — the home board's **Recent Games**, the event tab's,
+  and each region page's **Recent Results**. The fixture is drawn in full (the
+  date, both crests, both team codes, the round, the Bo) and only the score is
+  withheld, behind a per-match click.
+- **The standings' Form and Streak columns**, which are the two columns of that
+  table that are not standings: the last five matches drawn as pips, and the
+  current run. `L2` says you lost on Tuesday.
+
+And what stays plainly visible: W / L / Win% totals, the playoff race's odds,
+ranges and LOCKED/ELIMINATED chips, the simulator, the honours board and the
+storylines. All of those are the season rather than a game — and the last two
+are editorial, which no mechanism can guard without gutting them. If the home
+board needs to be spoiler-safe end to end, that is a writing decision.
+
+### How it is built
 
 **There are two row shapes and both are guarded.** `.nxt`, built by
 `renderRecent()` and `evtFixRow()` and scored by the shared `scoreCellHTML()`;
@@ -511,28 +535,35 @@ happened to be looking at.
   alongside the number by a `spoil` class on the row. Leaving one behind is the
   bug this feature is most likely to grow, so `smoke.mjs` checks the dimming
   and the diamond by name rather than only checking that the score went away.
-- **The score is always in the markup, and so is the button.** The row's class
-  decides whether either is painted, using `visibility:hidden` rather than
-  `display:none` — the cell keeps its exact box so nothing moves when it opens,
-  and the number leaves the accessibility tree, which `opacity` would not do.
-  That is what makes `applySpoil()` possible: the panel switch flips a class on
-  every row on the page instead of re-rendering the home board, the event tab
-  and four region pages — three of which are expensive, and one of which would
-  collapse any series the viewer had open.
+- **Two mechanisms, because there are two kinds of question.** A score is a
+  per-match question and gets a per-match reveal: the button is drawn on every
+  finished row, and the row's `spoil` class decides whether button or score is
+  painted. Form is a *mode* — nobody wants one team's form — so it is masked
+  wholesale off a single `spoil-free` class on `<body>`, with `sp-cell` /
+  `data-mask` giving the cell a placeholder. Anything else that turns out to
+  need masking later says so in its markup rather than in a new mechanism.
+- **Everything is `visibility:hidden`, never `display:none`.** Cells keep their
+  boxes, so nothing reflows when the switch is flipped, and the content leaves
+  the accessibility tree, which `opacity` would not do. That is also what makes
+  `applySpoil()` possible: the switch flips classes across the page instead of
+  re-rendering the home board, the event tab and four region pages — three of
+  which are expensive, and one of which would collapse any series the viewer
+  had open.
 - **Two pieces of state that deliberately differ.** `spoilFree` is the viewer's
-  standing preference and persists in `nexusdesk_spoilerFree`, so anyone who
-  does not want this turns it off once, from the **Scores hidden ›** switch in
-  any results panel's head — and the switch is one preference, not one per
-  panel, so flipping it on a region page clears the home board too. `spoilShown`
-  is the handful of rows opened in this visit and does **not** persist: coming
-  back later hides them again, which is the whole point. Turning the guard back
-  on clears it, because a guard still open on the twelve results you already
-  looked at is not a guard.
+  standing preference and persists in `nexusdesk_spoilerFree`. `spoilShown` is
+  the handful of rows opened in this visit and does **not** persist: coming back
+  later hides them again, which is the whole point. Turning the guard back on
+  clears it, because a guard still open on the twelve results you already looked
+  at is not a guard.
 - **A reveal applies to every copy of that fixture**, not to the row that was
   clicked — the same match is a `.nxt` on the home board and a `.match` on its
   region page, and revealing it in one place and not the other would be a guard
   that only half remembers what you asked for. `spoilShown` is keyed by match
   id, and `applySpoil()` re-marks the whole page.
+- **One switch, in the header, not one per panel.** It was three panel buttons
+  first, which read as three separate controls for what was always a single
+  page-wide preference. It is cyan while the guard is on, because a page with
+  scores hidden and nothing saying so looks like a page with missing data.
 - **Default on.** A spoiler guard that is off until you find it protects
   nobody — the visitor it exists for does not know it is there. The switch and
   the persisted preference are what keep that from being a nuisance to the
@@ -550,9 +581,7 @@ happened to be looking at.
   line is *lists you meet* versus *lists you asked for*. A team modal's "Played
   this split" is the list you clicked that team to read; the honours modal's
   archive sits behind a card that already prints the champion and the score, so
-  a guard inside it guards nothing. The standings table and the form dots are
-  not guarded either — a W-L record is not a scoreline, and hiding the table
-  would be hiding the league.
+  a guard inside it guards nothing.
 
 ## Generated data
 

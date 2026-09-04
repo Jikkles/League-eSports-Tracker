@@ -971,8 +971,26 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .match.spoil .sp-btn{inset:0}
 /* the panel switch reads as pressed while the guard is on, which is the state
    a viewer needs to recognise without reading the label */
-.mini.spoil-toggle{color:var(--cyan)}
-.mini.spoil-toggle.on{color:var(--faint)}
+/* The header switch. Cyan while the guard is on, because that is the state a
+   viewer has to be able to recognise without reading the label — a page with
+   scores hidden and nothing saying so looks like a page with missing data. */
+.btn.pill{border-radius:var(--pill);padding:6px 12px;font-family:var(--mono);font-size:10px;
+  font-weight:600;letter-spacing:1.1px;text-transform:uppercase;display:inline-flex;
+  align-items:center;gap:7px;white-space:nowrap}
+.spoil-toggle{color:var(--cyan);border-color:rgba(11,198,227,.4)}
+.spoil-toggle.on{color:var(--dim);border-color:var(--line2)}
+.spoil-toggle .sp-eye{font-size:12px;line-height:1}
+
+/* Masked wholesale rather than revealed row by row: the standings' Form and
+   Streak. The cell keeps its box and the placeholder is drawn over it, so the
+   table does not reflow when the switch is flipped — and the placeholder is
+   the same one a team with no games played already gets. */
+body.spoil-free .sp-mask{visibility:hidden}
+body.spoil-free .sp-cell{position:relative}
+body.spoil-free .sp-cell::after{content:attr(data-mask);position:absolute;inset:0;
+  display:flex;align-items:center;color:var(--faint);font-family:var(--mono);
+  font-size:12px;letter-spacing:2px;pointer-events:none}
+body.spoil-free td.num.sp-cell::after{justify-content:flex-end;letter-spacing:0}
 @media (max-width:640px){.nxt.spoil .sp-btn{font-size:8px;letter-spacing:.8px}}
 
 /* ---- three-column band ---- */
@@ -1103,6 +1121,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
      above this width is already comfortable. */
   .p-head .right a.mini,.p-head .right button.mini{padding:12px 2px}
   .btn.icon{width:44px;height:44px;padding:0;font-size:17px;flex:none}
+  .btn.pill{min-height:44px;padding:0 14px}
   .btn.small{padding:10px 14px}
   .rgf{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
   .pnl-btn{padding:13px 9px}
@@ -1285,6 +1304,10 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
         <span id="apiStatus"><span class="dot"></span>connecting…</span>
         <span id="lastRefresh"></span>
       </div>
+      <!-- One control for the whole page rather than one per results panel:
+           the preference was always page-wide, and three copies of it in three
+           panel heads read as three separate switches. -->
+      <button class="btn pill spoil-toggle" id="spoilBtn" type="button"></button>
       <button class="btn icon" id="refreshBtn" title="Refresh now" aria-label="Refresh now">⟳</button>
     </div>
   </div>
@@ -1357,7 +1380,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
             <button class="rgf" data-r="lpl" title="LPL"><span class="lgw" data-lg="lpl"></span></button>
             <button class="rgf" data-r="lcs" title="LCS"><span class="lgw" data-lg="lcs"></span></button>
           </div>
-          <div class="right"><button class="mini spoil-toggle"></button><button class="mini" id="recentMore">View all results ›</button></div></div>
+          <div class="right"><button class="mini" id="recentMore">View all results ›</button></div></div>
         <div class="p-sub sub-line" id="recentSub">all regions · latest results</div>
         <div class="nxt-list" id="recentStrip"><div class="loading">Loading results…</div></div>
       </div>
@@ -3508,10 +3531,22 @@ function computeForm(events) {
   }
   return out;
 }
+/* Form and Streak are the two columns of the standings table that are not
+   standings: they are the last five matches and the current run, drawn as
+   pips. A W-L total over a whole split gives away no single game, but "L2"
+   says you lost on Tuesday \u2014 so these two sit on the guarded side of the line
+   the spoiler guard draws, and the rest of the table does not.
+
+   They are masked, not revealed one at a time: unlike a score you scrolled to,
+   nobody wants one team's form. `sp-cell` + `data-mask` is the general form of
+   that \u2014 the cell keeps its box and the mask is drawn over it \u2014 so anything
+   else that turns out to need it later says so in its markup rather than in a
+   new mechanism. */
 function formCells(form, name) {
   const f = form[nk(name)];
   if (!f) return '<td><span class="form-dots"><span class="fe">\u00B7\u00B7\u00B7\u00B7\u00B7</span></span></td><td class="num">\u2014</td>';
-  return `<td><span class="form-dots">${f.dots}</span></td><td class="num"><span class="${f.sw?'streak-w':'streak-l'}">${f.streak}</span></td>`;
+  return `<td class="sp-cell" data-mask="\u00B7\u00B7\u00B7\u00B7\u00B7"><span class="form-dots sp-mask">${f.dots}</span></td>`
+    + `<td class="num sp-cell" data-mask="\u2014"><span class="sp-mask ${f.sw?'streak-w':'streak-l'}">${f.streak}</span></td>`;
 }
 
 /* =====================================================================
@@ -3851,6 +3886,11 @@ function spoilHidden(ev) {
    region pages, three of which are expensive and one of which would collapse
    any series the viewer had open. */
 function applySpoil() {
+  /* Everything that is masked wholesale rather than revealed row by row — the
+     standings' Form and Streak columns — hangs off one class on <body>, so it
+     costs a single toggle however many tables are built. A score is a per-match
+     question and gets a per-match button; form is a mode. */
+  document.body.classList.toggle('spoil-free', spoilFree);
   document.querySelectorAll('.sp-btn[data-spoil]').forEach(btn => {
     const row = btn.closest('.nxt, .match');
     if (!row) return;
@@ -3898,17 +3938,20 @@ document.addEventListener('click', e => {
   applySpoil();
 }, true);
 
-/* The panel-level switch, drawn wherever a results board wants one. Turning
-   the guard off reveals everything at once and is remembered; turning it back
-   on forgets which rows had been opened, because a guard that stays open on
-   the twelve results you already looked at is not a guard. */
+/* The switch, in the header. Turning the guard off reveals everything at once
+   and is remembered; turning it back on forgets which rows had been opened,
+   because a guard that stays open on the twelve results you already looked at
+   is not a guard. */
 function syncSpoilToggles() {
   document.querySelectorAll('.spoil-toggle').forEach(b => {
-    b.textContent = spoilFree ? 'Scores hidden ›' : 'Scores shown ›';
+    b.innerHTML = `<span class="sp-eye" aria-hidden="true">${spoilFree ? '◍' : '◉'}</span>`
+      + (spoilFree ? 'Scores hidden' : 'Scores shown');
     b.classList.toggle('on', !spoilFree);
     b.title = spoilFree
-      ? 'Scores are hidden until you click one. Click here to show them all.'
-      : 'Scores are visible. Click here to hide them until asked for.';
+      ? 'Spoiler-free: scores, form and streaks are hidden until you ask for them. Click to show everything.'
+      : 'Results are visible. Click to hide scores, form and streaks until you ask for them.';
+    b.setAttribute('aria-label', spoilFree ? 'Spoiler-free mode is on. Show all results.'
+                                           : 'Spoiler-free mode is off. Hide results.');
     b.setAttribute('aria-pressed', String(spoilFree));
   });
 }
@@ -4090,7 +4133,7 @@ function buildRegionPage(slug) {
     <div id="sched-${slug}"><div class="loading">Loading…</div></div>`;
   const res = el('div','panel rg'); res.style.setProperty('--rg', R.color);
   res.innerHTML = `<div class="p-head"><div class="p-title">Recent Results</div><span class="p-sub">▶ VOD finds the YouTube links per game</span>
-      <div class="right"><button class="mini spoil-toggle"></button></div></div>
+      </div>
     <div id="results-${slug}"><div class="loading">Loading…</div></div>`;
   two.appendChild(sched); two.appendChild(res);
   page.appendChild(two);
@@ -4652,7 +4695,7 @@ function buildEventPage() {
       <div class="panel">
         <div class="p-head"><div class="p-title">Recent Games</div>
           <span class="p-sub">${esc(EVENT.name)}</span>
-          <div class="right"><button class="mini spoil-toggle"></button></div></div>
+          </div>
         <div class="p-sub sub-line" id="evtRecentSub">no games played yet</div>
         <div class="nxt-list" id="evtRecent">${rows('done')}</div>
       </div>

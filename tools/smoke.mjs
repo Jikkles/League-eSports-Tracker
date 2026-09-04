@@ -571,7 +571,7 @@ if (loaded) {
         .filter(x => Number(getComputedStyle(x).opacity) < 1);
       if (dim.length) return { err: 'a hidden row still dims the loser, which gives the result away' };
       return { rows: rows.length, hidden: hidden.length,
-               label: document.querySelector('#recentPanel .spoil-toggle')?.textContent.trim() || '' };
+               label: document.querySelector('#spoilBtn')?.textContent.trim() || '' };
     });
     if (r.err) throw new Error(r.err);
     if (r.none) return 'no finished results on the board to hide';
@@ -645,27 +645,58 @@ if (loaded) {
     return `${r.hidden} of ${r.rows} region results hidden, one revealed`;
   });
 
-  /* The panel switch is a class flip rather than a re-render, which is the only
-     reason it can reach six boards at once — so what it must actually do is
-     reach them. Flipping it on the region page has to clear the home board too,
-     or the guard is per-panel and the preference is a lie. */
+  /* Form and Streak are the two standings columns that are not standings — the
+     last five matches and the current run, drawn as pips. A W-L total gives
+     away no single game; "L2" says you lost on Tuesday. They are masked rather
+     than revealed row by row, which is a second mechanism (`body.spoil-free`
+     plus `sp-mask`) and so a second thing that can quietly stop working while
+     the score half goes on looking fine. */
+  await check('region: form and streak are masked', async () => {
+    const r = await page.evaluate(() => {
+      const cells = [...document.querySelectorAll('#table-lck .sp-mask')];
+      if (!cells.length) return { err: 'the standings table has no maskable form/streak cells' };
+      if (!document.body.classList.contains('spoil-free'))
+        return { err: 'the page is not in spoiler-free mode by default' };
+      const painted = cells.filter(x => getComputedStyle(x).visibility !== 'hidden');
+      if (painted.length) return { err: `${painted.length} of ${cells.length} form/streak cells are still painted` };
+      /* The mask has to be drawn, not just the content hidden: an empty Form
+         column reads as missing data rather than as withheld data. */
+      const masked = [...document.querySelectorAll('#table-lck .sp-cell')]
+        .filter(c => (c.dataset.mask || '').trim());
+      if (masked.length !== cells.length)
+        return { err: `${cells.length} hidden cells but ${masked.length} carry a placeholder` };
+      return { n: cells.length };
+    });
+    if (r.err) throw new Error(r.err);
+    return `${r.n} form/streak cells masked`;
+  });
+
+  /* One switch for the page, in the header. It is a class flip rather than a
+     re-render — the only reason it can reach every board at once — so what it
+     must actually do is reach them: the region results, the home board and the
+     standings columns, all from one click. */
   await check('spoiler switch reaches every board', async () => {
-    const count = () => page.evaluate(() =>
-      document.querySelectorAll('#results-lck .match.spoil, #recentStrip .nxt.spoil').length);
+    const count = () => page.evaluate(() => ({
+      rows: document.querySelectorAll('#results-lck .match.spoil, #recentStrip .nxt.spoil').length,
+      masked: [...document.querySelectorAll('#table-lck .sp-mask')]
+        .filter(x => getComputedStyle(x).visibility === 'hidden').length,
+    }));
     const before = await count();
-    if (!before) throw new Error('nothing was hidden before the switch was touched');
-    await page.click('#page-lck .spoil-toggle');
+    if (!before.rows) throw new Error('no results were hidden before the switch was touched');
+    if (!before.masked) throw new Error('no form/streak cells were masked before the switch was touched');
+    await page.click('#spoilBtn');
     await page.waitForTimeout(250);
     const off = await count();
-    if (off) throw new Error(`${off} rows still hidden after the switch was turned off`);
-    const label = await page.textContent('#recentPanel .spoil-toggle');
-    if (!/shown/i.test(label || ''))
-      throw new Error(`the home board's switch still reads "${label}" after the region page's was flipped`);
-    await page.click('#page-lck .spoil-toggle');
+    if (off.rows) throw new Error(`${off.rows} rows still hidden after the switch was turned off`);
+    if (off.masked) throw new Error(`${off.masked} form/streak cells still masked after the switch was turned off`);
+    const label = await page.textContent('#spoilBtn');
+    if (!/shown/i.test(label || '')) throw new Error(`the switch still reads "${label}" after being turned off`);
+    await page.click('#spoilBtn');
     await page.waitForTimeout(250);
     const back = await count();
-    if (back < before) throw new Error(`turning the guard back on hid ${back} rows, not the ${before} it started with`);
-    return `${before} rows across two boards, off and on again`;
+    if (back.rows < before.rows) throw new Error(`turning the guard back on hid ${back.rows} rows, not the ${before.rows} it started with`);
+    if (back.masked !== before.masked) throw new Error(`turning the guard back on masked ${back.masked} cells, not ${before.masked}`);
+    return `${before.rows} rows and ${before.masked} cells, off and on again`;
   });
 
   if (SHOT) {
