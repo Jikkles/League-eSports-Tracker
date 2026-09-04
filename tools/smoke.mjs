@@ -366,6 +366,105 @@ if (loaded) {
     return `${r.label}: ${r.panels} panels, ${r.rows} TBD fixtures`;
   });
 
+  /* The stage strip is the second thing on that tab with facts in it, and like
+     the qualification board it comes from a constant nothing fetches — so a
+     render that quietly dropped the dates would leave three cards reading TBD,
+     which is exactly what the page looked like before Riot published them and
+     exactly what every other check would go on calling healthy. This reads the
+     cards back against EVENT.stages. */
+  await check('event tab: stage strip', async () => {
+    const r = await page.evaluate(() => {
+      const stages = typeof EVENT !== 'undefined' ? (EVENT.stages || []) : [];
+      const cards = [...document.querySelectorAll('.evt-stages .ov-rg')];
+      if (!stages.length) return { err: 'EVENT.stages is not on the page' };
+      if (cards.length !== stages.length) return { err: `${stages.length} stages in the constant, ${cards.length} cards drawn` };
+      for (let i = 0; i < stages.length; i++) {
+        const st = stages[i], c = cards[i];
+        const txt = s => c.querySelector(s)?.textContent.trim() || '';
+        if (txt('.top') !== st.name) return { err: `card ${i} is titled "${txt('.top')}", not "${st.name}"` };
+        const n = txt('.n');
+        if (st.when && n !== st.when) return { err: `${st.name} should print "${st.when}" and prints "${n}"` };
+        if (!st.when && n !== 'TBD') return { err: `${st.name} has no date but prints "${n}" rather than TBD` };
+        const venues = [].concat(st.venue || []);
+        const drawn = [...c.querySelectorAll('.st-where')].map(v => v.textContent.trim());
+        if (drawn.join('|') !== venues.join('|')) return { err: `${st.name} draws venues [${drawn}] rather than [${venues}]` };
+        if (st.detail && txt('.st-when') !== st.detail) return { err: `${st.name} lost its breakdown` };
+      }
+      return { dated: stages.filter(s => s.when).length, n: stages.length };
+    });
+    if (r.err) throw new Error(r.err);
+    return `${r.dated} of ${r.n} stages carry a published window`;
+  });
+
+
+  /* The bracket is the one panel on this tab drawn from the feed rather than
+     from a constant, and it fails the way every computed panel fails: quietly.
+     A slot that resolved to neither a team nor a route renders as an empty box
+     and throws nothing, which is the bug worth catching — it means the origin
+     wiring stopped resolving and the panel is now a wall of blanks pretending
+     to be a bracket.
+
+     An absent bracket is reported, not failed. Riot publishing one at all is a
+     data question, and this file does not decide those — the canary asks
+     whether the call still answers, and this asks whether the answer drew. */
+  await check('event tab: published bracket', async () => {
+    const r = await page.evaluate(() => {
+      const body = document.querySelector('#evtBracketBody');
+      if (!body) return { err: 'the bracket panel is not on the page' };
+      const br = body.querySelector('.bracket');
+      if (!br) return { none: (body.textContent || '').trim().slice(0, 80) };
+      const slots = [...br.querySelectorAll('.bslot')];
+      if (!slots.length) return { err: 'the bracket drew no slots' };
+      const blank = slots.filter(s => !(s.querySelector('.tname')?.textContent || '').trim());
+      if (blank.length) return { err: `${blank.length} of ${slots.length} slots named neither a team nor a route` };
+      const untitled = slots.filter(s => !(s.querySelector('.tname')?.title || '').trim());
+      if (untitled.length) return { err: `${untitled.length} slots carry no title` };
+      /* Half the point of the panel: an undrawn slot says which match fills it
+         rather than TBD. Before the draw every slot after round one is wired,
+         so a bracket with none of them has lost evtOriginLabel(). */
+      const routed = slots.filter(s => /^(Winner|Loser) of /.test(s.querySelector('.tname').textContent.trim()));
+      const named = slots.filter(s => !s.querySelector('.tname').classList.contains('tbd'));
+      if (!routed.length && !named.length) return { err: 'no slot names a team or a route' };
+      return {
+        cols: br.querySelectorAll('.bcell').length,
+        matches: br.querySelectorAll('.bmatch').length,
+        routed: routed.length, named: named.length, slots: slots.length,
+        title: document.querySelector('#evtBracketTitle')?.textContent.trim() || '',
+      };
+    });
+    if (r.err) throw new Error(r.err);
+    if (r.none) return `no bracket published — "${r.none}"`;
+    return `${r.title}: ${r.matches} matches over ${r.cols} columns, ${r.named} teams + ${r.routed} routes in ${r.slots} slots`;
+  });
+
+  /* The three fixture boards fall back to the TBD placeholder when the feed has
+     nothing, and that fallback is the whole reason the tab can be wired before
+     the draw exists. What must never happen is the middle state — a board that
+     is neither real rows nor placeholder rows, which is what an exception
+     halfway through evtFillList() would leave. */
+  await check('event tab: fixture boards', async () => {
+    const r = await page.evaluate(() => {
+      const read = id => {
+        const box = document.querySelector('#' + id);
+        if (!box) return null;
+        const rows = [...box.querySelectorAll('.nxt')];
+        return {
+          rows: rows.length,
+          tbd: rows.filter(x => x.classList.contains('tbd')).length,
+          real: rows.filter(x => !x.classList.contains('tbd') && !x.classList.contains('empty')).length,
+        };
+      };
+      return { next: read('evtNext'), recent: read('evtRecent'),
+               live: !!document.querySelector('#evtLive .lc-off, #evtLive .lcard') };
+    });
+    for (const k of ['next', 'recent']) {
+      if (!r[k]) throw new Error(`the ${k} board is not on the page`);
+      if (!r[k].rows) throw new Error(`the ${k} board drew no rows at all`);
+      if (!r[k].tbd && !r[k].real) throw new Error(`the ${k} board drew ${r[k].rows} rows that are neither fixtures nor placeholders`);
+    }
+    if (!r.live) throw new Error('the live panel drew neither a card nor an offline state');
+    return `next ${r.next.real || r.next.tbd + ' TBD'}, recent ${r.recent.real || r.recent.tbd + ' TBD'}`;
+  });
   /* The qualification board is the only thing on that tab with facts in it, and
      it is drawn from a constant the page never fetches: evtQual() returns an
      empty string when EVENT.qual is gone, so the tab would lose it and still

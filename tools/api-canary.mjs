@@ -31,6 +31,7 @@
  */
 
 import { writeFileSync } from 'node:fs';
+import { readDataConstants } from './constants.mjs';
 
 const API = 'https://esports-api.lolesports.com/persisted/gw';
 const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
@@ -38,6 +39,15 @@ const HL = 'en-GB';
 const UA = 'LeagueEsportsTracker-canary/1.0 (+https://github.com/Jikkles/League-eSports-Tracker)';
 
 const SLUGS = ['lec', 'lck', 'lpl', 'lcs'];
+
+/* The event tab reaches one league further than SLUGS. Read from index.html
+   rather than spelt again here, because a rollover to the next tournament
+   edits EVENT and nothing would make this follow it: a canary still checking
+   last year's league would pass forever while the tab it guards went dark.
+   Unreadable is not fatal — this file is about the API, not about index.html,
+   and the check below skips rather than failing the run. */
+const EVENT = readDataConstants().EVENT || null;
+const EVT = EVENT?.feed?.league ? EVENT.feed : null;
 const TIMEOUT_MS = 20000;
 const RETRIES = 3;              // transient flakiness shouldn't wake anyone up
 
@@ -243,6 +253,55 @@ if (Object.keys(leagueIds).length !== SLUGS.length) {
     if (!ev.league || !ev.tournament) throw new Error('event is missing league/tournament');
 
     return `match ${id} · ${games.length} games`;
+  });
+
+
+  /* ---- the international event tab's two calls --------------------------- */
+
+  /* The event tab reaches past the four leagues: getSchedule on the tournament's
+     own league id, and getTournamentsForLeague + getStandingsV3 for the bracket
+     Riot publishes before anyone is in it. None of that is covered above, and
+     all of it fails the same silent way — an empty board that throws nothing.
+
+     What is asserted is only what the page reads. The schedule is allowed to
+     come back with no fixture inside the event's dates, because that is the
+     tournament's real state until the draw is made; what would be a break is
+     the league id vanishing, or a bracket that no longer carries the `origin`
+     wiring the panel turns into "Winner of …". */
+  await check('event tab (getSchedule + bracket)', async () => {
+    if (!EVT) return 'skipped — EVENT.feed could not be read from index.html';
+    const leagues = (await apiJSON('/getLeagues'))?.data?.leagues || [];
+    const lg = leagues.find(l => String(l.slug || '').toLowerCase() === EVT.league);
+    if (!lg) throw new Error(`no league for EVENT.feed.league "${EVT.league}"`);
+
+    const sched = await apiJSON('/getSchedule', { leagueId: lg.id });
+    if (!Array.isArray(sched?.data?.schedule?.events))
+      throw new Error('data.schedule.events is not an array for the event league');
+    const mine = sched.data.schedule.events.filter(e => e.startTime >= EVENT.start);
+
+    const ts = (await apiJSON('/getTournamentsForLeague', { leagueId: lg.id }))
+      ?.data?.leagues?.[0]?.tournaments;
+    if (!Array.isArray(ts) || !ts.length) throw new Error('no tournaments for the event league');
+    const t = ts.find(x => x.startDate <= EVENT.end && x.endDate >= EVENT.start);
+    if (!t) return `${EVENT.name}: no tournament overlaps ${EVENT.start}..${EVENT.end} yet`;
+
+    const stages = (await apiJSON('/getStandingsV3', { tournamentId: t.id }))
+      ?.data?.standings?.[0]?.stages;
+    if (!Array.isArray(stages) || !stages.length) throw new Error(`${t.slug} returned no stages`);
+    const st = stages.find(s => s.slug === EVT.stage);
+    if (!st) throw new Error(`no stage "${EVT.stage}" in ${t.slug} (has: ${stages.map(s => s.slug).join(', ')})`);
+
+    const matches = (st.sections || []).flatMap(s => s.columns || [])
+      .flatMap(c => c.cells || []).flatMap(c => c.matches || []);
+    if (!matches.length) throw new Error(`stage "${EVT.stage}" has no matches`);
+    if (!matches.every(m => m.structuralId))
+      throw new Error('a match carries no structuralId — the bracket wiring cannot be resolved');
+    /* Every slot after the first round names the match feeding it. Lose that
+       and the panel silently degrades to a wall of TBD. */
+    const wired = matches.flatMap(m => m.teams || []).filter(x => x.origin?.type === 'match').length;
+    if (!wired) throw new Error('no slot in the bracket carries a match origin');
+
+    return `${t.slug} · ${st.name}: ${matches.length} matches, ${wired} wired slots · ${mine.length} fixture(s) scheduled`;
   });
 
   /* ---- the CORS proxy fallback ------------------------------------------- */

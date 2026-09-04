@@ -623,6 +623,25 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .ov-rg.tbd:hover{background:var(--panel);border-color:var(--line);border-top-color:var(--rg)}
 .nxt.tbd:hover{background:transparent}
 .ov-rg.tbd .n,.nxt.tbd .n-code,.nxt.tbd .n-time,.nxt.tbd .n-date{color:var(--faint)}
+/* a stage whose window Riot has published is not a placeholder any more, so it
+   comes out of the faint the rest of this page's unresolved state sits in */
+.ov-rg.tbd .n.set{color:var(--text)}
+/* the venue reads as the card's subtitle, the breakdown as a footnote to the
+   date above it — the format line stays in .lbl, where it always was */
+.st-mid{display:flex;flex-direction:column;gap:5px;min-width:0}
+.st-mid .n{margin-top:0}
+.st-where{font-family:var(--body);font-size:12.5px;line-height:1.4;color:var(--dim);margin-top:-4px}
+.st-when{font-family:var(--mono);font-size:10.5px;line-height:1.5;color:var(--faint)}
+/* ---- the published bracket ---------------------------------------------
+   The same .bracket the honours modal and the simulator draw, read-only: no
+   slot is clickable, and a slot the draw has not filled carries the name of
+   the match that will fill it instead of a team. That label is set in mono at
+   a smaller size so a route never reads as a team name — the one thing this
+   panel must not let a viewer believe. */
+.evt-brk{margin-bottom:16px}
+.evt-bracket{margin-top:4px}
+.evt-bracket .bslot{font-size:13.5px}
+.evt-bracket .bslot .tname.tbd{font-family:var(--mono);font-size:10.5px;letter-spacing:.2px;line-height:1.35;white-space:normal}
 /* ---- the qualification board -------------------------------------------
    Crests do most of it: a league mark per region, then one slot per place that
    region sends. A filled slot carries the team's badge, an empty one is the
@@ -1108,6 +1127,11 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .evt-hero .evt-mark{height:30px}
   .q-grid{grid-template-columns:1fr}
   .evt-duo{grid-template-columns:1fr}
+  /* Two stage cards across a phone leaves each one ~155px wide, and the date
+     is the whole point of the card: at 34px "15-18 Oct" breaks over two lines
+     and the strip reads as four dates rather than three. Shrinking the type is
+     what keeps each window on one line. */
+  .evt-stages .n{font-size:25px;letter-spacing:-.8px}
   .fchip::after,.tab::after{bottom:-6px;height:3px}
   .ov-regions{grid-template-columns:1fr 1fr}
   .ov-nums{gap:16px}
@@ -1498,10 +1522,45 @@ const EVENT = {
   logo:'data:image/webp;base64,UklGRkwYAABXRUJQVlA4WAoAAAAwAAAA3wEAgAAASUNDUMgBAAAAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADZBTFBIGBUAAAHwhu3/Iyf9/z12N71T34GEEo3AGykBUSlROm+QjnQsaMBKR3yHqnyMoNgFC01s2EIXiEiLRukYhTeEHkpC6IH07G72cWNmXq/X7E7W43PLiJgA/OP/f/xvvYGxLZNE6wdUW/Y6TZMEE2pXW7HNkgRbx9dQFZ0k2jrOYVnjMiUbGq3IFDeanyn+pUDzjZR1/9ReZEWm4ne72EWeyRQfKrQwU/HXj0UqiF9SRNk1Xezm9B7nE7GvmlTv82LK3nwzQUGvQ5S89mKIRU2l5CCj8xSPNvid4jl6AZNzqPTM9CCDbCov2j7EbrCQ4lOENlO5++j8ULFHD7upMn9VDRMCs+88JBGvKDRMLPY4u5oxZL+LKl1Hnhezv3iGCq98GmZJg5RRsoXBXon1OjFfV1H1pijTyKrldX2IZP59AqGLnFR9sZO6kWRZa6GJRb3sBo7aYUaJO3eFiwT8RG5V55hF9T/UEqj1iZtqc1pYUVuZVIM4mZGKlutso4l5EeaR2b5FDjb6gGYmqYonyZJwga4kF2nqzjxP8ubnzTVNismFAgE/keRQVbbPaebtKKNMKi9JsKA4VYky4xUt1KS6zah6zRv4Y6Bvna+p95jLlP2q3tTwgNE9V0i6t9bu/HMpDY/ODH7ZSZKpRmluTV6MorYlpnCJnmMFTTxiQZCZb9BbZoHBOYlnATS6RXObeUNlR99iVoBONs19Xs3dFWQlyYwInQYXqZtH8YvULUvWG0ey0k0+qyb4CE1O0mlVZgbft1nPcYlVBoNk1hpckhgNYKzHpA+9gXt8rLK5pqXHpNxAFY4/SI64Q3KJzs8k/yqm/oXFzy/4SaM9RLK0laa9k+QjZ0hngpLuNHuzTZNNUz1NrecXRRNkMhT1BrCHJh/wCt7rW5yo2UmTC2NVdKogl6LhJZKpNtgXktwZ1DKLpGtRa2hjX8glWTwieIab/C0IeKCI5LPo7ySXK3nVtHPRAO6jyS9az5cSmwzelPlNUQcglGbf8Y4JPpYJIIRmVzbRixGNvUYWNwY63CLLH4m5r4i8kgiEfV15riWMa29zH24E2NeSTIu59zLpWgBgLelsEyNq19tlWmU8gP+atc165klkGLwnc8ygVCIJuM801veKJT7mBJBgGlvrFYheJ/m6DUA/kpUFNzys7AAAjjH1AcTP+W5ZNwChUyMBIOwMWVFwh+T3AQA6kCwqEI3XO2UaBwFYaZbTesZLZBqky5wzoGQs0Nu8ZK9I9zE2BJrJlGbtPiLTXe8oxY8FA4B9ipu624NQb04kACR8Ru3hZACwPzEOGEH9nUHQvkfJRnpO854AsFtiWWzUMxKMs5x+HrFsg60yNxRFKfAUF1dVQ83kKhIB+xaJFDWPAfUB4H2diuZwbOeeeCDyGA0fAiJmuK+EI/SWzqW6AJoHocZlNZTcHIagDzwS7yloCyBDooXlJLvU7JVxK4KCiYmJAyrMcv435dO/fGlNyktfO007CABzlW1OMR4VCKzTBI9OSUlJGQA8RPLqw3jPY/QHwraT/ADomJKSkvJkXQB4+2GgZ4rxHKeyHgDqlZhWF0CqxbWuEMszOCPDWJ14iX0K9gHAdrPKGwOBK3woFcBI0/ZqRipLg/CCAo3gbJKsXETR186S5J0QCG88EQPRZuXK2gOodd00AEixuHvKxAoMLkv10Gkv8ZOCbzWp3oAePoZKy4i+TIkvNUrL4sX+5BTviSnwA2oXi5UZUHqWkld9KdnXjlrGD2SS2C5l5Y3F3LwWLlEa59cE3haj3l1yK5QM8avmi8W9u1h3FclnAbyw2DBPmeuLxYYxwL0kf16s3w/o4GRhrNdMrpZwTsKm85DcrzqdJB7yqz7R20MuAFqXU3ALgAx6cXvgEYqmAckubxpRPW2WaKczRa5cZ4pEgD/2LbkGuPu2yNVgZdnZyl71u+ZLJOu8IcdQBSXw09YDjQtFShurOTwuHAgftqFSLh5YJzQd6O5mXk3/ZqTEGJ3NCmIVXPPL3ie32BB3Q8TdDVgt5VkCILFvVABGO1WcExoJDCRzY/ybNhKpOhcUtFBwyi+bTWYFIKZAhK8Cq6RWhQKYzbKdrdCvSCYE8W6h3sATZE64fwOJ+RpHoYIHNd+J/eXHZKo4qDeRPByI8Dyh4w7Mk8mGdjbJ0t72/5O4AyymcAtgNpkd4jW9qqlrYps1tYsV9FaQ5cekKyh/WG8gmRMC5AqxGwbJJAuwLBJ7xbIQkS8WDqwg9wZ4TaNq6pSCBiUKHlew2Y8qn1MH+l3JgnBgrdgXuE/iU4hwV/BIsRlIrhS6A2ALuRt+zl6x05p/lyuYrlkjttpCtlnOJoni7+NgfD9ZEQW8JpYfGFQhVNFErKJb4FGhDlhN4UMAcsj3vcbVsJpaK1ao6eRUsFBzRizNQvZazl6x/KY2CDYj2QIYJuaZiQNCGTYx7kFbt8CdyLZVYt8DcJOTDFabVhjrDe/YLegzCQeAbm4F6Zpcsef8o5xhgRCuQ/I5oI4YK5vOFylLAGz/SU1tbsDuYecEjgSnU/wVoDHJbgb2dhk+910SrPgdseLaAAZS4S8Khvgx+41uLImGrIv8GECxGL/qXSXwI9D0CEmeM1iONwQ2DnWKefoDfUnGGQAYebLKjNwYk6qODoY1T1YwQUWOglZ+zHmDzXUhv4c8B+AviaqvywTGolE+xa8itNzooyKKux4CXiILIRw1xYemh8OiR4iVJgCYrcIJICxPrJ4fU6bzay87FM4jWRNYK8GyKqOr4UHZlJ2BpUallCxtBHxJ7hUDGi2+oyw7xIzyTxvBsnuIlTcD8K0K1gBiCoSq4MdwFIAQqG1H8gHgDRlBzyQ8Rx7OPldwo7igIPfoAZL5oT2NpK+HAJnk5zJA0l6not8d6qr+7AILbyLRAsDPSlpI5fg1+cFQX0g+CQxVVtQg0UWusYfG1IqNiQm3P0eysmlAvqofAOSR0+QQ9OApvTqFYlug7NrAYFh5pJgrGcBRJSOl9lnJJuupmm7CEXIREKdsl2MWyb9gPJckP8OjqvoCsW6ylwKg5tTLmnvdYotUDXknHhZfKVeqZApQ77rQt1aSbgHxMuR0m7K15O8AjiiqamP7k+TtEKMvNIwLvaSmDEAqyUZKAEQAWETxx1VVg9lCnn4AqDQNaFwo9JqVLLOA2nKVG2JUzSCdocAsRdvRlSTdQw3uuqmThuVq9gPII0/bVAEIKpFoV22tFeJAoJma9VIvW8lrFgA58n9DFLUj+TjQtEzNk0jX8EYTnag/qHsScTeVLAXqkZwDE3tTvDyo2npP6n4BT6XAz3aZgVbypBXsUECurK0EeeRWICZXSUFweK4Od+mk0PB5fKikD9CTdEWbsUQiB9XWZLGxwCCB670EsgIk3D186z8SLa1gihKeG6BkCXk2Glilwj0YscV6JTp5RjdqNlVxMxh4l8wJMeOCxFfVVy+x2cA0gYuBAjkhSLgt4kr2qVpbxY7DCmpWKmHl0kYKurjoTALauBSciEIvGo4H0J7GVWPxnoKZQOgN8hubCX0oOan6etApM0vgHG4YXQhDUrlIeTOfqTqY9XsphT0TLAFH1JC3Otml/lVEbgBwSK7qaWBhaZXeZjvwnJ6nyM2SqLCLUs5WwGCSfWDibzI9lPQ1/neEw8KSymVWCWzBaaNbERKlCT6jsKiBNcxXxbJvomSwlnTGA/PkTgcAtrueLdVxbkn78rrO1edqLCOH4wOpgmDY15Nng0yIuyZTV4lo4a9PWFfjQpk1At9hnxGjJYprW8fHNmuIOKeKPNTGJnFPJTkeSHBKca4DAKI/d1HUteHuGmN2edYG1c+VGg7UuEa+BhNHU3IHTCK5Kd6qal8V+hbIEJiCDIFkiduBlpENXd9DV7cylrWTQCaZCeA9ubJ2GmCk0OuOsSRLagfdpuwxAKkkHzAjXybZC3gu3KIi82UOCq0QGC6RD6vIa2YZtvFOZSxsIzGBdHcDGhdJ8XKcDjpeMxr+wkmSBffgE0rPBmJLyaMOE3pR8mq4N3CnRSFX5rhAeywWWCix2SoO3w3LAJ4tVsYfJWreJrMCYd8uxw/10PeaTtHL20jS9TgQ0KL/xGVb9hy/6tK7FguMIV0PwsTlMtscXsEhFvWdTIHQZIHNEh9bxDoYWwLaFStjezFMJiubA/XLhE58PelBB4yTddZUUpufPrcHBOfp9AGQQx6GmddkUuAdrGlN7whtASoEIHQYyVUiqRbBs09bChK3K8uQSCgkdwF4W8f9fO9W9YIhaZvgIivKKFpwPGvj0qmDUSdXkxsJTCCZYsYoShZFeMsAa5ogdBQhNC4HRgkQnSmabBXkZEtB0Jsliq5EieFjkoOARrc1zAiCynVUWjUR00jSNRQIySWPwsSgEzJL4S3LramjxMMCucBQkVpiLa3D/bylwHbPFTVFDSQc+WQWgJ46fERJTKmSP4PruTRfA3jVw6pHzGhVJtPTa45ZU6zEGIHDwMMijcRgHbxZx1KA+CUVKlzNJfB/JKcAAb/qfK5EPLTFokqdTQ70vU5WJAKtKsg/I81YSMmyaFW3MzKOSdCa4BJLE9gNPCDSXui6lXCsxQAdDyhgB5nIfPJOQyDxJlmVEydgi47RjdAJjtEPADqc1XBZDTQ65HwMcPxAlrWEiZFlMmlQ1Q1AukQLa8oXqcTPAj8ADUUGCRVYylnLQejgO3JPy6B7JT3rAIwhd0TAeGju5QLtuUd1mh8u0D2d5kDNXzTcF4ao2UHAc27yK5g5npJlQcpiAAyoDv4SIf4UWAXEi4wRyvYhz6XcCzJMtByg+VapKVLBW0k+DoRu3xADw9A0F7XFyxKBe9/r4UDUnHxqPesbIvwdDQ/fAwCxV8iCu03ZIpMFZQDQujrIEqPgAgAik58R+cWHyhsDz5RIDLcgBByR+UQKda6TF2sBthAY1smk1vlbElB7rpPc2NiGqK/vUHs2AXjuNkmWdAKwmqwaATMbVMo8Ve2tEYoQeUXi7ckiGT6GVIlZVoR/XTMLU0geCoXgXSepPdsjBLYXLlFb+Gk47K23a3hrENDxJkneehJod4uHgkxZT8m8kGrvY6GBIuMAZAnknRb50tcelnjPkuzbTQtJJ90dBUbdJMmCSTWBvlkkWUKSp6eGImB0NklWpgFN9pNk2fwANF1dF2Y2LpXwTEK195aQ8OMAdgmIf+hryRLploR3TEOtq5XpDgPbNGp/jIAtNp2kp/DtgRryyP0OBKVWkWR6DLCuiiTfDYTJj3skyhKrvwmqugJYpCjVD5ot8aUKdHsehhE7XDpjEfbhLZJls2JtBizb0RARhRqeqI+QGU6SVXuiTDpJyW9t1V9/VR0AzFI0xp+xdX1FM1LioBLBpr9QfyyeI1n4fjwAI/ITI17qCfuTN0hyZ1NTulGyJAHVXztVjQH0VdTfWvZaS82Pudfb4q9Q4kpzuzJyvB1tSzwk8+ub8Z3MbvgBiapqA+iiqJnfEvrBVXrd+GLKsPLbGHUVq4JR71eSJZl3mXBNZoQ/AFUAEK2opp8SODKX9LbQNIr21iPP9A4QC71kRG6oj5DRHYJh5ixKngjyC06oydPxKHHDL7E3u0Bdr4o8RkHPChiRq0cIYXyVAC/HwuQISnqGwi/4Vc1BTUShkqN+Se1vy+l9bf5H0ZwYId4Rw1IR3hxhUh+Zktr+wSdqvteEX1eS6YfUmeaksffYu1+n6K37ISaqiS0QIV8KMGWtzGL4BylqPtGE5CpZ5X90Kaao97xM8RdhChqUCnFHqAktKHkHfsKjaiZqgnKUpPodTSjuLY53XWLbgk2yzRPzZMQos62UWeovtPIoeVITkK1knMXssoBmPtHHReGzNWASsF6IXKos7KJMO38hsVhJW419r5IuFpNeHSxXcZ3i3WFeA4lbysZ5JLbCX2h4U0VVKw12q3C3878+UdCU4vOh3/mKAuezeuhSLMQ+iqJvUdzZ1m+om6+iOFEnXYWzlZ+T7h1dxLKjDVA/vUTCldUOiAnU4D2xlxT1oWRuuN8QcVrF7QSd91WUJ/wdSBS6WheCtnsOChV2DwFGvWXXCckW6qroO5mn4Tc4jqooiNWZoaLkX38HHCdEnoB48Mj/GRROrwF0/fV7GLYqF7gepKaZU+JMkP+AfSou1tIZq6Io+u8AOjuNVkD+9ZskS9ZFwhb3GU9EGeGpSqPFULuakgvgR6xUcTpCp4uKQtvfAvu7BseiFKD2Sh6814bg1++wsCFE3zDYHqomNE+mtT8xQ8XRAJ0kFSfxtwAYc8BFz5m0EKhNciDkyROkayiEAx7f7yJPzwuD2qcpuQv+xFMqsqFbR8Xmai/HrHVeA4S1rw/1tmYHSXIJpKPb14HqiCKJqp5+RTsVq/Wg4jVlGzQrqoHYKrP2eJGpsZtKSDI3Us7MkZTMq+NXBKtYYXBFwQvKilsC9S9ZwnvtjeUWxMe3+Y5mHdC86HOzqS3pBG/eKXN62FDZ1tUaShQ8Z3BcQbIy8tJJyvqK4Ak5pQpuhgL43CK+s3sVTX+/ess1IUNBfRMU+tw43+CR3bszi6zhbCT+PuxW0M5gvZwbgsnmtfKxslCviAESZFRO85XHYUE/SQQB6CRR07LWKUgyWCh3SSTBtCr42DF4Qz6AmqZ5evvImSArWinRBMDLYldh2csUQN1JEVw267SvrfGKZQBwzqzyRN8oewBW9LzEzrEj5xeKfWddr8iVGo2X2yv0plnrfG2cN1T11kww62KEb2QEWlKChMLR1jVW7rTRk3LpQknlJg3ytbreUByjQbFJb8M3kmBJSDcp1rqGye036iv3jVDgdnN+DvKxLHjDCOiuNOevEN/4ARbV4KYZriGw7ofkMox6yb0nhFoXzShpAh+b4Q2roR93yYzyR+AbvawKqW4TNsHCG8utMEqSmyGGB0yoaAkfcyV7wUYYt61UVzYAvnEBloU0dTth5TXkFpswQQJNNqra1Qa+VlzXtAvjggTQcreqfZ1svpHaxcKCnyxS4/qopqWhQuplo1i53jLA0N/znDLu/KynAuBzf8AMV+GZ3/4bAcmxe27IXdv3fCB8dEiIhQEtt92Wc2YPhcVHRcsGGdmipQPkYAuN6tt3xkLDOf27R4faIRgRLW4H4IgWDwMQEq0yVCc8Wm1URLAd8vbw2D6vLhSc17dWmAM+64APRpseKgB71FO7xLLnxAfg/58j4w1r4B///+N/tVZQOCA+AQAA0B0AnQEq4AGBAD5tLpRHJCIiISr/eACADYlpbuFxzh3+Ae/LRkph+AP4B+AH6AfwD9/e/wYex1C4UNqOL+nsB0LtP+Qln80FUS7SZZZZZZY+w/LYpLtgDmFo7ndL+Qvvqee/PlrWT2i/p7AK9GwHQu0/5CZQnBjT/kKfK8j3t29YrO2J9OGuvDNGMscOSsdQql9C7T/gY0/potO3E9i5QN/QopOiz/8LtP+Pt1P58xp2Y9ElY2MuywjaLOFlqCzMNqOKvtHnQWHLhtnY/KfwAE3qqPPFmmmmmmmmmmmmnK7KgzxZppjehdp/yFPsdQuFDaji/p7ACAD+u2gtvDsgX///b/CnXxdeCCAC88Rq/EZvxGNy8P//t2wssvD//7d2T4eafEPMufyt8R9dfKz4h08fEsfBY+/iHQAAAAAA',
   wiki:'https://lol.fandom.com/wiki/2026_Season_World_Championship',
   liqui:'https://liquipedia.net/leagueoflegends/World_Championship/2026',
+
+  /* The tab's one connection to the feed, and the reason the boards below are a
+     placeholder rather than a stub. `league` is the API's own league slug for
+     this tournament — `getLeagues` calls it `worlds`, and that id has carried
+     every Worlds since 2011 — and `stage` names the stage drawn as a bracket.
+
+     Which makes the date filter in fetchEventSchedule() load-bearing rather
+     than tidy: unfiltered, this tab opens on last year's final under the
+     heading *Recent Games*. Everything the feed hands back is cut to
+     EVENT.start onwards, so a page with nothing to show shows nothing.
+
+     What is behind it today: Riot has published the tournament and its entire
+     bracket skeleton, every match wired to the ones feeding it, every team TBD
+     — and not one fixture. `getSchedule` for this league still ends at the 2025
+     final and `getEventDetails` on the 2026 match ids returns null. So the
+     bracket panel is real and the three fixture boards are empty, which is
+     exactly what the tournament is: drawn, and not yet scheduled. */
+  feed:{ league:'worlds', stage:'play_ins' },
+  /* Riot has published the stage schedule and the three venues, so the strip
+     carries dates rather than TBD. Source: lolesports.com "MSI and Worlds
+     Updates", which is also where the two-block Swiss and the split between
+     the Texas knockouts and the Brooklyn final come from.
+
+     What is still TBD is everything below stage level: no fixture on this
+     tournament has a kick-off time yet, and the four play-in teams are not
+     known. `when` is a stage window, never a game time — don't let a viewer
+     read it as one. `detail` is the breakdown inside that window where the
+     stage has one, and is optional. */
   stages:[
-    {name:'Play-In',  sub:'4 TEAMS · DOUBLE ELIM · BO5'},
-    {name:'Swiss',    sub:'16 TEAMS · FIVE ROUNDS'},
-    {name:'Knockout', sub:'8 TEAMS · SINGLE ELIM · BO5'},
+    {name:'Play-In',  from:'2026-10-15', to:'2026-10-18', when:'15–18 Oct', venue:'Riot Games Arena · Los Angeles',
+     detail:'Winner joins the Swiss stage', sub:'4 TEAMS · DOUBLE ELIM · BO5'},
+    {name:'Swiss',    from:'2026-10-23', to:'2026-10-31', when:'23–31 Oct', venue:'CU of Texas Event Center · Allen, TX',
+     detail:'23–26 Oct, then 28–31 Oct', sub:'16 TEAMS · FIVE ROUNDS · 3 WINS THROUGH'},
+    /* The one stage played in two buildings: quarters and semis stay in Allen,
+       and the final moves to Brooklyn six days later. `venue` takes a list for
+       exactly this, rather than folding two arenas into one line. */
+    {name:'Knockout', from:'2026-11-03', to:'2026-11-14', when:'3–14 Nov',
+     venue:['CU of Texas Event Center · Allen, TX', 'Final: Barclays Center · Brooklyn, NYC'],
+     detail:'QF 3–6 Nov · SF 7–8 Nov · Final 14 Nov', sub:'8 TEAMS · SINGLE ELIM · BO5'},
   ],
 
   /* Who is already going, and what decides the rest. Riot publishes no
@@ -2616,6 +2675,105 @@ async function fetchLive() {
   liveEvents = data.data.schedule?.events || [];
   liveEventsAt = Date.now();
   return liveEvents;
+}
+
+
+/* -------- the international event: its schedule, and its published bracket ----
+
+   Two calls, both keyed off EVENT.feed, and both allowed to come back with
+   nothing — which is what they do today. Neither an empty schedule nor a
+   bracket of TBDs is an error here: a tournament that has been drawn but not
+   scheduled is a real state, and the panels say which of the two they are in
+   rather than looking broken.
+
+   The schedule lands in scheduleCache under EVENT.slug, beside the four
+   leagues. That is deliberate and is *not* the thing CLAUDE.md warns about:
+   the walks that mean "a league with a season" all iterate Object.keys(REGIONS)
+   and never see this key, while the three sweeps that iterate the cache itself
+   — matchFinished(), the logo harvest and the offline check — all want it. */
+let evtBracket = lsJSON(LS('evtBracket'), null);  // {tid, stage, others:[{name,n}]}
+/* Whether the fetch below has run at all this visit. Without it the panel
+   announces 'Riot has not published a bracket' during the second before the
+   first refresh answers, which is a claim about the tournament made from not
+   having looked. */
+let evtBracketTried = false;
+
+async function fetchEventSchedule() {
+  const id = allLeagues[EVENT.feed?.league];
+  if (!id) return [];
+  const from = Date.parse(EVENT.start);
+  const mine = evs => (evs || []).filter(ev => Date.parse(ev.startTime) >= from);
+  const first = await api('/getSchedule', { leagueId:id });
+  let events = mine(first.data.schedule.events);
+  /* One page of history, but only once there is history to want. The four
+     leagues page back unconditionally because their id is this season's; this
+     one's is every season's, so before the tournament starts a second call
+     fetches last year's knockouts for the filter above to throw away. */
+  const older = first.data.schedule.pages?.older;
+  if (events.length && older) {
+    try {
+      const prev = await api('/getSchedule', { leagueId:id, pageToken: older });
+      events = mine(prev.data.schedule.events).concat(events);
+    } catch(e){}
+  }
+  const seen = new Set();
+  events = events.filter(ev => {
+    const k = (ev.match?.id||'') + ev.startTime;
+    if (seen.has(k)) return false; seen.add(k); return true;
+  });
+  scheduleCache[EVENT.slug] = events;
+  return events;
+}
+
+/* The bracket Riot has already published: getStandingsV3 returns every stage
+   of the tournament with each match wired to the ones feeding it, months
+   before a single team is known. Trimmed to what the panel draws and cached,
+   because the shape of a bracket does not change once it is announced —
+   only who is standing in it. */
+async function fetchEventBracket() {
+  evtBracketTried = true;
+  const lid = allLeagues[EVENT.feed?.league];
+  if (!lid) return null;
+  let tid = evtBracket?.tid;
+  if (!tid) {
+    const data = await api('/getTournamentsForLeague', { leagueId: lid });
+    const ts = data.data.leagues?.[0]?.tournaments || [];
+    /* Matched on overlap, not on a slug spelt by hand and not on being the
+       newest: Riot's own tournament record for Worlds 2026 reads 20 Oct to
+       20 Nov where its announcement reads 15 Oct to 14 Nov, so the two agree
+       on overlapping and on nothing else. Both ends are YYYY-MM-DD, which
+       compares as a string. */
+    tid = ts.find(t => t.startDate <= EVENT.end && t.endDate >= EVENT.start)?.id;
+    if (!tid) return null;
+  }
+  const data = await api('/getStandingsV3', { tournamentId: tid });
+  const stages = data.data.standings?.[0]?.stages || [];
+  const countOf = st => (st.sections||[]).flatMap(s => s.columns||[])
+    .flatMap(c => c.cells||[]).reduce((n, c) => n + (c.matches||[]).length, 0);
+  const pick = stages.find(s => s.slug === EVENT.feed?.stage) || stages[0];
+  if (!pick) return null;
+  evtBracket = {
+    tid,
+    stage:{
+      name: pick.name, slug: pick.slug,
+      cols: (pick.sections||[]).flatMap(sec => sec.columns||[]).map(col => ({
+        cells: (col.cells||[]).map(c => ({
+          name: c.name,
+          matches: (c.matches||[]).map(m => ({
+            sid: m.structuralId, state: m.state, bo: m.strategy?.count || null,
+            teams: (m.teams||[]).map(t => ({
+              name: t.name, win: t.result?.outcome === 'win',
+              gw: t.result?.gameWins ?? null,
+              org: t.origin ? { sid: t.origin.structuralId, type: t.origin.type, slot: t.origin.slot } : null,
+            })),
+          })),
+        })),
+      })),
+    },
+    others: stages.filter(s => s !== pick).map(s => ({ name: s.name, n: countOf(s) })),
+  };
+  lsWrite(LS('evtBracket'), JSON.stringify(evtBracket));
+  return evtBracket;
 }
 
 /* -------- official standings -------- */
@@ -4032,6 +4190,222 @@ function evtQual() {
     </div>`;
 }
 
+
+/* -------- the event tab's fixture boards -----------------------------------
+
+   The same three panels the home board carries, over one tournament instead of
+   four leagues, and drawn by the same helpers: evPhase() decides what a fixture
+   is, liveCard() draws what is on air, and the rows are the four-column .nxt
+   the home board uses — so a real fixture and the TBD placeholder beside it are
+   the same object.
+
+   Every one of them falls back to evtRow() when the feed has nothing, which is
+   the state the tournament is actually in. So the boards show today exactly
+   what they showed before they were wired, and stop being a placeholder the day
+   Riot publishes the draw without anybody editing this file. */
+function evtFixtures() {
+  return (scheduleCache[EVENT.slug] || []).filter(ev => ev.match?.teams?.length === 2);
+}
+
+/* On air now: the live feed's own entries for this league first, then fixtures
+   past their start time that the feed never mentioned — the same two passes
+   liveNowList() makes for the leagues, and for the same reason. Worlds is
+   broadcast in more places than /getLive lists. */
+function evtLiveList() {
+  const lg = EVENT.feed?.league;
+  const out = [], seen = new Set();
+  for (const ev of (liveFeedFresh() ? liveEvents : [])) {
+    if (ev.state !== 'inProgress' || !ev.match) continue;
+    if (matchFinished(ev)) continue;
+    if ((ev.league?.slug || '').toLowerCase() !== lg) continue;
+    out.push({ ev, slug: EVENT.slug, assumed: false });
+    if (ev.match.id) seen.add(ev.match.id);
+  }
+  for (const ev of evtFixtures()) {
+    if (ev.match.id && seen.has(ev.match.id)) continue;
+    if (evPhase(ev, seen) !== 'onair') continue;
+    out.push({ ev, slug: EVENT.slug, assumed: true });
+    if (ev.match.id) seen.add(ev.match.id);
+  }
+  return out.sort((a, b) => new Date(a.ev.startTime) - new Date(b.ev.startTime));
+}
+
+/* A real fixture in the shape evtRow() holds open for it. The region cell keeps
+   the event's own identity rather than a league crest, because every row on
+   this board is the same tournament and a column of identical marks says
+   nothing — the stage is what varies, and it is in the meta cell. */
+function evtFixRow(ev, done) {
+  const t = ev.match.teams, a = t[0] || {}, b = t[1] || {};
+  const w = fmtWhen(ev.startTime);
+  const bo = ev.match?.strategy?.count;
+  const aw = a.result?.gameWins ?? 0, bw = b.result?.gameWins ?? 0;
+  const aWin = a.result?.outcome === 'win', bWin = b.result?.outcome === 'win';
+  const tbc = !aWin && !bWin;
+  const when = done
+    ? `<div class="n-date">${esc(new Date(ev.startTime).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}</div><span class="n-cd">${esc(w.day.split(' ')[0])}</span>`
+    : `<div class="n-time">${esc(w.time)}</div><span class="n-cd">${esc(w.day)}</span><span class="n-cd">${esc(fmtCountdown(ev.startTime))}</span>`;
+  const mid = done
+    ? (tbc ? '<div class="n-sc tbc" title="Result not published yet">–</div>'
+           : `<div class="n-sc"><span class="${aWin?'w':'l'}">${aw}</span><i>–</i><span class="${bWin?'w':'l'}">${bw}</span></div>`)
+    : '<div class="n-vs">VS</div>';
+  const meta = done
+    ? `${tbc ? 'Result pending' : esc(bo ? 'Bo' + bo : '')}${ev.blockName ? '<br>' + esc(ev.blockName) : ''}`
+    : `${esc(bo ? 'Best of ' + bo : '')}${ev.blockName ? '<br>' + esc(ev.blockName) : ''}`;
+  const row = el('div', 'nxt');
+  row.style.setProperty('--rg', 'var(--cyan)');
+  row.innerHTML = `
+      <div class="n-when">${when}</div>
+      <div class="n-rg"><div><span class="nm">${esc(EVENT.name.split(' ')[0].toUpperCase())}</span><span class="sp">${esc(EVENT.name)}</span></div></div>
+      <div class="n-mid">
+        <div class="n-a${done && !aWin && !tbc ? ' lost' : ''}"><span class="n-code" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</span>${crestHTML(a.name,'n-lg')}</div>
+        ${mid}
+        <div class="n-b${done && !bWin && !tbc ? ' lost' : ''}">${crestHTML(b.name,'n-lg')}<span class="n-code" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</span></div>
+      </div>
+      <div class="n-meta">${meta}</div>`;
+  return row;
+}
+
+/* Fills a list panel from `list`, or leaves the TBD placeholder standing when
+   there is nothing — one function because the two panels differ only in which
+   way round they sort and in what they say when empty. */
+function evtFillList(box, sub, list, done, emptyText) {
+  if (!box) return;
+  box.innerHTML = '';
+  if (!list.length) {
+    box.innerHTML = Array.from({length: BOARD_ROWS}, () => evtRow(done ? 'done' : 'up')).join('');
+    if (sub) sub.textContent = emptyText;
+    return;
+  }
+  const shown = list.slice(0, BOARD_ROWS);
+  for (const ev of shown) box.appendChild(evtFixRow(ev, done));
+  padRows(box, shown.length, false);
+  const noun = done ? (list.length === 1 ? 'result' : 'results')
+                    : (list.length === 1 ? 'fixture' : 'fixtures');
+  if (sub) sub.textContent = list.length > BOARD_ROWS
+    ? `showing ${shown.length} of ${list.length} · local time`
+    : `${list.length} ${noun} · local time`;
+}
+
+function renderEventBoard() {
+  const lids = liveMatchIds();
+  const all = evtFixtures();
+
+  /* Live Now. The panel keeps its offline dressing until something is actually
+     on air, which is what stops a tournament that has not started reading as a
+     feed that has fallen over. */
+  const box = $('#evtLive'), panel = $('#evtLivePanel'), title = $('#evtLiveTitle'), count = $('#evtLiveCount');
+  if (box) {
+    const on = evtLiveList();
+    if (!on.length) {
+      if (panel) panel.classList.add('off');
+      if (title) title.textContent = 'Streams Offline';
+      const next = all.filter(ev => evPhase(ev, lids) === 'up')
+        .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
+      if (count) count.textContent = next ? 'next up ' + fmtCountdown(next.startTime) : 'not started';
+      box.dataset.n = '0';
+      box.style.gridTemplateColumns = '1fr';
+      const opens = EVENT.when.split('–')[0].trim() + ' ' + new Date(EVENT.start).getUTCFullYear();
+      const nw = next ? fmtWhen(next.startTime) : null;
+      box.innerHTML = `<div class="lc-off"><span class="off-dot"></span><div>
+        <div class="off-h">${next ? 'Nothing on air' : 'No broadcast yet'}</div>
+        <div class="off-sub">${next
+          ? `Next up <b>${esc(teamsLabel(next))}</b> — ${esc(nw.day)} ${esc(nw.time)}, ${esc(fmtCountdown(next.startTime))}.`
+          : `${esc(EVENT.name)} opens ${esc(opens)}. Live games appear here once it does.`}</div></div></div>`;
+    } else {
+      if (panel) panel.classList.remove('off');
+      if (title) title.textContent = 'Live Now';
+      if (count) count.textContent = on.length + ' broadcast' + (on.length > 1 ? 's' : '');
+      const cols = Math.min(on.length, 4);
+      box.dataset.n = String(cols);
+      box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+      box.innerHTML = '';
+      on.forEach(m => box.appendChild(liveCard(m.ev, cols, m)));
+    }
+  }
+
+  evtFillList($('#evtNext'), $('#evtNextSub'),
+    all.filter(ev => evPhase(ev, lids) === 'up')
+       .sort((a, b) => new Date(a.startTime) - new Date(b.startTime)),
+    false, 'the draw has not been made — fixtures land here when it is');
+
+  evtFillList($('#evtRecent'), $('#evtRecentSub'),
+    all.filter(ev => ['done', 'pending'].includes(evPhase(ev, lids)))
+       .sort((a, b) => new Date(b.startTime) - new Date(a.startTime)),
+    true, 'no games played yet');
+}
+
+/* -------- the published bracket --------------------------------------------
+
+   Riot wires the whole tournament before anybody is in it: every match carries
+   an `origin` naming the match feeding each of its two slots, with slot 1 the
+   winner and slot 2 the loser. Reading those back is what lets a bracket nobody
+   has played say "Loser of Upper Bracket – Final" where it would otherwise
+   be six identical rows of TBD — and the route through is the whole question
+   about a four-team double elimination that sends exactly one team on.
+
+   A slot whose origin is a `decisionPoint` is not wired to a match at all: it
+   is a seeding decision, so it stays TBD rather than inventing a route. */
+function evtRoundName(cell, i) {
+  const nm = String(cell.name || '').replace(/\s*-\s*/g, ' – ');
+  return cell.matches.length > 1 ? `${nm} ${i + 1}` : nm;
+}
+function evtOriginLabel(stage, org) {
+  if (!org || org.type !== 'match') return null;
+  for (const col of stage.cols) for (const c of col.cells)
+    for (let i = 0; i < c.matches.length; i++)
+      if (c.matches[i].sid === org.sid)
+        return (org.slot === 2 ? 'Loser of ' : 'Winner of ') + evtRoundName(c, i);
+  return null;
+}
+
+function renderEventBracket() {
+  const body = $('#evtBracketBody'), sub = $('#evtBracketSub');
+  if (!body) return;
+  const st = evtBracket?.stage;
+  if (!st || !(st.cols || []).length) {
+    body.innerHTML = `<div class="loading">${apiOk === false
+      ? 'API unreachable — the bracket appears once it responds.'
+      : evtBracketTried ? 'Riot has not published a bracket for this tournament yet.'
+      : 'Loading the published bracket…'}</div>`;
+    if (sub) sub.textContent = '';
+    return;
+  }
+  let drawnN = 0, total = 0, inner = '';
+  for (const col of st.cols) {
+    let cell = '<div class="bcell">';
+    for (const c of col.cells) {
+      cell += `<span class="bgroup-label">${esc(String(c.name).replace(/\s*-\s*/g, ' – '))}</span>`;
+      c.matches.forEach(m => {
+        total++;
+        if (m.teams.some(t => t.name && t.name !== 'TBD')) drawnN++;
+        const played = m.teams.some(t => t.win);
+        cell += '<div class="bmatch">' + m.teams.map(t => {
+          const known = !!(t.name && t.name !== 'TBD');
+          const from = known ? null : evtOriginLabel(st, t.org);
+          /* No score box on a match nobody has played. A column of dashes is
+             the panel filling twelve slots with the same non-answer, where
+             leaving them out says the same thing and reads as a bracket. */
+          return `<div class="bslot${t.win ? ' winner' : played ? ' eliminated' : ''}">${
+            known ? logoHTML(t.name) : '<span class="twrap"><span class="tmono only">?</span></span>'
+          }<span class="tname${known ? '' : ' tbd'}" title="${esc(known ? t.name : (from || 'To be decided'))}">${
+            esc(known ? t.name : (from || 'TBD'))}</span>${
+            played ? `<span class="bs">${esc(t.gw ?? 0)}</span>` : ''}</div>`;
+        }).join('') + '</div>';
+      });
+    }
+    inner += cell + '</div>';
+  }
+  /* Titled by the stage the feed returned, not by the constant: the two name
+     the same stage differently (Riot's "Play-Ins", the strip's "Play-In") and
+     only one of them is guaranteed to be the stage actually drawn here. */
+  const ttl = $('#evtBracketTitle');
+  if (ttl) ttl.textContent = st.name + ' Bracket';
+  body.innerHTML = `<div class="bracket evt-bracket" style="grid-template-columns:repeat(${st.cols.length}, minmax(${BCOL_MIN}px,1fr))">${inner}</div>`;
+  const rest = (evtBracket.others || []).filter(o => o.n);
+  if (sub) sub.textContent = (drawnN ? `${drawnN} of ${total} matches drawn` : `${total} matches · no teams drawn yet`)
+    + (rest.length ? ' · then ' + rest.map(o => `${o.name} (${o.n})`).join(', ') : '');
+}
+
 function buildEventPage() {
   const page = $('#page-' + EVENT.slug);
   if (!page) return;                 // no section, no page — check.mjs catches that
@@ -4053,27 +4427,28 @@ function buildEventPage() {
       ${eventMark('evt-hero-mark')}
       <div>
         <div class="sub">${esc(EVENT.full)}</div>
-        <div class="sub" style="color:var(--cyan)">${esc(EVENT.when)} \u00B7 ${esc(EVENT.host)}</div>
+        <div class="sub" style="color:var(--cyan)">${esc(EVENT.when)} · ${esc(EVENT.host)}</div>
         <div class="sub">${esc(EVENT.field)}</div>
       </div>
       <span class="wip-badge">Work in progress</span>
       <div class="links">
-        <a class="btn small" href="${esc(EVENT.wiki)}" target="_blank" rel="noopener">Leaguepedia \u2197</a>
-        <a class="btn small" href="${esc(EVENT.liqui)}" target="_blank" rel="noopener">Liquipedia \u2197</a>
+        <a class="btn small" href="${esc(EVENT.wiki)}" target="_blank" rel="noopener">Leaguepedia ↗</a>
+        <a class="btn small" href="${esc(EVENT.liqui)}" target="_blank" rel="noopener">Liquipedia ↗</a>
       </div>
     </div>
 
     <div class="panel evt-note">
-      <b>This page is a work in progress.</b> The qualification board below is researched and real.
-      Everything under it is the shape the tournament board will take \u2014 what is on air, what is
-      next, what has just been played \u2014 with nothing wired to a feed yet, so every fixture reads
-      TBD. The four league tabs are unaffected.
+      <b>This page is a work in progress.</b> The qualification board, the stage strip and the bracket
+      below are all real — Riot has published the dates, the three venues and the whole tournament
+      wiring. What is missing is the one thing nobody has yet: a schedule. No fixture on this tournament
+      has a kick-off time and the draw has not been made, so the boards read TBD until it is, and then
+      fill themselves. The four league tabs are unaffected.
     </div>
 
-    <div class="panel live-panel off">
-      <div class="p-head"><div class="p-title"><span class="dot-live"></span>Live Now</div>
-        <span class="p-sub">TBD</span></div>
-      <div class="live-grid" data-n="0">
+    <div class="panel live-panel off" id="evtLivePanel">
+      <div class="p-head"><div class="p-title"><span class="dot-live"></span><span id="evtLiveTitle">Live Now</span></div>
+        <span class="p-sub" id="evtLiveCount">not started</span></div>
+      <div class="live-grid" id="evtLive" data-n="0">
         <div class="lc-off"><span class="off-dot"></span><div>
           <div class="off-h">No broadcast yet</div>
           <div class="off-sub">${esc(EVENT.name)} opens ${esc(opens)}. Live games appear here once it does.</div>
@@ -4088,7 +4463,11 @@ function buildEventPage() {
     <div class="ov-regions evt-stages">
       ${EVENT.stages.map(st => `<div class="ov-rg tbd">
         <div class="top">${esc(st.name)}</div>
-        <div class="n">TBD</div>
+        <div class="st-mid">
+          <div class="n${st.when ? ' set' : ''}">${esc(st.when || 'TBD')}</div>
+          ${[].concat(st.venue || []).map(v => `<div class="st-where">${esc(v)}</div>`).join('')}
+          ${st.detail ? `<div class="st-when">${esc(st.detail)}</div>` : ''}
+        </div>
         <div class="lbl">${esc(st.sub)}</div>
       </div>`).join('')}
     </div>
@@ -4106,19 +4485,31 @@ function buildEventPage() {
       </div>
     </div>
 
+    <!-- The bracket Riot has already wired, drawn from the feed rather than
+         from a constant: renderEventBracket() fills it, and it is the one panel
+         on this tab that will look the same the day before the tournament and
+         the day after, because a bracket is announced long before it is
+         played. -->
+    <div class="panel evt-brk">
+      <div class="p-head"><div class="p-title" id="evtBracketTitle">${esc(evtBracket?.stage?.name || EVENT.stages[0]?.name || 'Bracket')} Bracket</div>
+        <span class="p-sub" id="evtBracketSub"></span></div>
+      <div class="p-sub sub-line">published by Riot — every slot names the match that fills it</div>
+      <div id="evtBracketBody"><div class="loading">Loading the published bracket…</div></div>
+    </div>
+
     <div class="duo">
       <div class="panel">
         <div class="p-head"><div class="p-title">Next Up</div>
           <span class="p-sub">${esc(EVENT.name)}</span></div>
-        <div class="p-sub sub-line">the draw has not been made \u2014 fixtures land here when it is</div>
-        <div class="nxt-list">${rows('up')}</div>
+        <div class="p-sub sub-line" id="evtNextSub">the draw has not been made — fixtures land here when it is</div>
+        <div class="nxt-list" id="evtNext">${rows('up')}</div>
       </div>
 
       <div class="panel">
         <div class="p-head"><div class="p-title">Recent Games</div>
           <span class="p-sub">${esc(EVENT.name)}</span></div>
-        <div class="p-sub sub-line">no games played yet</div>
-        <div class="nxt-list">${rows('done')}</div>
+        <div class="p-sub sub-line" id="evtRecentSub">no games played yet</div>
+        <div class="nxt-list" id="evtRecent">${rows('done')}</div>
       </div>
     </div>`;
 }
@@ -6805,6 +7196,12 @@ async function refreshAll(deep=true) {
     if (deep) {
       const got = await Promise.allSettled(Object.keys(REGIONS).map(fetchSchedule));
       if (got.every(r => r.status === 'rejected')) throw got[0].reason;
+      /* The event tab's two calls, and settled rather than awaited: a
+         tournament this page merely previews must never be able to take the
+         four leagues down with it. Both are cheap — the schedule is one request
+         that returns nothing until the draw, and the bracket is two the first
+         time and one after that, the tournament id being cached. */
+      await Promise.allSettled([fetchEventSchedule(), fetchEventBracket()]);
     }
     await fetchLive();
     if (deep) await fetchAllTeams();
@@ -6841,6 +7238,10 @@ async function refreshAll(deep=true) {
   renderHome();
   renderTicker();
   renderRanks();
+  /* Drawn after the leagues and outside their loop: this tab is one
+     tournament, not a fifth region, and a throw in either of these must not
+     cost the home board its render. */
+  try { renderEventBoard(); renderEventBracket(); } catch (e) { console.error('event board failed', e); }
   // a refresh that failed must not stamp the clock as though the board were
   // current — that is what let an hour-old game sit there looking live
   $('#lastRefresh').textContent = ok ? 'updated ' + fmtHM(Date.now())
@@ -6851,6 +7252,10 @@ $('#refreshBtn').addEventListener('click', () => refreshAll(true));
 /* boot */
 for (const slug of Object.keys(REGIONS)) buildRegionPage(slug);
 buildEventPage();
+/* A cached bracket paints before the first request goes out — the shape of a
+   bracket does not change once it is announced, so there is nothing to wait for. */
+renderEventBoard();
+renderEventBracket();
 renderLeagueChrome();
 renderHome();
 renderTicker();

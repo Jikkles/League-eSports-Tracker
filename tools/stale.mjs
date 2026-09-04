@@ -135,11 +135,19 @@ if (EVENT) {
     stale('EVENT', `${EVENT.name} finished ${days} day${days === 1 ? '' : 's'} ago (${EVENT.end}).`,
           'Roll the EVENT constant on to the next international event — and with it the nav button\'s data-tab and the section id, which check.mjs holds to the slug.');
   } else if (!Number.isNaN(starts) && NOW > starts) {
-    note('EVENT', `${EVENT.name} is under way (${EVENT.when}) and its page is still the TBD placeholder.`,
+    /* Naming the stage makes the note actionable rather than a standing
+       complaint: "Swiss, and the page still says TBD" points at the window a
+       reader can check, where "under way" only repeats what EVENT.when says.
+       check.mjs has already held these dates to the event around them, so the
+       stage named here is the one the strip is drawing. */
+    const on = (EVENT.stages || []).find(st => st.from && st.to
+      && NOW >= Date.parse(st.from) && NOW <= Date.parse(st.to) + 86400e3);
+    note('EVENT', `${EVENT.name} is under way (${EVENT.when})${on ? ` — ${on.name} stage, ${on.when}` : ''} and its page is still the TBD placeholder.`,
          'Wire the page to the feed, or say on it that the results live on the league tabs.');
   } else {
     const days = Math.ceil((starts - NOW) / 86400e3);
-    fine('EVENT', `${EVENT.name} is ${days} day${days === 1 ? '' : 's'} away`);
+    const next = (EVENT.stages || []).find(st => st.from);
+    fine('EVENT', `${EVENT.name} is ${days} day${days === 1 ? '' : 's'} away${next ? ` (${next.name} ${next.when})` : ''}`);
   }
 }
 

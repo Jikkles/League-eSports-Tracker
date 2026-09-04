@@ -288,21 +288,101 @@ region page reads the played bracket back out of the feed.
 A sixth item leads the nav's tabs, fenced off by a rule on either side: one tab
 for the next major the four leagues feed into (right now Worlds 2026), sitting
 between the All chip and the leagues because it is the season's main event
-rather than a fifth league. It is driven by the `EVENT`
-constant and nothing else — there is no feed behind it yet. Above the fold it
+rather than a fifth league. It is driven by the `EVENT` constant and, through
+`EVENT.feed`, by two calls the four leagues never make. Above the fold it
 carries Live Now and then a real qualification board (see `EVENT.qual` below),
 in that order, because what is on air outranks what is still to be decided; the
 board shares its row with the power rankings and the stage strip sits under it,
 taking whatever height is left over — the rankings are a tall column, and the
 left of the row otherwise stopped halfway up it and left a hole above the
 fixtures. The column stretches rather than starting, the board keeps its
-natural size, and the three stage cards grow into the difference.
-Under those it is still a deliberate placeholder: the home board's shape (Live Now, Next Up,
-Recent Games), a *Work in progress* badge saying so, and TBD wherever a time, a
-team or a result will go. Nothing on it is invented; the dates, host, field,
-stage structure and qualification routes come from Leaguepedia's tournament page
-and are linked from the hero.
+natural size, and the three stage cards grow into the difference. Under the
+strip comes the published bracket, and under that Next Up and Recent Games.
 
+**Everything on the tab is now real except the fixtures, and that is the
+tournament's own state rather than the page's.** The qualification board, the
+stage windows and the whole bracket wiring are facts. What nobody has is a
+schedule: no fixture on this tournament carries a kick-off time and the draw
+has not been made, so the three fixture boards keep the `evtRow()` placeholder
+— TBD wherever a time, a team or a result will go — and swap themselves for
+real rows the day Riot publishes one, with no edit to this file. The *Work in
+progress* badge says which half is which. Nothing on the tab is invented: the
+host, field and qualification routes come from Leaguepedia's tournament page,
+linked from the hero; the stage windows and venues from Riot's own *MSI and
+Worlds Updates* post on lolesports.com; and the bracket from the API.
+
+- **`EVENT.stages` carries Riot's published stage schedule, and it is the second
+  thing on the tab with facts on it.** Riot announced the windows and the three
+  venues long before any fixture had a kick-off time, so the strip prints dates
+  where it used to print TBD. Each stage takes `when` (the string a viewer
+  reads), `from`/`to` (the same window as ISO dates, so a machine can hold it),
+  `venue` — a string, or a **list** for the one stage played in two buildings:
+  the quarters and semis stay in Allen and the final moves to Brooklyn six days
+  later, which is a fact a single line has to fudge — `detail` for the breakdown
+  inside the window, and `sub` for the format. `when` and the ISO pair are the
+  same window written twice on purpose: without the pair nothing could check the
+  string, so `check.mjs` refuses a `when` that has no `from`/`to`, and then holds
+  the window inside `EVENT.start`/`end`, forbids one that runs backwards, and
+  requires the strip to be in playing order. `stale.mjs` reads the pair to name
+  the stage that should be on air, which turns "under way and still a
+  placeholder" into a note pointing at a window a reader can check.
+  **A stage window is not a game time.** Per-match times do not exist yet — the
+  feed carries none, see `EVENT.feed` below — and nothing on this tab should let
+  a viewer read one off the strip.
+- **`EVENT.feed` is the tab's whole connection to the API**, and it is two
+  fields: `league`, the API's own league slug for the tournament (`worlds` — an
+  id that has carried every Worlds since 2011), and `stage`, the slug of the
+  stage drawn as a bracket. Everything else follows from those.
+  - **`fetchEventSchedule()` filters to `EVENT.start` onwards, and that filter
+    is load-bearing.** Because the league id spans every season, an unfiltered
+    fetch opens the tab on last year's final under the heading *Recent Games*.
+    It also pages back for history *only once there is history to want* — the
+    four leagues page back unconditionally, but here a second call before the
+    tournament starts fetches 2025 for the filter to throw away.
+  - **The schedule caches under `EVENT.slug`, alongside the four leagues, and
+    that is deliberate.** It is not the thing the `REGIONS` rule above warns
+    about: the walks that mean "a league with a season" all iterate
+    `Object.keys(REGIONS)` and never see this key, while the three sweeps that
+    iterate the cache itself — `matchFinished()`, the logo harvest and the
+    offline check — all want it. The logo harvest is why a Worlds team's crest
+    appears at all, given the page fetches four leagues and this tournament
+    draws on nineteen teams from six. `check.mjs` refuses an `EVENT.slug` that
+    is also a `REGIONS` key, because that collision would overwrite a real
+    league's schedule with the tournament's.
+  - **`fetchEventBracket()` finds its tournament by date overlap**, not by a
+    slug spelt by hand and not by taking the newest. Riot's own tournament
+    record for Worlds 2026 reads 20 Oct – 20 Nov where its announcement reads
+    15 Oct – 14 Nov, so the two agree on overlapping and on nothing else. The
+    id is cached once found; a bracket's shape does not change after it is
+    announced.
+  - **Both calls are `allSettled` inside the deep refresh.** A tournament this
+    page merely previews must never be able to take the four leagues down.
+- **The bracket panel is drawn from the feed, and its trick is `origin`.** Riot
+  wires the whole tournament before anybody is in it: every match slot carries
+  an `origin` naming the match that feeds it, with slot 1 the winner and slot 2
+  the loser. `evtOriginLabel()` reads those back, so a bracket nobody has
+  played says *Loser of Upper Bracket – Final* where it would otherwise be
+  twelve identical rows of TBD — and for a four-team double elimination that
+  sends exactly one team on, the route through it is the only question there
+  is. A slot whose origin is a `decisionPoint` is a seeding decision rather
+  than a match, so it stays TBD: reading Riot's slot numbers as seeds would be
+  inventing a draw. Route labels are set in mono and smaller than a team name,
+  which is the one thing the panel must not let a viewer confuse. No score box
+  is drawn on a match nobody has played.
+- **What checks it.** `check.mjs` holds `EVENT.feed.league` to a lower-case
+  slug (the page matches league slugs in lower case, so a capital renders an
+  empty tab and says nothing). `api-canary.mjs` walks both calls — reading
+  `EVENT.feed` out of `index.html` rather than spelling it again, so a rollover
+  cannot leave a canary guarding last year's league — and fails if the league
+  vanishes, if the named stage goes, or if no slot carries a match `origin`,
+  which is the failure that would silently turn the panel back into a wall of
+  TBD. It treats *no fixtures yet* as normal, because it is. `smoke.mjs` reads
+  the drawn bracket back and fails on a slot that named neither a team nor a
+  route, and reads the three fixture boards back for the middle state that an
+  exception halfway through `evtFillList()` would leave — rows that are neither
+  fixtures nor placeholders. A bracket Riot has not published is **reported,
+  not failed**: whether one exists is a data question, and this repo answers
+  those in `stale.mjs`.
 - **`EVENT` is not a `REGIONS` entry, on purpose.** Every `Object.keys(REGIONS)`
   walk on this page — the home board, the refresh loop, the standings, the race,
   the simulators — means "a league with a season", and a fifth key would have to
@@ -384,11 +464,13 @@ and are linked from the hero.
   fills is the rulebook's business, not the feed's, so nothing is written for
   you. Findings carry this as an optional `evidence` array, rendered `<br>`-joined
   in the issue because a newline inside a table cell ends the row.
-- **`stale.mjs` is what notices the tab has gone off.** Nothing on the page is
-  fetched, so nothing about it can break loudly: once the event it names has been
-  played, the tab advertises a finished tournament with TBD in every row while
-  every other check stays green. It reports STALE past `EVENT.end` and NOTE once
-  the event is under way and the page is still the placeholder.
+- **`stale.mjs` is what notices the tab has gone off.** The parts of it that are
+  fetched can break loudly; the constant behind it cannot. Once the event
+  `EVENT` names has been played, the tab advertises a finished tournament — with
+  a bracket that will happily go on rendering the last one — while every other
+  check stays green. It reports STALE past `EVENT.end`, and NOTE once the event
+  is under way and the fixture boards are still the placeholder, naming the
+  stage whose window we are inside so the note points at something checkable.
 - **The mark is the event's own wordmark, inlined.** `EVENT.logo` is a data:
   URI — Riot's 2026 wordmark recoloured white for the black canvas, scaled to
   twice the size it is ever drawn at, WebP, about 8 KB of the file budget. It

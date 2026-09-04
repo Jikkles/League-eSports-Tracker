@@ -439,7 +439,8 @@ if (m && !fails.length) {
       if (EVENT.slug) {
         if (REGIONS && REGIONS[EVENT.slug])
           fail(`EVENT.slug is "${EVENT.slug}", which is also a REGIONS key.`,
-               `The event tab and the region page would fight over #page-${EVENT.slug}.`);
+               `The event tab and the region page would fight over #page-${EVENT.slug}, and fetchEventSchedule() `
+               + `caches under that slug — so the tournament's fixtures would also overwrite that league's schedule.`);
         if (!new RegExp(`data-tab=["']${EVENT.slug}["']`).test(html))
           fail(`No nav tab carries data-tab="${EVENT.slug}".`,
                'switchTab() matches the button to the section by that name; without it the tab does not exist.');
@@ -462,12 +463,60 @@ if (m && !fails.length) {
       if (EVENT.logo && !/^(https:\/\/|data:image\/[a-z+]+;base64,)/.test(EVENT.logo))
         fail(`EVENT.logo is neither an https URL nor an inline data:image URI: ${EVENT.logo.slice(0, 60)}…`);
 
+      /* The stage strip carries Riot's published dates, and `when` is the string
+         a viewer reads while `from`/`to` are the same window in a form a machine
+         can hold — which is the only reason to write the window down twice. The
+         pair is what stale.mjs reads to name the stage that should be on air, so
+         a stage window running backwards, or sitting outside the tournament it
+         belongs to, is a typo that would otherwise surface as the strip quietly
+         naming the wrong stage months later. Both are optional: a stage Riot has
+         not dated yet still renders, it just reads TBD. */
       if (EVENT.stages !== undefined) {
         if (!Array.isArray(EVENT.stages) || !EVENT.stages.length) fail('EVENT.stages is not a non-empty array.');
-        else EVENT.stages.forEach((st, i) => {
-          if (!st.name) fail(`EVENT.stages[${i}] has no name.`);
-          if (!st.sub) fail(`EVENT.stages[${i}] (${st.name}) has no sub.`);
-        });
+        else {
+          const ISO = /^\d{4}-\d{2}-\d{2}$/;
+          let prevTo = null;
+          EVENT.stages.forEach((st, i) => {
+            const at = `EVENT.stages[${i}] (${st.name || '?'})`;
+            if (!st.name) fail(`EVENT.stages[${i}] has no name.`);
+            if (!st.sub) fail(`${at} has no sub.`);
+            /* A date a viewer can read but no check can: the strip would go on
+               printing a window nothing holds to the tournament around it. */
+            if (st.when && !(st.from && st.to))
+              fail(`${at} prints a date ("${st.when}") but carries no from/to, so nothing can check it.`);
+            if (!st.from && !st.to) return;
+            for (const k of ['from', 'to'])
+              if (!ISO.test(String(st[k] || ''))) fail(`${at} has ${k}:"${st[k]}", which is not a YYYY-MM-DD date.`);
+            if (st.from > st.to) fail(`${at} runs backwards: from ${st.from} to ${st.to}.`);
+            if (EVENT.start && st.from < EVENT.start)
+              fail(`${at} starts ${st.from}, before the event itself (${EVENT.start}).`);
+            if (EVENT.end && st.to > EVENT.end)
+              fail(`${at} ends ${st.to}, after the event itself (${EVENT.end}).`);
+            if (prevTo && st.from < prevTo)
+              fail(`${at} starts ${st.from}, before the stage above it ends (${prevTo}) — the strip is in playing order.`);
+            prevTo = st.to;
+          });
+        }
+      }
+
+      /* -- EVENT.feed: the tab's connection to the API --------------------- */
+      /* A misspelt `league` is invisible from the page. It produces an event
+         tab with empty boards — which is exactly what the tab looks like
+         today, before the draw — so nothing on screen would ever say the
+         wiring was wrong, and nothing would say so when the draw landed
+         either. (The slug collision that would put the tournament's fixtures
+         into a league's cache is caught above, with EVENT.slug.) */
+      if (EVENT.feed !== undefined) {
+        const f = EVENT.feed;
+        if (!f || typeof f !== 'object') fail('EVENT.feed is not an object.');
+        else {
+          if (!f.league || typeof f.league !== 'string')
+            fail('EVENT.feed.league is missing — it is the API league slug the tab fetches.');
+          else if (f.league !== f.league.toLowerCase())
+            fail(`EVENT.feed.league ("${f.league}") is not lower case; the page matches league slugs in lower case.`);
+          if (f.stage !== undefined && (typeof f.stage !== 'string' || !f.stage))
+            fail('EVENT.feed.stage is present but not a non-empty string.');
+        }
       }
 
       /* -- EVENT.qual: the qualification board ---------------------------- */
