@@ -407,6 +407,12 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .honour .date{font-family:var(--mono);font-size:11px;color:var(--faint);padding-top:2px}
 .honour .ev{font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:-.1px}
 .honour .ev .champ{color:var(--cyan)}
+/* the champion's crest, inline ahead of its name — same badge the home board
+   draws, sized down to sit on the title line rather than start a column */
+.honour .ev .hcr{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center;
+  overflow:hidden;flex:none;vertical-align:-4px;margin-right:6px}
+.honour .ev .hcr img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.honour .ev .hcr .ini{font-size:8px;letter-spacing:.2px}
 .honour .detail{font-size:12px;color:var(--dim);margin-top:1px}
 .honour.upcoming .ev{color:var(--dim)}
 .honour.upcoming .ev .champ{color:var(--teal)}
@@ -950,6 +956,9 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .sl:last-of-type{margin-bottom:0}
 .sl .h{display:flex;align-items:center;gap:9px;font-family:var(--body);font-weight:800;font-size:13px;letter-spacing:.9px;text-transform:uppercase}
 .sl .h .ic{font-size:15px;line-height:1}
+.sl .h .ic.crest{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex:none;overflow:hidden;margin:-2px 0}
+.sl .h .ic.crest img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.sl .h .ic.crest .ini{font-size:8px;letter-spacing:.2px}
 .sl .stat{font-family:var(--disp);font-weight:800;font-size:25px;letter-spacing:-.5px;color:var(--cyan);margin-top:7px;line-height:1}
 .sl .stat small{font-family:var(--body);font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text);margin-left:7px}
 .sl .sub{font-size:12.5px;color:var(--dim);margin-top:6px;line-height:1.55}
@@ -1835,17 +1844,22 @@ const HONOURS = [
 ];
 
 /* headline · big number · supporting line — same verified facts as before,
-   restructured so the home board can show them as stat cards */
+   restructured so the home board can show them as stat cards.
+
+   `team` / `lg` name what the card is about and become its mark: that side's
+   crest, or the league's where the story belongs to a region rather than to
+   one team. `icon` stays the fallback for a card that is about neither —
+   Worlds is a tournament, and no crest on this page stands for it. */
 const STORYLINES = [
-  {icon:'🔥', title:'The Golden Road that wasn\'t', stat:'3–2', statLbl:'MSI final',
+  {icon:'🔥', team:'Bilibili Gaming', title:'The Golden Road that wasn\'t', stat:'3–2', statLbl:'MSI final',
    sub:'BLG won First Stand, both LPL splits and ran the MSI upper bracket — then HLE beat them twice in a week, closing it off a Kanavi Baron steal.'},
-  {icon:'📈', title:'HLE\'s rebuild paid off', stat:'1st', statLbl:'international title',
+  {icon:'📈', team:'Hanwha Life Esports', title:'HLE\'s rebuild paid off', stat:'1st', statLbl:'international title',
    sub:'Last in the LCK Cup, then restructured around Zeus, Gumayusi, Kanavi and Zeka. Zeus is the second player ever after Faker with both Worlds and MSI Finals MVP.'},
-  {icon:'🇰🇷', title:'DN SOOPers crash the KeSPA Cup', stat:'3–0', statLbl:'KeSPA Cup final',
+  {icon:'🇰🇷', team:'DN SOOPers', title:'DN SOOPers crash the KeSPA Cup', stat:'3–0', statLbl:'KeSPA Cup final',
    sub:'A Rise Group side took the last Stage 2 seat, then swept the ladder — Hanwha Life 3–0, T1 3–1, NONGSHIM RED FORCE 3–0 — for the org\'s first KeSPA Cup. DuDu took finals MVP.'},
-  {icon:'🏆', title:'Europe is back in finals', stat:'2', statLbl:'international finals',
+  {icon:'🏆', lg:'lec', title:'Europe is back in finals', stat:'2', statLbl:'international finals',
    sub:'G2 reached the First Stand final (beating Gen.G en route) and Karmine Corp the EWC final. Neither closed, but two LEC finalists in one year.'},
-  {icon:'⚡', title:'Karmine Corp still hunting a trophy', stat:'9–0', statLbl:'LEC Summer',
+  {icon:'⚡', team:'Karmine Corp', title:'Karmine Corp still hunting a trophy', stat:'9–0', statLbl:'LEC Summer',
    sub:'Beaten in the Versus final, the Spring final and the EWC final inside one year. They swept the Summer regular season 9–0 (18–2 in games), two matches clear of Vitality, and go into playoffs as the top seed.'},
   {icon:'🗽', title:'Road to NYC', stat:'14 Nov', statLbl:'Worlds final',
    sub:'Worlds comes to North America with the final at Barclays Center. The LEC, LCK and LCS each send their summer top three; T1 defend a three-peat.'}
@@ -3651,11 +3665,25 @@ function renderRecent() {
 }
 
 /* -------- storylines + honours panels -------- */
+/* A card's mark: the crest of the team or the league it is about, and only
+   the emoji where it is about neither. The league one carries `data-lg` as
+   well as being drawn here, because `renderLeagueChrome()` sweeps those on
+   every logo fetch — on a first visit the crests land after this panel is
+   first built, and the attribute is what lets them arrive without waiting for
+   the next full refresh. */
+function storyMark(s) {
+  if (s.team) return `<span class="ic crest" title="${esc(s.team)}">${crestInner(s.team, s.team)}</span>`;
+  if (s.lg) {
+    const label = (REGIONS[s.lg]?.name || s.lg).toUpperCase();
+    return `<span class="ic crest" data-lg="${esc(s.lg)}" data-lgn="${esc(label)}" title="${esc(label)}">${leagueLogoHTML(s.lg, label)}</span>`;
+  }
+  return `<span class="ic">${s.icon}</span>`;
+}
 function renderStorylines() {
   const box = $('#storylines'); if (!box) return;
   const list = storiesExpanded ? STORYLINES : STORYLINES.slice(0,3);
   box.innerHTML = list.map(s => `<div class="sl">
-      <div class="h"><span class="ic">${s.icon}</span>${esc(s.title)}</div>
+      <div class="h">${storyMark(s)}${esc(s.title)}</div>
       <div class="stat">${esc(s.stat)}<small>${esc(s.statLbl)}</small></div>
       <div class="sub">${esc(s.sub)}</div>
     </div>`).join('');
@@ -3818,13 +3846,14 @@ function buildRegionPage(slug) {
     <div id="simChamp-${slug}"></div>`;
   page.appendChild(sim);
 
-  // region honours 2026
+  // region honours 2026 — the rows go in their own box, because the champions
+  // now carry crests and the logo cache is empty at boot: the panel is redrawn
+  // by renderRegionHonours() on every refresh, once the badges have arrived
   const hon = el('div','panel rg'); hon.style.setProperty('--rg', R.color);
-  const items = HONOURS.filter(h => regionHonourFilter(slug, h));
   hon.innerHTML = `<div class="p-head"><div class="p-title">${R.name} · 2026 So Far</div></div>` +
-    (items.length ? items.map(h => honourHTML(h)).join('') : '<div class="loading">—</div>');
+    `<div id="honours-${slug}"></div>`;
   page.appendChild(hon);
-  wireHonours(hon);
+  renderRegionHonours(slug);
 
   renderWatch(slug, null);
   initSim(slug);
@@ -4094,6 +4123,18 @@ function buildEventPage() {
     </div>`;
 }
 
+/* The region page's own honours board. Built at boot and redrawn on every
+   refresh for the same reason the home board's is: a champion's crest comes
+   from the logo cache, which the fixtures fill after this page already exists.
+   Drawn once, every team the qualification board did not happen to seed would
+   sit on its initials for the life of the visit. */
+function renderRegionHonours(slug) {
+  const box = $('#honours-' + slug); if (!box) return;
+  const items = HONOURS.filter(h => regionHonourFilter(slug, h));
+  box.innerHTML = items.length ? items.map(h => honourHTML(h)).join('') : '<div class="loading">—</div>';
+  wireHonours(box);
+}
+
 function regionHonourFilter(slug, h) {
   const pod = (h.d?.podium || []).map(x => x[0]).join(' ');
   const s = (h.ev + ' ' + h.champ + ' ' + h.detail + ' ' + pod).toLowerCase();
@@ -4106,9 +4147,14 @@ function regionHonourFilter(slug, h) {
 
 function honourHTML(h) {
   const idx = HONOURS.indexOf(h);
+  /* Same test the home board's row uses: a champion is only a team once the
+     event is done and named one. Worlds' `North America` is a host, not a
+     side, and would otherwise be badged `NA` as though it had won something. */
+  const isTeam = h.done && h.champ && h.champ !== 'In progress';
+  const crest = isTeam ? crestHTML(h.champ, 'hcr') : '';
   return `<div class="honour${h.done?'':' upcoming'}${h.d?' linked':''}" data-hidx="${idx}" ${h.d?'role="button" tabindex="0" title="Open tournament details"':''}>
     <div class="date">${esc(h.date)}</div>
-    <div><div class="ev">${esc(h.ev)} — <span class="champ">${esc(h.champ)}</span></div>
+    <div><div class="ev">${esc(h.ev)} — ${crest}<span class="champ">${esc(h.champ)}</span></div>
     <div class="detail">${esc(h.detail)}</div></div></div>`;
 }
 function wireHonours(container) {
@@ -6789,6 +6835,7 @@ async function refreshAll(deep=true) {
       renderWatch(slug, findLiveFor(slug));
       renderSim(slug);
       renderRace(slug);
+      renderRegionHonours(slug);
     } catch (e) { console.error('render failed for ' + slug, e); }
   }
   renderHome();
