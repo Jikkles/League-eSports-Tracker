@@ -941,6 +941,30 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .n-sc.tbc{color:var(--faint)}
 .nxt .n-a.lost .n-code,.nxt .n-b.lost .n-code{color:var(--faint)}
 .nxt .n-a.lost .n-lg,.nxt .n-b.lost .n-lg{opacity:.6}
+/* ---- the spoiler guard ---------------------------------------------------
+   The score is always in the markup; the row decides whether it is painted.
+   `visibility` rather than `display` so the cell keeps its exact box and the
+   row never moves when it is revealed — and because it takes the number out
+   of the accessibility tree too, which `opacity` would not.
+
+   Three things give a result away, not one: the number, the winner's green
+   and the loser's dimmed crest. All three are suppressed together, or the
+   guard tells you who won while pretending not to. */
+.n-sc{position:relative}
+.sp-btn{display:none}
+.nxt.spoil .n-sc > span,.nxt.spoil .n-sc > i{visibility:hidden}
+.nxt.spoil .n-a.lost .n-code,.nxt.spoil .n-b.lost .n-code{color:var(--text)}
+.nxt.spoil .n-a.lost .n-lg,.nxt.spoil .n-b.lost .n-lg{opacity:1}
+.nxt.spoil .sp-btn{display:inline-flex;position:absolute;inset:-4px -2px;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1.2px;color:var(--faint);
+  background:var(--panel2);border:1px dashed var(--line2);border-radius:3px;cursor:pointer;padding:0}
+.nxt.spoil .sp-btn:hover{color:var(--cyan);border-color:var(--cyan);border-style:solid}
+.nxt.spoil .sp-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+/* the panel switch reads as pressed while the guard is on, which is the state
+   a viewer needs to recognise without reading the label */
+.mini.spoil-toggle{color:var(--cyan)}
+.mini.spoil-toggle.on{color:var(--faint)}
+@media (max-width:640px){.nxt.spoil .sp-btn{font-size:8px;letter-spacing:.8px}}
 
 /* ---- three-column band ---- */
 .tri{display:grid;grid-template-columns:1.15fr 1fr 1.2fr;gap:14px;align-items:start}
@@ -1078,6 +1102,10 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
   .modal-close{width:44px;height:44px;font-size:18px}
   .vod-btn{padding:9px 14px}
   .sim-toolbar select,.pool-add input,.pool-add .btn{min-height:44px}
+  /* the reveal button is the only way past the spoiler guard, and at the score
+     cell's own height it was a 24px target. It is absolutely positioned, so
+     growing it costs the row nothing. */
+  .nxt.spoil .sp-btn{inset:-9px -4px}
   /* the race panel's whole instruction is "click a side to lock it", so these
      are the controls the panel exists for — they were 28px tall */
   .rfx-pick{padding:10px 8px;min-height:42px}
@@ -1320,7 +1348,7 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
             <button class="rgf" data-r="lpl" title="LPL"><span class="lgw" data-lg="lpl"></span></button>
             <button class="rgf" data-r="lcs" title="LCS"><span class="lgw" data-lg="lcs"></span></button>
           </div>
-          <div class="right"><button class="mini" id="recentMore">View all results ›</button></div></div>
+          <div class="right"><button class="mini spoil-toggle"></button><button class="mini" id="recentMore">View all results ›</button></div></div>
         <div class="p-sub sub-line" id="recentSub">all regions · latest results</div>
         <div class="nxt-list" id="recentStrip"><div class="loading">Loading results…</div></div>
       </div>
@@ -3763,6 +3791,95 @@ function renderAgenda() {
   padRows(box, list.length, nextExpanded);
 }
 
+
+/* -------- the spoiler guard on the results boards --------------------------
+
+   Somebody who opens this page to check when their team plays next should not
+   have last night's result thrown at them on the way past. So the Recent Games
+   boards draw the fixture in full — the date, both crests, both team codes, the
+   round — and withhold only the score, behind a click.
+
+   Two pieces of state, and they mean deliberately different things. `spoilFree`
+   is the viewer's standing preference and persists, so anyone who does not want
+   this turns it off once. `spoilShown` is the handful of rows they have opened
+   in this visit and does NOT persist: coming back to the page later should hide
+   them again, which is the whole point of the feature.
+
+   Hiding the number alone would not be enough. A finished row also dims the
+   loser's crest and code and colours the winner's score green, either of which
+   answers the question the hidden number was protecting — so the row carries a
+   `spoil` class that suppresses all three, and revealing is one class removal
+   rather than a re-render. That matters because these boards are rebuilt every
+   sixty seconds; a reveal implemented as a re-render would fight the refresh,
+   and one implemented as a DOM edit would be undone by it. This is neither:
+   `spoilShown` is the record, and each rebuild reads it back. */
+let spoilFree = lsJSON(LS('spoilerFree'), true);
+const spoilShown = new Set();
+
+function spoilHidden(ev) {
+  if (!spoilFree) return false;
+  const id = ev.match?.id;
+  return !id || !spoilShown.has(id);
+}
+
+/* The score cell every finished row uses, on the home board and on the event
+   tab. The real score is always in the markup and the row's class decides
+   whether it is painted — the reveal button sits on top of it, in the same
+   box, so a row never changes height or width when it is opened. */
+function scoreCellHTML(ev, aw, bw, aWin, bWin, tbc) {
+  if (tbc) return '<div class="n-sc tbc" title="Result not published yet">–</div>';
+  const btn = spoilFree
+    ? `<button class="sp-btn" data-spoil="${esc(ev.match?.id || '')}"
+         title="Score hidden — click to reveal" aria-label="Reveal the score">SHOW</button>`
+    : '';
+  return `<div class="n-sc"><span class="${aWin ? 'w' : 'l'}">${aw}</span><i>–</i><span class="${bWin ? 'w' : 'l'}">${bw}</span>${btn}</div>`;
+}
+
+/* One delegated listener rather than a handler per row: both boards replace
+   their whole contents every refresh, and the rows are built in two different
+   functions.
+
+   In the CAPTURE phase, and that is the whole trick. The home board's rows
+   carry their own click handler that expands the series into game-by-game
+   boards — which would hand over, one game at a time, exactly the result the
+   click was asking to see. A bubble-phase listener on document runs after that
+   handler has already fired, so stopping propagation there stops nothing.
+   Capture runs document-downwards and gets in first. */
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.sp-btn');
+  if (!btn) return;
+  e.stopPropagation();
+  e.preventDefault();
+  if (btn.dataset.spoil) spoilShown.add(btn.dataset.spoil);
+  const row = btn.closest('.nxt');
+  if (row) row.classList.remove('spoil');
+}, true);
+
+/* The panel-level switch, drawn wherever a results board wants one. Turning
+   the guard off reveals everything at once and is remembered; turning it back
+   on forgets which rows had been opened, because a guard that stays open on
+   the twelve results you already looked at is not a guard. */
+function syncSpoilToggles() {
+  document.querySelectorAll('.spoil-toggle').forEach(b => {
+    b.textContent = spoilFree ? 'Scores hidden ›' : 'Scores shown ›';
+    b.classList.toggle('on', !spoilFree);
+    b.title = spoilFree
+      ? 'Scores are hidden until you click one. Click here to show them all.'
+      : 'Scores are visible. Click here to hide them until asked for.';
+    b.setAttribute('aria-pressed', String(spoilFree));
+  });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('.spoil-toggle');
+  if (!b) return;
+  spoilFree = !spoilFree;
+  if (spoilFree) spoilShown.clear();
+  lsWrite(LS('spoilerFree'), JSON.stringify(spoilFree));
+  syncSpoilToggles();
+  renderRecent();
+  try { renderEventBoard(); } catch (err) {}
+});
+
 /* -------- recent games \u2014 same row rhythm as Next Up, score instead of VS -------- */
 function renderRecent() {
   const strip = $('#recentStrip'); if (!strip) return;
@@ -3798,7 +3915,7 @@ function renderRecent() {
     const tbc = !aWin && !bWin;      // played, but no result published yet
     const d = new Date(ev.startTime).toLocaleDateString(undefined,{day:'numeric', month:'short'});
     const bo = ev.match?.strategy?.count ? 'Bo' + ev.match.strategy.count : '';
-    const row = el('div','nxt');
+    const row = el('div', 'nxt' + (!tbc && spoilHidden(ev) ? ' spoil' : ''));
     row.style.setProperty('--rg', R.color);
     row.innerHTML = `
       <div class="n-when"><div class="n-date">${esc(d)}</div><span class="n-cd">${esc(fmtWhen(ev.startTime).day.split(' ')[0])}</span></div>
@@ -3806,8 +3923,7 @@ function renderRecent() {
         <div><span class="nm">${R.name}</span><span class="sp">${esc(R.splitLabel)}</span></div></div>
       <div class="n-mid">
         <div class="n-a${aWin||tbc?'':' lost'}"><span class="n-code" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</span>${crestHTML(a.name,'n-lg')}</div>
-        ${tbc ? '<div class="n-sc tbc" title="Result not published yet">\u2013</div>'
-              : `<div class="n-sc"><span class="${aWin?'w':'l'}">${aw}</span><i>\u2013</i><span class="${bWin?'w':'l'}">${bw}</span></div>`}
+        ${scoreCellHTML(ev, aw, bw, aWin, bWin, tbc)}
         <div class="n-b${bWin||tbc?'':' lost'}">${crestHTML(b.name,'n-lg')}<span class="n-code" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</span></div>
       </div>
       <div class="n-meta">${tbc ? 'Result pending' : esc(bo)}${ev.blockName?'<br>'+esc(ev.blockName):''}${ev.match?.id?'<br><span class="drill">▾ Games</span>':''}</div>`;
@@ -4244,14 +4360,11 @@ function evtFixRow(ev, done) {
   const when = done
     ? `<div class="n-date">${esc(new Date(ev.startTime).toLocaleDateString(undefined,{day:'numeric',month:'short'}))}</div><span class="n-cd">${esc(w.day.split(' ')[0])}</span>`
     : `<div class="n-time">${esc(w.time)}</div><span class="n-cd">${esc(w.day)}</span><span class="n-cd">${esc(fmtCountdown(ev.startTime))}</span>`;
-  const mid = done
-    ? (tbc ? '<div class="n-sc tbc" title="Result not published yet">–</div>'
-           : `<div class="n-sc"><span class="${aWin?'w':'l'}">${aw}</span><i>–</i><span class="${bWin?'w':'l'}">${bw}</span></div>`)
-    : '<div class="n-vs">VS</div>';
+  const mid = done ? scoreCellHTML(ev, aw, bw, aWin, bWin, tbc) : '<div class="n-vs">VS</div>';
   const meta = done
     ? `${tbc ? 'Result pending' : esc(bo ? 'Bo' + bo : '')}${ev.blockName ? '<br>' + esc(ev.blockName) : ''}`
     : `${esc(bo ? 'Best of ' + bo : '')}${ev.blockName ? '<br>' + esc(ev.blockName) : ''}`;
-  const row = el('div', 'nxt');
+  const row = el('div', 'nxt' + (done && !tbc && spoilHidden(ev) ? ' spoil' : ''));
   row.style.setProperty('--rg', 'var(--cyan)');
   row.innerHTML = `
       <div class="n-when">${when}</div>
@@ -4485,18 +4598,6 @@ function buildEventPage() {
       </div>
     </div>
 
-    <!-- The bracket Riot has already wired, drawn from the feed rather than
-         from a constant: renderEventBracket() fills it, and it is the one panel
-         on this tab that will look the same the day before the tournament and
-         the day after, because a bracket is announced long before it is
-         played. -->
-    <div class="panel evt-brk">
-      <div class="p-head"><div class="p-title" id="evtBracketTitle">${esc(evtBracket?.stage?.name || EVENT.stages[0]?.name || 'Bracket')} Bracket</div>
-        <span class="p-sub" id="evtBracketSub"></span></div>
-      <div class="p-sub sub-line">published by Riot — every slot names the match that fills it</div>
-      <div id="evtBracketBody"><div class="loading">Loading the published bracket…</div></div>
-    </div>
-
     <div class="duo">
       <div class="panel">
         <div class="p-head"><div class="p-title">Next Up</div>
@@ -4507,10 +4608,28 @@ function buildEventPage() {
 
       <div class="panel">
         <div class="p-head"><div class="p-title">Recent Games</div>
-          <span class="p-sub">${esc(EVENT.name)}</span></div>
+          <span class="p-sub">${esc(EVENT.name)}</span>
+          <div class="right"><button class="mini spoil-toggle"></button></div></div>
         <div class="p-sub sub-line" id="evtRecentSub">no games played yet</div>
         <div class="nxt-list" id="evtRecent">${rows('done')}</div>
       </div>
+    </div>
+
+    <!-- The bracket Riot has already wired, drawn from the feed rather than
+         from a constant: renderEventBracket() fills it, and it is the one panel
+         on this tab that will look the same the day before the tournament and
+         the day after, because a bracket is announced long before it is
+         played.
+
+         It sits under the fixtures rather than over them because it is the
+         slowest-moving thing on the page — announced once and then unchanged
+         for weeks — while the boards above it are the reason anyone opens the
+         tab twice in a day. -->
+    <div class="panel evt-brk">
+      <div class="p-head"><div class="p-title" id="evtBracketTitle">${esc(evtBracket?.stage?.name || EVENT.stages[0]?.name || 'Bracket')} Bracket</div>
+        <span class="p-sub" id="evtBracketSub"></span></div>
+      <div class="p-sub sub-line">published by Riot — every slot names the match that fills it</div>
+      <div id="evtBracketBody"><div class="loading">Loading the published bracket…</div></div>
     </div>`;
 }
 
@@ -7238,6 +7357,7 @@ async function refreshAll(deep=true) {
   renderHome();
   renderTicker();
   renderRanks();
+  syncSpoilToggles();
   /* Drawn after the leagues and outside their loop: this tab is one
      tournament, not a fifth region, and a throw in either of these must not
      cost the home board its render. */
@@ -7252,6 +7372,7 @@ $('#refreshBtn').addEventListener('click', () => refreshAll(true));
 /* boot */
 for (const slug of Object.keys(REGIONS)) buildRegionPage(slug);
 buildEventPage();
+syncSpoilToggles();
 /* A cached bracket paints before the first request goes out — the shape of a
    bracket does not change once it is announced, so there is nothing to wait for. */
 renderEventBoard();

@@ -540,6 +540,68 @@ if (loaded) {
     return 'nav round-trips';
   });
 
+  /* The spoiler guard, on a cold profile — which is the visit it exists for.
+     It fails open by nature: a row that loses its `spoil` class renders a
+     perfectly good result and throws nothing, so nothing else here would ever
+     notice the guard had stopped guarding.
+
+     Three things are checked, because hiding the number alone is not hiding
+     the result: the score must not be painted, the loser must not be dimmed,
+     and the reveal must not also trip the row's own click handler, which
+     expands the series and hands over the same result game by game. */
+  await check('home: spoiler guard hides scores', async () => {
+    await page.waitForSelector('#recentStrip .nxt', { timeout: STEP_MS });
+    const r = await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#recentStrip .nxt')]
+        .filter(x => x.querySelector('.n-sc') && !x.querySelector('.n-sc.tbc'));
+      if (!rows.length) return { none: true };
+      const hidden = rows.filter(x => x.classList.contains('spoil'));
+      if (!hidden.length) return { err: `${rows.length} finished results and none hidden — the guard is off by default` };
+      const row = hidden[0];
+      const sc = row.querySelector('.n-sc');
+      const painted = [...sc.querySelectorAll('span, i')]
+        .filter(x => getComputedStyle(x).visibility !== 'hidden');
+      if (painted.length) return { err: 'the score is still painted inside a hidden row' };
+      if (!row.querySelector('.sp-btn')) return { err: 'a hidden row carries no reveal button' };
+      if (getComputedStyle(row.querySelector('.sp-btn')).display === 'none')
+        return { err: 'the reveal button is not displayed, so the score cannot be got at' };
+      /* The dimming is half the tell. A hidden row must not visually mark
+         either side as the loser. */
+      const dim = [...row.querySelectorAll('.n-a.lost .n-lg, .n-b.lost .n-lg')]
+        .filter(x => Number(getComputedStyle(x).opacity) < 1);
+      if (dim.length) return { err: 'a hidden row still dims the loser, which gives the result away' };
+      return { rows: rows.length, hidden: hidden.length,
+               label: document.querySelector('#recentPanel .spoil-toggle')?.textContent.trim() || '' };
+    });
+    if (r.err) throw new Error(r.err);
+    if (r.none) return 'no finished results on the board to hide';
+    if (!r.label) throw new Error('the panel has no spoiler toggle');
+    return `${r.hidden} of ${r.rows} results hidden · "${r.label}"`;
+  });
+
+  await check('home: revealing a score does not open the series', async () => {
+    const before = await page.locator('#recentStrip .sdet').count();
+    const btn = page.locator('#recentStrip .nxt.spoil .sp-btn').first();
+    if (!await btn.count()) return 'skipped — nothing hidden to reveal';
+    const stillHidden = await page.locator('#recentStrip .nxt.spoil').count();
+    await btn.click();
+    await page.waitForTimeout(500);
+    /* The row's own handler expands the series. If the reveal click reaches it,
+       the guard hands over exactly what it was withholding — this is the check
+       that the listener is still in the capture phase. */
+    if (await page.locator('#recentStrip .sdet').count() > before)
+      throw new Error('revealing a score also expanded the series, handing over the result game by game');
+    const after = await page.locator('#recentStrip .nxt.spoil').count();
+    if (after !== stillHidden - 1)
+      throw new Error(`revealing one row changed the hidden count from ${stillHidden} to ${after}`);
+    const shown = await page.locator('#recentStrip .nxt').first().evaluate(() => {
+      const row = document.querySelector('#recentStrip .nxt:not(.spoil) .n-sc:not(.tbc)');
+      return row ? [...row.querySelectorAll('span')].every(x => getComputedStyle(x).visibility !== 'hidden') : false;
+    });
+    if (!shown) throw new Error('the revealed row still does not show its score');
+    return `one row revealed, ${after} still hidden, series untouched`;
+  });
+
   if (SHOT) {
     await page.screenshot({ path: SHOT, fullPage: true });
     console.log(`  ..   screenshot written to ${SHOT}`);

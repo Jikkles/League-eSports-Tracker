@@ -300,7 +300,9 @@ taking whatever height is left over — the rankings are a tall column, and the
 left of the row otherwise stopped halfway up it and left a hole above the
 fixtures. The column stretches rather than starting, the board keeps its
 natural size, and the three stage cards grow into the difference. Under the
-strip comes the published bracket, and under that Next Up and Recent Games.
+strip come Next Up and Recent Games, and the published bracket last — it is the
+slowest-moving thing on the tab, announced once and then unchanged for weeks,
+while the boards above it are why anyone opens the tab twice in a day.
 
 **Everything on the tab is now real except the fixtures, and that is the
 tournament's own state rather than the page's.** The qualification board, the
@@ -485,6 +487,49 @@ Worlds Updates* post on lolesports.com; and the bracket from the API.
   the only mark on the page that survives an offline first visit. Being a data:
   URI it is not an http link, so `links.mjs` does not check it; nothing can rot.
   Keep the two wiki links, which it does check.
+
+## The spoiler guard
+
+Somebody who opens this page to see when their team plays next should not have
+last night's result thrown at them on the way past. So the **Recent Games**
+boards — the home board's and the event tab's, which are the same row built by
+two functions — draw the fixture in full and withhold only the score, behind a
+click. Everything else stays: the date, both crests, both team codes, the round,
+the Bo. `scoreCellHTML()` builds the cell for both.
+
+- **Hiding the number is not hiding the result.** A finished row also dims the
+  loser's crest and code and paints the winner's score green, and either of
+  those answers the question the hidden number was protecting. All three are
+  suppressed together by a `spoil` class on the row; suppressing one of them is
+  the bug this is most likely to grow, and `smoke.mjs` checks the dimming
+  specifically for that reason.
+- **The score is always in the markup and the row decides whether it is
+  painted.** `visibility:hidden`, not `display:none` — the cell keeps its exact
+  box so the row does not move when it is revealed, and the number leaves the
+  accessibility tree, which `opacity` would not do. Revealing is one class
+  removal.
+- **Two pieces of state that deliberately differ.** `spoilFree` is the viewer's
+  standing preference and persists in `nexusdesk_spoilerFree`, so anyone who
+  does not want this turns it off once, from the **Scores hidden ›** switch in
+  either panel head. `spoilShown` is the handful of rows opened in this visit
+  and does **not** persist: coming back later hides them again, which is the
+  whole point. Turning the guard back on clears it, because a guard still open
+  on the twelve results you already looked at is not a guard.
+- **Default on.** A spoiler guard that is off until you find it protects
+  nobody — the visitor it exists for does not know it is there. The switch and
+  the persisted preference are what keep that from being a nuisance to the
+  people who want scores.
+- **The reveal listener is in the capture phase, and that is load-bearing.**
+  The home board's rows carry their own click handler that expands the series
+  into game-by-game boards — which would hand over, one game at a time, exactly
+  the result the click was asking to see. A bubble-phase listener on `document`
+  runs *after* that handler has fired, so stopping propagation there stops
+  nothing. Capture runs document-downwards and gets in first. `smoke.mjs` has a
+  check for this precise regression.
+- **Scope is the Recent Games boards.** The league tabs' own Results lists
+  (`matchRow()`), the standings, the form dots and the honours board all still
+  show results plainly. That is a deliberate line rather than an oversight: the
+  Recent Games board is the one a viewer scrolls past without asking for it.
 
 ## Generated data
 
