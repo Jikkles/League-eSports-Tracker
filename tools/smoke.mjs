@@ -602,6 +602,72 @@ if (loaded) {
     return `one row revealed, ${after} still hidden, series untouched`;
   });
 
+  /* The region pages draw a different row (`.match`, not `.nxt`) with a
+     different tell: no dimmed crest, but a green diamond beside the winner's
+     name that answers the question on its own. Same guard, second shape — and
+     the shape is the thing most likely to be missed when either row is next
+     edited, which is why it gets its own check rather than being assumed from
+     the home board's. */
+  await check('region: spoiler guard hides results', async () => {
+    await page.click('.tab[data-tab=lck]');
+    await page.waitForSelector('#page-lck.active', { timeout: STEP_MS });
+    const r = await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#results-lck .match')];
+      if (!rows.length) return { none: true };
+      const hidden = rows.filter(x => x.classList.contains('spoil'));
+      if (!hidden.length) return { err: `${rows.length} results and none hidden on the region page` };
+      for (const row of hidden) {
+        const painted = [...row.querySelectorAll('.score > span')]
+          .filter(x => getComputedStyle(x).visibility !== 'hidden');
+        if (painted.length) return { err: 'a hidden region row still paints its score' };
+        const tag = [...row.querySelectorAll('.winner-tag')]
+          .filter(x => getComputedStyle(x).visibility !== 'hidden');
+        if (tag.length) return { err: 'a hidden region row still shows the winner diamond, which gives the result away' };
+        if (!row.querySelector('.sp-btn')) return { err: 'a hidden region row carries no reveal button' };
+      }
+      return { rows: rows.length, hidden: hidden.length };
+    });
+    if (r.err) throw new Error(r.err);
+    if (r.none) return 'no completed LCK results fetched to hide';
+
+    /* And it has to open. The reveal walks up from the button to its row, and
+       the two shapes are found by different selectors — a handler that only
+       knows `.nxt` leaves every region row permanently sealed, which looks
+       exactly like a working guard until you click one. */
+    const before = await page.locator('#results-lck .sdet').count();
+    await page.locator('#results-lck .match.spoil .sp-btn').first().click();
+    await page.waitForTimeout(500);
+    const after = await page.locator('#results-lck .match.spoil').count();
+    if (after !== r.hidden - 1)
+      throw new Error(`clicking a region row's reveal left ${after} hidden, not ${r.hidden - 1} — the row was never unmarked`);
+    if (await page.locator('#results-lck .sdet').count() > before)
+      throw new Error('revealing a region score also expanded the series');
+    return `${r.hidden} of ${r.rows} region results hidden, one revealed`;
+  });
+
+  /* The panel switch is a class flip rather than a re-render, which is the only
+     reason it can reach six boards at once — so what it must actually do is
+     reach them. Flipping it on the region page has to clear the home board too,
+     or the guard is per-panel and the preference is a lie. */
+  await check('spoiler switch reaches every board', async () => {
+    const count = () => page.evaluate(() =>
+      document.querySelectorAll('#results-lck .match.spoil, #recentStrip .nxt.spoil').length);
+    const before = await count();
+    if (!before) throw new Error('nothing was hidden before the switch was touched');
+    await page.click('#page-lck .spoil-toggle');
+    await page.waitForTimeout(250);
+    const off = await count();
+    if (off) throw new Error(`${off} rows still hidden after the switch was turned off`);
+    const label = await page.textContent('#recentPanel .spoil-toggle');
+    if (!/shown/i.test(label || ''))
+      throw new Error(`the home board's switch still reads "${label}" after the region page's was flipped`);
+    await page.click('#page-lck .spoil-toggle');
+    await page.waitForTimeout(250);
+    const back = await count();
+    if (back < before) throw new Error(`turning the guard back on hid ${back} rows, not the ${before} it started with`);
+    return `${before} rows across two boards, off and on again`;
+  });
+
   if (SHOT) {
     await page.screenshot({ path: SHOT, fullPage: true });
     console.log(`  ..   screenshot written to ${SHOT}`);

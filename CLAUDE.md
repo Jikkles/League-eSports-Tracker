@@ -491,45 +491,68 @@ Worlds Updates* post on lolesports.com; and the bracket from the API.
 ## The spoiler guard
 
 Somebody who opens this page to see when their team plays next should not have
-last night's result thrown at them on the way past. So the **Recent Games**
-boards — the home board's and the event tab's, which are the same row built by
-two functions — draw the fixture in full and withhold only the score, behind a
-click. Everything else stays: the date, both crests, both team codes, the round,
-the Bo. `scoreCellHTML()` builds the cell for both.
+last night's result thrown at them on the way past. So every results board on
+the site — the home board's **Recent Games**, the event tab's, and each region
+page's **Recent Results** — draws the fixture in full and withholds only the
+score, behind a click. Everything else stays: the date, both crests, both team
+codes, the round, the Bo.
 
-- **Hiding the number is not hiding the result.** A finished row also dims the
-  loser's crest and code and paints the winner's score green, and either of
-  those answers the question the hidden number was protecting. All three are
-  suppressed together by a `spoil` class on the row; suppressing one of them is
-  the bug this is most likely to grow, and `smoke.mjs` checks the dimming
-  specifically for that reason.
-- **The score is always in the markup and the row decides whether it is
-  painted.** `visibility:hidden`, not `display:none` — the cell keeps its exact
-  box so the row does not move when it is revealed, and the number leaves the
-  accessibility tree, which `opacity` would not do. Revealing is one class
-  removal.
+**There are two row shapes and both are guarded.** `.nxt`, built by
+`renderRecent()` and `evtFixRow()` and scored by the shared `scoreCellHTML()`;
+and `.match`, built by `matchRow()` for the region pages. They have different
+tells, which is the thing to remember when either is next edited — a change
+that guards one shape and not the other looks completely fine on the tab you
+happened to be looking at.
+
+- **Hiding the number is not hiding the result.** The `.nxt` row also dims the
+  loser's crest and code and paints the winner's score green. The `.match` row
+  does neither — instead it puts a green diamond beside the winner's name,
+  which answers the question on its own. Every one of those is suppressed
+  alongside the number by a `spoil` class on the row. Leaving one behind is the
+  bug this feature is most likely to grow, so `smoke.mjs` checks the dimming
+  and the diamond by name rather than only checking that the score went away.
+- **The score is always in the markup, and so is the button.** The row's class
+  decides whether either is painted, using `visibility:hidden` rather than
+  `display:none` — the cell keeps its exact box so nothing moves when it opens,
+  and the number leaves the accessibility tree, which `opacity` would not do.
+  That is what makes `applySpoil()` possible: the panel switch flips a class on
+  every row on the page instead of re-rendering the home board, the event tab
+  and four region pages — three of which are expensive, and one of which would
+  collapse any series the viewer had open.
 - **Two pieces of state that deliberately differ.** `spoilFree` is the viewer's
   standing preference and persists in `nexusdesk_spoilerFree`, so anyone who
   does not want this turns it off once, from the **Scores hidden ›** switch in
-  either panel head. `spoilShown` is the handful of rows opened in this visit
-  and does **not** persist: coming back later hides them again, which is the
-  whole point. Turning the guard back on clears it, because a guard still open
-  on the twelve results you already looked at is not a guard.
+  any results panel's head — and the switch is one preference, not one per
+  panel, so flipping it on a region page clears the home board too. `spoilShown`
+  is the handful of rows opened in this visit and does **not** persist: coming
+  back later hides them again, which is the whole point. Turning the guard back
+  on clears it, because a guard still open on the twelve results you already
+  looked at is not a guard.
+- **A reveal applies to every copy of that fixture**, not to the row that was
+  clicked — the same match is a `.nxt` on the home board and a `.match` on its
+  region page, and revealing it in one place and not the other would be a guard
+  that only half remembers what you asked for. `spoilShown` is keyed by match
+  id, and `applySpoil()` re-marks the whole page.
 - **Default on.** A spoiler guard that is off until you find it protects
   nobody — the visitor it exists for does not know it is there. The switch and
   the persisted preference are what keep that from being a nuisance to the
   people who want scores.
 - **The reveal listener is in the capture phase, and that is load-bearing.**
-  The home board's rows carry their own click handler that expands the series
-  into game-by-game boards — which would hand over, one game at a time, exactly
-  the result the click was asking to see. A bubble-phase listener on `document`
-  runs *after* that handler has fired, so stopping propagation there stops
-  nothing. Capture runs document-downwards and gets in first. `smoke.mjs` has a
-  check for this precise regression.
-- **Scope is the Recent Games boards.** The league tabs' own Results lists
-  (`matchRow()`), the standings, the form dots and the honours board all still
-  show results plainly. That is a deliberate line rather than an oversight: the
-  Recent Games board is the one a viewer scrolls past without asking for it.
+  Rows on both shapes carry their own click handler that expands the series into
+  game-by-game boards — which would hand over, one game at a time, exactly the
+  result the click was asking to see. A bubble-phase listener on `document` runs
+  *after* that handler has fired, so stopping propagation there stops nothing.
+  Capture runs document-downwards and gets in first. `smoke.mjs` has a check for
+  this precise regression, on both shapes.
+- **A match with no id is not guarded**, because the reveal is keyed by id and
+  a hidden score nobody can open is a dead end rather than a courtesy.
+- **Two callers opt out with `matchRow(ev, phase, {noSpoil:true})`**, and the
+  line is *lists you meet* versus *lists you asked for*. A team modal's "Played
+  this split" is the list you clicked that team to read; the honours modal's
+  archive sits behind a card that already prints the champion and the score, so
+  a guard inside it guards nothing. The standings table and the form dots are
+  not guarded either — a W-L record is not a scoreline, and hiding the table
+  would be hiding the league.
 
 ## Generated data
 

@@ -950,16 +950,25 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
    Three things give a result away, not one: the number, the winner's green
    and the loser's dimmed crest. All three are suppressed together, or the
    guard tells you who won while pretending not to. */
-.n-sc{position:relative}
-.sp-btn{display:none}
+.n-sc,.match .score{position:relative}
+/* The button is drawn on every finished row and shown only on a marked one, so
+   the panel switch is a class flip rather than a rebuild of six boards. */
+.sp-btn{display:none;align-items:center;justify-content:center;position:absolute;
+  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1.2px;color:var(--faint);
+  background:var(--panel2);border:1px dashed var(--line2);border-radius:3px;cursor:pointer;padding:0}
+.spoil .sp-btn{display:inline-flex}
+.sp-btn:hover{color:var(--cyan);border-color:var(--cyan);border-style:solid}
+.sp-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+/* the home board / event tab row */
 .nxt.spoil .n-sc > span,.nxt.spoil .n-sc > i{visibility:hidden}
 .nxt.spoil .n-a.lost .n-code,.nxt.spoil .n-b.lost .n-code{color:var(--text)}
 .nxt.spoil .n-a.lost .n-lg,.nxt.spoil .n-b.lost .n-lg{opacity:1}
-.nxt.spoil .sp-btn{display:inline-flex;position:absolute;inset:-4px -2px;align-items:center;justify-content:center;
-  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1.2px;color:var(--faint);
-  background:var(--panel2);border:1px dashed var(--line2);border-radius:3px;cursor:pointer;padding:0}
-.nxt.spoil .sp-btn:hover{color:var(--cyan);border-color:var(--cyan);border-style:solid}
-.nxt.spoil .sp-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.nxt.spoil .sp-btn{inset:-4px -2px}
+/* the region page's row. Its tell is not a dimmed crest but the winner's
+   diamond beside the name, which says who won on its own. */
+.match.spoil .score > span{visibility:hidden}
+.match.spoil .winner-tag{visibility:hidden}
+.match.spoil .sp-btn{inset:0}
 /* the panel switch reads as pressed while the guard is on, which is the state
    a viewer needs to recognise without reading the label */
 .mini.spoil-toggle{color:var(--cyan)}
@@ -2942,7 +2951,14 @@ function teamAbbr(t) {
   return words.map(w => w[0]).join('').slice(0,4).toUpperCase();
 }
 
-function matchRow(ev, phase) {
+/* `opts.noSpoil` turns the spoiler guard off for this row. The guard is for
+   lists a viewer meets on the way past — the region page's Recent Results is
+   one, and gets it by default. The two callers that opt out are drill-downs a
+   viewer has asked for by name: a team's "Played this split", which is the
+   list you clicked that team to read, and the honours modal's archive, where
+   the card you clicked to open it already prints the champion and the score,
+   so a guard inside guards nothing. */
+function matchRow(ev, phase, opts) {
   const t = ev.match?.teams || [];
   const a = t[0]||{}, b = t[1]||{};
   // a row's state comes from the same phase the boards use rather than from
@@ -2969,7 +2985,10 @@ function matchRow(ev, phase) {
   } else {
     score = '<span class="vs">vs</span>';   // the kickoff time already sits in the left column
   }
-  const row = el('div','match'+(live?' is-live':''));
+  /* Only a settled, finished row has a result to withhold. A live score is not
+     one, and neither is the dash a row carries while the result is unpublished. */
+  const guard = done && settled && !(opts && opts.noSpoil);
+  const row = el('div','match' + (live ? ' is-live' : '') + (guard && spoilHidden(ev) ? ' spoil' : ''));
   const bothTBD = (!a.name || a.name==='TBD') && (!b.name || b.name==='TBD');
   if (live && bothTBD) {
     row.innerHTML = `
@@ -2980,7 +2999,7 @@ function matchRow(ev, phase) {
   row.innerHTML = `
     <div class="when">${live?'<span class="live-chip">LIVE</span>':esc(time)}<span class="d">${esc(day)}</span></div>
     <div class="t1">${a.result?.outcome==='win'?'<span class="winner-tag">◆</span>':''}<span class="nm" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</span>${logoHTML(a.name)}</div>
-    <div><span class="score">${score}</span></div>
+    <div><span class="score">${score}${guard ? spoilBtn(ev) : ''}</span></div>
     <div class="t2">${logoHTML(b.name)}<span class="nm" title="${esc(b.name||'TBD')}">${esc(teamAbbr(b))}</span>${b.result?.outcome==='win'?'<span class="winner-tag">◆</span>':''}</div>
     <div class="meta">${(!done && !live && bigMatch(ev))?BIG_BADGE+'<br>':''}${esc(ev.blockName||'')}${strat?' · '+strat:''}</div>`;
   if (done && settled && ev.match?.id) {     // nothing to watch back until it's actually over
@@ -3816,10 +3835,27 @@ function renderAgenda() {
 let spoilFree = lsJSON(LS('spoilerFree'), true);
 const spoilShown = new Set();
 
+/* A match with no id has no way of being revealed — the reveal is keyed by id —
+   so hiding it would be a dead end rather than a guard, and it is left alone. */
 function spoilHidden(ev) {
-  if (!spoilFree) return false;
   const id = ev.match?.id;
-  return !id || !spoilShown.has(id);
+  if (!spoilFree || !id) return false;
+  return !spoilShown.has(id);
+}
+
+/* Every reveal button on the page, with its row's `spoil` class set from the
+   current state. This is what the panel switch calls, and it is why flipping
+   the switch does not re-render anything: the score is always in the markup and
+   always has its button, so the whole feature is one class on the row. Without
+   it the switch would have to rebuild the home board, the event tab and four
+   region pages, three of which are expensive and one of which would collapse
+   any series the viewer had open. */
+function applySpoil() {
+  document.querySelectorAll('.sp-btn[data-spoil]').forEach(btn => {
+    const row = btn.closest('.nxt, .match');
+    if (!row) return;
+    row.classList.toggle('spoil', spoilFree && !spoilShown.has(btn.dataset.spoil));
+  });
 }
 
 /* The score cell every finished row uses, on the home board and on the event
@@ -3828,11 +3864,16 @@ function spoilHidden(ev) {
    box, so a row never changes height or width when it is opened. */
 function scoreCellHTML(ev, aw, bw, aWin, bWin, tbc) {
   if (tbc) return '<div class="n-sc tbc" title="Result not published yet">–</div>';
-  const btn = spoilFree
-    ? `<button class="sp-btn" data-spoil="${esc(ev.match?.id || '')}"
-         title="Score hidden — click to reveal" aria-label="Reveal the score">SHOW</button>`
-    : '';
-  return `<div class="n-sc"><span class="${aWin ? 'w' : 'l'}">${aw}</span><i>–</i><span class="${bWin ? 'w' : 'l'}">${bw}</span>${btn}</div>`;
+  return `<div class="n-sc"><span class="${aWin ? 'w' : 'l'}">${aw}</span><i>–</i><span class="${bWin ? 'w' : 'l'}">${bw}</span>${spoilBtn(ev)}</div>`;
+}
+
+/* Drawn on every finished row whether the guard is on or not — see applySpoil()
+   for why. It is `display:none` until the row is marked. */
+function spoilBtn(ev) {
+  const id = ev.match?.id;
+  if (!id) return '';
+  return `<button class="sp-btn" data-spoil="${esc(id)}" type="button"
+    title="Score hidden — click to reveal" aria-label="Reveal the score">SHOW</button>`;
 }
 
 /* One delegated listener rather than a handler per row: both boards replace
@@ -3851,8 +3892,10 @@ document.addEventListener('click', e => {
   e.stopPropagation();
   e.preventDefault();
   if (btn.dataset.spoil) spoilShown.add(btn.dataset.spoil);
-  const row = btn.closest('.nxt');
-  if (row) row.classList.remove('spoil');
+  /* Both row shapes: `.nxt` on the home board and the event tab, `.match` on
+     the region pages. The same fixture appears as both, so the reveal is
+     applied to every copy of it rather than only the one that was clicked. */
+  applySpoil();
 }, true);
 
 /* The panel-level switch, drawn wherever a results board wants one. Turning
@@ -3876,8 +3919,7 @@ document.addEventListener('click', e => {
   if (spoilFree) spoilShown.clear();
   lsWrite(LS('spoilerFree'), JSON.stringify(spoilFree));
   syncSpoilToggles();
-  renderRecent();
-  try { renderEventBoard(); } catch (err) {}
+  applySpoil();
 });
 
 /* -------- recent games \u2014 same row rhythm as Next Up, score instead of VS -------- */
@@ -4047,7 +4089,8 @@ function buildRegionPage(slug) {
       <div class="right"><button class="mini" id="schedMore-${slug}">View full schedule ›</button></div></div>
     <div id="sched-${slug}"><div class="loading">Loading…</div></div>`;
   const res = el('div','panel rg'); res.style.setProperty('--rg', R.color);
-  res.innerHTML = `<div class="p-head"><div class="p-title">Recent Results</div><span class="p-sub">▶ VOD finds the YouTube links per game</span></div>
+  res.innerHTML = `<div class="p-head"><div class="p-title">Recent Results</div><span class="p-sub">▶ VOD finds the YouTube links per game</span>
+      <div class="right"><button class="mini spoil-toggle"></button></div></div>
     <div id="results-${slug}"><div class="loading">Loading…</div></div>`;
   two.appendChild(sched); two.appendChild(res);
   page.appendChild(two);
@@ -4899,7 +4942,7 @@ function openTeamModal(slug, name) {
   live.forEach(ev => box.querySelector('#tmLive').appendChild(matchRow(ev)));
   up.forEach(ev => box.querySelector('#tmUp').appendChild(matchRow(ev)));
   played.forEach(ev => {
-    const row = matchRow(ev);
+    const row = matchRow(ev, null, { noSpoil: true });
     // on losses: this team's score goes red, the opponent's green is dropped
     // so the row reads as a defeat rather than celebrating the winner
     const i = ev.match.teams.findIndex(t => nk(t.name)===nk(name));
@@ -4925,7 +4968,7 @@ async function loadEventResults(slug) {
     for (const ev of done) {
       const blk = ev.blockName || 'Matches';
       if (blk !== lastBlock) { box.appendChild(el('div','stage-label', esc(blk))); lastBlock = blk; }
-      box.appendChild(matchRow(ev));
+      box.appendChild(matchRow(ev, null, { noSpoil: true }));
     }
   };
   try {
@@ -7358,6 +7401,7 @@ async function refreshAll(deep=true) {
   renderTicker();
   renderRanks();
   syncSpoilToggles();
+  applySpoil();
   /* Drawn after the leagues and outside their loop: this tab is one
      tournament, not a fifth region, and a throw in either of these must not
      cost the home board its render. */
@@ -7373,6 +7417,7 @@ $('#refreshBtn').addEventListener('click', () => refreshAll(true));
 for (const slug of Object.keys(REGIONS)) buildRegionPage(slug);
 buildEventPage();
 syncSpoilToggles();
+applySpoil();
 /* A cached bracket paints before the first request goes out — the shape of a
    bracket does not change once it is announced, so there is nothing to wait for. */
 renderEventBoard();
