@@ -69,6 +69,9 @@ header{border-bottom:1px solid var(--line);background:#0C0C0C;position:sticky;to
 .btn:hover{background:#2A2A2A;border-color:#3A3A3A;color:#FFFFFF}
 .btn.pri,.btn:active{background:var(--cyan);border-color:var(--cyan);color:#001014}
 .btn.small{padding:3px 9px;font-size:10px}
+/* what the last "Fill from results" managed, in the accent so it reads as a
+   report of something that just happened rather than as more toolbar chrome */
+.sim-msg{color:var(--cyan)}
 /* A toggle rather than an action: the Round 2 swap stays lit while it is on,
    because a viewer needs to see at a glance which pairing the bracket is
    drawing. Uses the accent the rest of the page reserves for live state. */
@@ -3784,6 +3787,7 @@ function buildRegionPage(slug) {
       <span class="p-sub">place teams in seeds, click a team to advance it</span>
       <div class="right">
         <button class="btn small" id="simSeed-${slug}">Seed from standings</button>
+        <button class="btn small" id="simFill-${slug}">Fill from results</button>
         <button class="btn small" id="simFav-${slug}">Sim favourites</button>
         <!-- shown only for a format whose bracket has a choice in it; see
              FORMATS.de6b.pick. renderSim() sets the label and the hidden flag. -->
@@ -3802,6 +3806,7 @@ function buildRegionPage(slug) {
           `<option value="${k}">${esc(f.name)}</option>`).join('')}
       </select>
       <span class="p-sub">check <a href="${R.liqui}" target="_blank" rel="noopener">Liquipedia</a> for the confirmed bracket</span>
+      <span class="p-sub sim-msg" id="simFillMsg-${slug}"></span>
     </div>
     <div class="pool" id="simPool-${slug}"></div>
     <div class="pool-add">
@@ -4982,6 +4987,119 @@ function simSeedOrder(slug) {
    saved format does not, the default wins: the viewer asked for the field as
    it stands, and a bracket that cannot hold it is not that field. A format the
    viewer chose that still fits is left alone. */
+/* =====================================================================
+   FILLING THE BRACKET FROM WHAT WAS ACTUALLY PLAYED
+   ===================================================================== */
+/* The simulator is a sandbox, but the first thing anyone wants from it is the
+   real bracket — and clicking a double elimination out by hand is ten to
+   twelve decisions before you can change anything. The feed already has the
+   games, so this reads them back into the bracket instead.
+
+   Two sides identify a match, not a round name. Block labels are Riot's and
+   they differ per league and per season ("Playoffs", "Finals", "Play In
+   Knockouts"); who played whom does not. So the bracket is walked in
+   dependency order and each match, once both its slots resolve to real teams,
+   is looked up by its pair. */
+const simPairKey = (a, b) => [nk(a), nk(b)].sort().join('|');
+
+/* Every completed bracket game, queued per pair in the order they were
+   played. The queue matters: a double elimination sends the same two teams
+   back at each other regularly, and the LCK's 2026 bracket has KT and Dplus
+   KIA meeting in Round 1 and again in the lower bracket a week later. Keyed on
+   the pair alone, the second result silently overwrote the first and the
+   bracket filled with the wrong winner in the earlier round. */
+function simRealGames(slug) {
+  const q = new Map();
+  const evs = splitEvents(slug).slice()
+    .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
+  for (const ev of evs) {
+    const b = ev.blockName || '';
+    /* The play-in is a different tournament that happens to feed this one: its
+       losers are not in the bracket at all, and matching them into it would
+       fill Round 1 with games the bracket never held. */
+    if (!RACE_BLOCK_RX.test(b) || PLAYIN_RX.test(b)) continue;
+    if (ev.state !== 'completed') continue;
+    const [x, y] = ev.match?.teams || [];
+    if (!x || !y || !x.name || !y.name) continue;
+    const wx = x.result?.gameWins ?? 0, wy = y.result?.gameWins ?? 0;
+    if (wx === wy) continue;                  // no winner recorded — nothing to fill
+    const k = simPairKey(x.name, y.name);
+    if (!q.has(k)) q.set(k, []);
+    q.get(k).push(wx > wy ? x.name : y.name);
+  }
+  return q;
+}
+
+/* Which bracket variant the league actually played, decided by how much of it
+   the feed reproduces rather than by reading a rulebook.
+
+   Two things about a real bracket are not in the wiring. A format may carry a
+   `pick` (the LCK's top seed choosing its Round 2 opponent), and the two bye
+   seeds can sit either way round in the wiring — which is not cosmetic,
+   because the lower bracket takes the seed-2 match's loser first, so the two
+   orders route the whole lower half differently. Rather than assert which is
+   right, every combination is tried and the one that reproduces the most real
+   games wins. On the LCK's 2026 bracket that is the bye exchange with no pick
+   swap, and it lands all six played matches and projects the two upcoming
+   ones exactly; the pick swap alone gets Round 2 right and the lower bracket
+   wrong, which is the sort of thing a rulebook reading would have missed. */
+function simFillFrom(slug) {
+  const S = simLoad(slug);
+  const games = simRealGames(slug);
+  const played = [...games.values()].reduce((n, v) => n + v.length, 0);
+  const order = simSeedOrder(slug) || simTeamsAvailable(slug);
+  const F = FORMATS[simFitFormat(slug, order.length)];
+
+  const attempt = (seedOrder, pick) => {
+    S.seeds = {};
+    seedOrder.slice(0, F.seeds).forEach((n, i) => S.seeds[i + 1] = n);
+    S.winners = {}; S.pick = pick;
+    const used = new Map();
+    /* Dependency order without a topological sort: one pass can only fill a
+       match whose feeders are already decided, so passing over the list until
+       nothing new lands walks the bracket forwards however it is ordered. */
+    for (let pass = 0; pass < F.matches.length; pass++) {
+      const r = simResolve(slug);
+      let added = 0;
+      for (const m of F.matches) {
+        if (S.winners[m.id]) continue;
+        const [a, b] = r[m.id];
+        if (!a || !b) continue;
+        const k = simPairKey(a, b), i = used.get(k) || 0;
+        const w = (games.get(k) || [])[i];
+        if (w) { S.winners[m.id] = w; used.set(k, i + 1); added++; }
+      }
+      if (!added) break;
+    }
+    return { n: Object.keys(S.winners).length, seeds: {...S.seeds}, winners: {...S.winners}, pick };
+  };
+
+  const byes = order.slice();
+  if (byes.length > 1) [byes[0], byes[1]] = [byes[1], byes[0]];
+  /* Ranked order and no swap first, so that where two variants fit equally
+     well the bracket stays the one the standings imply. */
+  const tries = [attempt(order, false)];
+  if (F.pick) tries.push(attempt(order, true));
+  tries.push(attempt(byes, false));
+  if (F.pick) tries.push(attempt(byes, true));
+  const best = tries.reduce((a, b) => (b.n > a.n ? b : a));
+
+  S.seeds = best.seeds; S.winners = best.winners; S.pick = best.pick;
+  simSave(slug); renderSim(slug, true);
+
+  const msg = $('#simFillMsg-' + slug);
+  if (msg) {
+    /* Say what happened, including when nothing did. A bracket that has not
+       started and a bracket this wiring cannot express both leave the button
+       looking like it did nothing at all. */
+    msg.textContent = !played
+      ? 'No completed bracket games in the feed yet — seeded from the standings.'
+      : best.n >= played
+        ? `Filled all ${played} played match${played === 1 ? '' : 'es'} from the feed.`
+        : `Filled ${best.n} of ${played} played matches — the rest do not fit this bracket.`;
+  }
+}
+
 function simFitFormat(slug, n) {
   const S = simLoad(slug), def = REGIONS[slug]?.defFormat;
   if (!n || !FORMATS[def] || !FORMATS[S.format]) return S.format;
@@ -5014,6 +5132,7 @@ function initSim(slug) {
     simSave(slug); renderSim(slug);
   });
   $('#simFav-'+slug).addEventListener('click', () => simFavourites(slug));
+  $('#simFill-'+slug).addEventListener('click', () => simFillFrom(slug));
   /* Winners are left alone: simResolve() already drops the ones the swap has
      orphaned, and keeping the rest means a viewer who has played the bracket
      out does not lose it to a pairing correction. */
@@ -5036,9 +5155,11 @@ function initSim(slug) {
   renderSim(slug);
 }
 
-function renderSim(slug) {
+function renderSim(slug, keepMsg) {
   const S = simLoad(slug);
   const F = FORMATS[S.format];
+  const msg = $('#simFillMsg-'+slug);
+  if (msg && !keepMsg) msg.textContent = '';
   buildSimCtx(slug);
   const resolved = simResolve(slug);
   const seededNames = Object.values(S.seeds);

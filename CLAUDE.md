@@ -234,6 +234,54 @@ to replay the split had no way to correct it.
   sits there doing nothing while the bracket quietly draws the pairing the
   league did not play. It also requires the label and the note, because a
   control that changes what the bracket claims happened may not be unlabelled.
+- **The pick is not how the LCK's 2026 bracket actually maps, and that is worth
+  knowing before reaching for it.** Fitting the wiring against the played games
+  says so: swapping the two *bye seeds* reproduces all six completed matches
+  and projects the next two exactly, while the Round 2 pick swap gets Round 2
+  right and the lower bracket wrong (five of six). The reason is that the lower
+  bracket takes the seed-2 match's loser first, so the two bye orders route the
+  whole lower half differently — which no reading of the Round 2 rule would
+  have told you. `simFillFrom()` tries both and lets the feed decide.
+
+## Filling the bracket from what was played
+
+The simulator's first job for most viewers is not "what if" but "show me what
+happened", and clicking a double elimination out by hand is ten to twelve
+decisions before you can change anything. **"Fill from results"** on every
+region page reads the played bracket back out of the feed.
+
+- **Two sides identify a match, never a round name.** Block labels are Riot's
+  and they differ by league and by season ("Playoffs", "Finals", "Play In
+  Knockouts"); who played whom does not. `simFillFrom()` walks the bracket in
+  dependency order — repeated passes until nothing new lands, which needs no
+  topological sort — and looks each match up by its pair once both slots
+  resolve to real teams.
+- **A pair keeps a queue, not a result.** A double elimination sends the same
+  two teams back at each other regularly: KT and Dplus KIA met in Round 1 and
+  again in the lower bracket a week later. Keyed on the pair alone the second
+  result silently overwrote the first, and Round 1 filled with the wrong
+  winner. `simRealGames()` queues them in played order and a fill consumes the
+  earliest one it has not used.
+- **The play-in is excluded deliberately.** It is a different tournament that
+  feeds this one, and its losers are not in the bracket at all — matching them
+  in fills Round 1 with games the bracket never held.
+- **The variant is decided by fit, not by rulebook.** Two things about a real
+  bracket are not in the wiring: a format's `pick`, and which way round the two
+  bye seeds sit. Every combination is tried and the one reproducing the most
+  played games wins, ties going to the ranked order with no swap so the least
+  surprising bracket is the default. This is the one place in the repo where a
+  question about a league's format is answered by measurement.
+- **It says what it did, including when that is nothing.** A league between
+  splits and a bracket this wiring cannot express both otherwise leave a button
+  that looks broken. The message clears on any other redraw, so a count never
+  outlives the bracket it described.
+- **What `smoke.mjs` does and does not catch here.** It clicks the real button
+  on all four tabs and fails on the two unambiguous bugs: a winner who is not
+  one of the two teams in that match, and a fill that places nothing while the
+  feed has completed bracket games. It reports the ratio ("6 of 6 played") but
+  does **not** fail on a shortfall, because a bracket that genuinely stops
+  fitting its wiring is a data question rather than a build failure — that is
+  `stale.mjs`'s department, and it does not ask it yet. Watch the ratio.
 
 ## The international-event tab
 

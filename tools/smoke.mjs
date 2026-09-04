@@ -206,6 +206,40 @@ if (loaded) {
       return `${rows - 1} standings rows, ${wires} bracket wires`;
     });
 
+    /* "Fill from results" reads the played bracket out of the feed, and its
+       failure mode is silence: a wrong pair key, a block regex that stops
+       matching a renamed round, a variant search that picks the worst fit —
+       all of them leave a rendered bracket with nothing in it and throw
+       nothing. So this clicks the real button and holds the outcome to the
+       feed the page itself is reading.
+
+       Two invariants, and both matter. Every winner it writes has to be one of
+       the two teams actually in that match, or the bracket is asserting a
+       result nobody played. And where the feed has completed bracket games,
+       it has to fill at least one — a league between splits legitimately
+       fills none, but one mid-playoffs filling none is the silent failure. */
+    await check(`${slug}: fill from results`, async () => {
+      const r = await page.evaluate(s => {
+        const btn = document.querySelector('#simFill-' + s);
+        if (!btn) return { err: 'no "Fill from results" button on this tab' };
+        btn.click();
+        const S = simLoad(s), F = FORMATS[S.format], res = simResolve(s);
+        const played = [...simRealGames(s).values()].reduce((n, v) => n + v.length, 0);
+        const filled = Object.keys(S.winners).length;
+        for (const m of F.matches) {
+          const w = S.winners[m.id];
+          if (w && !res[m.id].includes(w))
+            return { err: `${m.id} was won by ${w}, who is not in it (${res[m.id].join(' v ')})` };
+        }
+        return { played, filled, msg: document.querySelector('#simFillMsg-' + s)?.textContent || '' };
+      }, slug);
+      if (r.err) throw new Error(r.err);
+      if (!r.msg.trim()) throw new Error('the fill reported nothing at all');
+      if (r.played && !r.filled)
+        throw new Error(`the feed has ${r.played} completed bracket game(s) and the fill placed none`);
+      return `${r.filled} of ${r.played} played`;
+    });
+
     /* The race board is computed rather than fetched, which makes its failure
        mode quiet: a broken edit renders "the race board fills in once the
        standings load" and throws nothing, so every other check here stays
