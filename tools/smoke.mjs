@@ -365,6 +365,30 @@ if (loaded) {
       if (blank.length) return { err: `${blank.length} team crest slot(s) drew nothing` };
       const untitled = [...document.querySelectorAll('.qual-panel .q-slot')].filter(b => !b.title.trim());
       if (untitled.length) return { err: `${untitled.length} slot(s) carry no title` };
+
+      /* The seed is the only thing this board prints, so it is the only thing
+         a broken caption loses in a way no crest check would notice: a team
+         through with no seed under it, or a range drawn where the constant
+         says the games have decided. Both render perfectly. */
+      const seated = t => {
+        if (Number.isInteger(t.seed)) return 1;
+        if (Array.isArray(t.seed)) return t.seed.length;
+        return 0;   // resolved off the route below, where there is one
+      };
+      for (let i = 0; i < rows.length; i++) {
+        const reg = q.regions[i];
+        const caps = [...rows[i].querySelectorAll('.q-slot.on')]
+          .map(b => b.parentElement.querySelector('.q-seed'));
+        if (caps.some(c => !c || !c.textContent.trim()))
+          return { err: `${reg.rg} drew a qualified team with no seed under it` };
+        const want = reg.thru.filter(t => {
+          const n = seated(t);
+          return n === 1 || (n === 0 && reg.routes.some(x => x.via === t.via));
+        }).length;
+        const set = caps.filter(c => c.classList.contains('set')).length;
+        if (set !== want)
+          return { err: `${reg.rg} drew ${set} settled seed(s) for ${want} in the constant` };
+      }
       const marks = [...document.querySelectorAll('.qual-panel .q-lg')].filter(b => b.querySelector('img, .ini'));
       if (marks.length !== q.regions.length)
         return { err: `${marks.length} league marks drawn for ${q.regions.length} regions` };

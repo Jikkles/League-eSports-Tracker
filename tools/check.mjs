@@ -485,6 +485,28 @@ if (m && !fails.length) {
             if (thru.length > r.routes.length)
               fail(`${at} has ${thru.length} teams through for ${r.routes.length} places.`);
 
+            /* The seed a team is drawn under, resolved exactly as evtQual()
+               resolves it: an explicit `seed`, else the route it named, else
+               nothing yet known. A one-entry answer is a seed the board will
+               print and draw a team into, so the checks below are all about
+               two teams being sent to the same slot or to one that is not
+               there — either of which loses a crest off the board in silence. */
+            const seedsOf = t => {
+              if (Number.isInteger(t.seed)) return [t.seed];
+              if (Array.isArray(t.seed) && t.seed.length) return [...t.seed].sort((a, b) => a - b);
+              const k = r.routes.findIndex(x => x.via === t.via);
+              return k >= 0 ? [k + 1] : [];
+            };
+            const held = new Map();          // seed -> the team settled in it
+            thru.forEach(t => {
+              const list = seedsOf(t);
+              if (list.length !== 1 || !t.team) return;
+              if (held.has(list[0]))
+                fail(`${at}: ${held.get(list[0])} and ${t.team} are both seeded ${list[0]}.`,
+                     'The board draws one of them into that slot and the other vanishes.');
+              else held.set(list[0], t.team);
+            });
+
             thru.forEach((t, j) => {
               if (!t.team) { fail(`${at}.thru[${j}] has no team.`); return; }
               /* The board names its teams with a crest and nothing else, so a
@@ -499,6 +521,20 @@ if (m && !fails.length) {
               if (t.via !== undefined && !vias.has(t.via))
                 fail(`${at}.thru[${j}] (${t.team}) qualified via "${t.via}", which is not one of that region's routes.`,
                      'evtQual() strikes a route off by that name, so the route stays listed as still open.');
+              if (t.seed !== undefined) {
+                const list = Array.isArray(t.seed) ? t.seed : [t.seed];
+                const bad = list.filter(n => !Number.isInteger(n) || n < 1 || n > r.routes.length);
+                if (!list.length || bad.length)
+                  fail(`${at}.thru[${j}] (${t.team}) has a seed outside 1\u2013${r.routes.length}: ${JSON.stringify(t.seed)}`,
+                       'A seed is a place in that region\'s route table, and the board draws the team into it.');
+                else if (new Set(list).size !== list.length)
+                  fail(`${at}.thru[${j}] (${t.team}) lists a seed twice: ${JSON.stringify(t.seed)}`);
+                /* A number beside a route has to be that route's place, or the
+                   board prints one answer and the title says another. */
+                const k = r.routes.findIndex(x => x.via === t.via);
+                if (list.length === 1 && k >= 0 && list[0] !== k + 1)
+                  fail(`${at}.thru[${j}] (${t.team}) is seeded ${list[0]} but qualified via "${t.via}", which is place ${k + 1}.`);
+              }
               if (seen.has(t.team))
                 fail(`${t.team} is through in both ${seen.get(t.team)} and ${r.rg}.`);
               else seen.set(t.team, r.rg);

@@ -166,16 +166,26 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
             `Patch EVENT.qual.regions[].thru for ${r.rg} from the participants table on ${EVENT.wiki}.`);
     }
 
-    /* A team can be through before its seed is drawn, and the board says so in
-       as many words. Once every place in the region has passed its date that
-       draw has happened, so a "seed to be drawn" still sitting there is one
-       nobody wrote down — and the count check above cannot see it, because the
-       region is full and its arithmetic is perfectly happy. */
-    const undrawn = thru.filter(t => !t.via);
-    if (undrawn.length && routes.length && routes.every(x => Date.parse(x.on) < NOW)) {
-      const last = routes.map(x => x.on).sort().pop();
-      stale('EVENT.qual', `${r.rg}: every place was settled by ${day(last)}, but ${undrawn.map(t => t.team).join(' and ')} ${undrawn.length === 1 ? 'still reads' : 'still read'} "seed to be drawn".`,
-            `Name the route each of them qualified by in EVENT.qual.regions[].thru, from the participants table on ${EVENT.wiki}.`);
+    /* A team can be through before its seed is drawn, and the board says so —
+       it prints the range rather than a number. What decides that range is the
+       places inside it, so once every one of those has passed its date the
+       draw has happened and a range still sitting there is one nobody wrote
+       down. The count check above cannot see it: the region is full and its
+       arithmetic is perfectly happy. */
+    const seedsOf = t => {
+      if (Number.isInteger(t.seed)) return [t.seed];
+      if (Array.isArray(t.seed) && t.seed.length) return [...t.seed].sort((a, b) => a - b);
+      const k = routes.findIndex(x => x.via === t.via);
+      return k >= 0 ? [k + 1] : routes.map((_, i) => i + 1);
+    };
+    const undrawn = thru.filter(t => {
+      const seats = seedsOf(t);
+      return seats.length > 1 && seats.every(n => routes[n - 1] && Date.parse(routes[n - 1].on) < NOW);
+    });
+    if (undrawn.length) {
+      const last = undrawn.flatMap(t => seedsOf(t).map(n => routes[n - 1].on)).sort().pop();
+      stale('EVENT.qual', `${r.rg}: every place open to ${undrawn.map(t => t.team).join(' and ')} was settled by ${day(last)}, but the board ${undrawn.length === 1 ? 'still draws it' : 'still draws them'} across a range of seeds.`,
+            `Write the seed each of them took into EVENT.qual.regions[].thru, from the participants table on ${EVENT.wiki}.`);
     }
 
     for (const x of routes) {

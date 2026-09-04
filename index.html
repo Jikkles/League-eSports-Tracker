@@ -611,11 +611,16 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .nxt.tbd:hover{background:transparent}
 .ov-rg.tbd .n,.nxt.tbd .n-code,.nxt.tbd .n-time,.nxt.tbd .n-date{color:var(--faint)}
 /* ---- the qualification board -------------------------------------------
-   Crests do all of it: a league mark per region, then one slot per place that
+   Crests do most of it: a league mark per region, then one slot per place that
    region sends. A filled slot carries the team's badge, an empty one is the
-   dashed outline of a place still to be played, and what either of them means
-   is in its title rather than printed underneath — the routes used to sit
-   below the badges, where they read as a caption for the team above them.
+   dashed outline of a place still to be played.
+
+   The one thing printed is the seed, because it is the question a crest cannot
+   answer and the one everybody asks — and it is printed as a range where the
+   games have not decided it, so a caption is never a claim the board has not
+   earned. The routes stay in the title, where they used to sit below the
+   badges and read as a caption for the team above them.
+
    Each row puts its region's colour in --qc; the two regions this page has no
    league colour for take the event's own cyan. */
 .qual-note{font-family:var(--mono);font-size:10.5px;line-height:1.7;color:var(--faint);
@@ -626,13 +631,21 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .q-rg{display:flex;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
 .qual-panel .q-lg{width:52px;height:52px;flex:none}
 .q-lg .ini{font-size:11px;letter-spacing:.5px;color:var(--qc)}
-.q-slots{display:flex;flex-wrap:wrap;gap:8px}
+.q-slots{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.q-place{display:flex;flex-direction:column;align-items:center;gap:4px}
 /* an empty place is drawn, not counted: the dashes are how many are left */
 .q-slot{width:64px;height:64px;display:flex;align-items:center;justify-content:center;padding:8px;
   border:1px dashed var(--line2);border-radius:3px;box-sizing:border-box}
 .q-slot.on{background:var(--panel2);border:1px solid var(--line);border-bottom:2px solid var(--qc)}
 .q-slot img{max-width:100%;max-height:100%;object-fit:contain;display:block}
 .q-slot .ini{font-size:12px;border:0}
+/* The caption is always drawn, empty on a place nobody holds, so that a row of
+   crests and a row of dashes line up at the same height. A settled seed takes
+   the region's colour; a range is still a guess at the eventual answer and
+   stays in the faint the rest of the board's unresolved state uses. */
+.q-seed{font-family:var(--mono);font-size:10px;letter-spacing:.4px;color:var(--faint);
+  min-height:12px;line-height:12px;white-space:nowrap}
+.q-seed.set{color:var(--qc)}
 
 /* the rankings board beside it, narrowed to the column it now lives in: the
    meter is the first thing to go, being the one column that carries no number */
@@ -1481,13 +1494,26 @@ const EVENT = {
      is the source, and `on` is the date it gives for that place being settled.
 
      `routes` is the seed table, one entry per place in seed order. `thru` is
-     every team already qualified, and is deliberately NOT the same list: the
-     LCP's final has not been played, so both its finalists are through with
-     neither seed assigned. Filing each of them under a seed row would be
-     inventing the result of a game nobody has played, so the pips count
-     `thru` against `routes` and the seeds stay open until they are drawn.
-     A `thru` entry names its route only once that is settled; check.mjs holds
-     those names to `routes` and the place totals to EVENT.field.
+     every team already qualified, and is deliberately NOT the same list:
+     qualifying and being seeded are two different games. Korea's three are in
+     with every placement that seeds them still to be played, so filing any of
+     them under a seed row would be inventing a result nobody has played. A
+     `thru` entry names its `via` only once that route is settled; check.mjs
+     holds those names to `routes` and the place totals to EVENT.field.
+
+     `how` is for a team through by something that is not one of its region's
+     places: Hanwha Life were at Worlds from the moment they won MSI, months
+     before Korea seeded anybody. `via` cannot say that — it names a route, and
+     check.mjs holds it to one — so the reason goes here and the seed stays open.
+
+     `seed` is what the board prints under a crest, and it takes either form:
+     a number is the seed that team has, a list is every seed still open to it.
+     Left out, it is read off `via` where there is one — the routes are the
+     seed table, so the route a team took names its seed — and is otherwise
+     every seed nobody has been given yet. The list form is a narrowing rather
+     than a hedge: T1 cannot finish below fourth and BILIBILI GAMING cannot
+     finish below second, and both of those are worth saying. Only write a
+     number once the games that decide it have been played.
 
      `logo` is the team's crest from Riot's CDN, carried here rather than
      looked up. The page's logo cache is filled from the fixtures it fetches,
@@ -1496,22 +1522,35 @@ const EVENT = {
      URLs are seeded into that cache at boot, which also means the board draws
      on first paint, before any request has been made. */
   qual:{
-    note:'The MSI champion\u2019s seed only counts if that team also reaches its domestic playoffs or season finals. China\u2019s fourth place is the extra seed for finishing MSI 2026 as the second-best region.',
+    note:'Korea\u2019s fourth place is the seed Hanwha Life unlocked by winning MSI 2026 \u2014 it counts because they also reached the LCK playoffs, where all four Korean seeds are decided. China\u2019s fourth is the extra seed for finishing MSI 2026 as the second-best region.',
     regions:[
+      /* Four places, four placements: the LCK's seeds are the top four of the
+         Season Playoffs in that order, which is why the MSI title is not a row
+         of its own. It unlocked the fourth place — it does not hold it, and
+         Hanwha Life are seeded on where they finish like everyone else. Gen.G's
+         3\u20130 over KT on 1 Sep put Gen.G through and left T1 unable to finish
+         below fourth, which put T1 through in the same result. */
       {rg:'Korea', lg:'LCK', slug:'lck', color:'var(--lck)',
-       routes:[{via:'LCK Season Playoffs champion',    on:'2026-09-13'},
-               {via:'LCK Season Playoffs runner-up',   on:'2026-09-13'},
-               {via:'LCK Season Playoffs third place', on:'2026-09-12'},
-               {via:'MSI 2026 champion',               on:'2026-08-15'}],
-       thru:[{team:'Hanwha Life Esports', via:'MSI 2026 champion', on:'2026-08-15',
-              logo:'https://static.lolesports.com/teams/1631819564399_hle-2021-worlds.png'}]},
+       routes:[{via:'LCK Season Playoffs champion',     on:'2026-09-13'},
+               {via:'LCK Season Playoffs runner-up',    on:'2026-09-13'},
+               {via:'LCK Season Playoffs third place',  on:'2026-09-12'},
+               {via:'LCK Season Playoffs fourth place', on:'2026-09-06'}],
+       thru:[{team:'Hanwha Life Esports', how:'MSI 2026 champion', seed:[1,2,3], on:'2026-08-15',
+              logo:'https://static.lolesports.com/teams/1631819564399_hle-2021-worlds.png'},
+             {team:'Gen.G Esports', seed:[1,2,3], on:'2026-09-01',
+              logo:'https://static.lolesports.com/teams/1773829250929_GENGLOGO_GOLD.png'},
+             {team:'T1', seed:[1,2,3,4], on:'2026-09-01',
+              logo:'https://static.lolesports.com/teams/1726801573959_539px-T1_2019_full_allmode.png'}]},
 
       {rg:'China', lg:'LPL', slug:'lpl', color:'var(--lpl)',
        routes:[{via:'LPL Grand Finals champion',     on:'2026-09-13'},
                {via:'LPL championship points',       on:'2026-08-13'},
                {via:'LPL Regional Finals winner',    on:'2026-09-17'},
                {via:'LPL Regional Finals runner-up', on:'2026-09-19'}],
-       thru:[{team:'BILIBILI GAMING', via:'LPL championship points', on:'2026-08-13',
+       /* The points place is theirs, but the champion's is still live: win the
+          Grand Finals and BLG take that seed instead, the points place passing
+          to the next team that has not already qualified. */
+       thru:[{team:'BILIBILI GAMING', via:'LPL championship points', seed:[1,2], on:'2026-08-13',
               logo:'https://static.lolesports.com/teams/1682322954525_Bilibili_Gaming_logo_20211.png'}]},
 
       {rg:'EMEA', lg:'LEC', slug:'lec', color:'var(--lec)',
@@ -1520,18 +1559,19 @@ const EVENT = {
                {via:'LEC Summer Playoffs third place', on:'2026-09-19'}],
        thru:[]},
 
-      /* Three places, three teams, no seeds: MVK took the points place, and
-         the Split 3 final decides which of the other two is the first seed. */
+      /* Three places, three teams, and now three seeds: Team Secret Whales
+         beat CTBC Flying Oyster in the Split 3 final on 30 Aug, which settled
+         the first two, and MVK had taken the points place a week before. */
       {rg:'Asia-Pacific', lg:'LCP', slug:'lcp', color:'var(--cyan)',
        routes:[{via:'LCP Split 3 champion',    on:'2026-08-30'},
                {via:'LCP Split 3 runner-up',   on:'2026-08-30'},
                {via:'LCP championship points', on:'2026-08-29'}],
-       thru:[{team:'Team Secret Whales', on:'2026-08-02',
+       thru:[{team:'Team Secret Whales', via:'LCP Split 3 champion', on:'2026-08-30',
               logo:'https://static.lolesports.com/teams/1774598000328_White_EyeText_600p.png'},
+             {team:'CTBC Flying Oyster', via:'LCP Split 3 runner-up', on:'2026-08-30',
+              logo:'https://static.lolesports.com/teams/1656307849320_CFO_Logo.png'},
              {team:'MVK Esports', via:'LCP championship points', on:'2026-08-22',
-              logo:'https://static.lolesports.com/teams/1767089709161_White_Logo.png'},
-             {team:'CTBC Flying Oyster', on:'2026-08-29',
-              logo:'https://static.lolesports.com/teams/1656307849320_CFO_Logo.png'}]},
+              logo:'https://static.lolesports.com/teams/1767089709161_White_Logo.png'}]},
 
       {rg:'North America', lg:'LCS', slug:'lcs', color:'var(--lcs)',
        routes:[{via:'LCS Summer Playoffs champion',    on:'2026-10-04'},
@@ -3810,12 +3850,29 @@ function evtRow(kind) {
     </div>`;
 }
 
+/* A seed, or the seeds a team is still choosing between: "#1", "#2\u20134" where
+   they run together, "#1/#3" where they do not. The hash is what makes a bare
+   number read as a seed under a crest rather than as a score or a rank. */
+function seedLabel(list) {
+  if (!list.length) return '';
+  if (list.length === 1) return '#' + list[0];
+  const a = list[0], z = list[list.length - 1];
+  return z - a + 1 === list.length ? `#${a}\u2013${z}` : '#' + list.join('/');
+}
+
 /* The qualification board — the one panel on this tab with facts behind it.
    Two lists per region and not one: the places already taken, and the routes
    still to be run. A route is spent when a qualified team names it, which is
-   not the same as counting down the seed table from the top: Korea's one team
-   through holds the fourth seed, so the three still open are the playoff
-   places, not the first three rows. */
+   not the same as counting down the seed table from the top.
+
+   Every slot carries the seed it holds, and that is the whole reason this
+   function is more than a loop over `thru`: a team can be through months
+   before anyone knows what number it goes to Worlds as. So the board answers
+   both questions separately. A team with one seed left to it is drawn in that
+   seed's slot and captioned with it; a team with several is still only a
+   count, drawn in the leftmost slot nobody has been given and captioned with
+   every seed it could take. Nothing is ever placed in a seed the games have
+   not awarded it. */
 function evtQual() {
   const q = EVENT.qual;
   if (!q) return '';
@@ -3830,33 +3887,86 @@ function evtQual() {
   const taken  = q.regions.reduce((n, r) => n + r.thru.length, 0);
 
   const rows = q.regions.map(r => {
-    const n = r.thru.length;
-
     /* The crest carries the league, so a route drops the prefix it repeats:
        under the LCK's mark, "Season Playoffs champion" says everything "LCK
        Season Playoffs champion" did. The constant keeps the long form, because
        stale.mjs quotes it in a report that has no crest to lean on. */
     const short = via => via.startsWith(r.lg + ' ') ? via.slice(r.lg.length + 1) : via;
+
+    /* Which seeds are still open to a team. An explicit `seed` is the answer —
+       a number where the games have decided it, a list where they have narrowed
+       it — and where there is none the route the team named is the answer,
+       because the routes are the seed table. A team with neither is one the
+       board cannot place at all, and is filled in from the band below. */
+    const seedsOf = t => {
+      if (Number.isInteger(t.seed)) return [t.seed];
+      if (Array.isArray(t.seed) && t.seed.length) return [...t.seed].sort((a, b) => a - b);
+      const i = r.routes.findIndex(x => x.via === t.via);
+      return i >= 0 ? [i + 1] : [];
+    };
+
+    const thru = r.thru.map(t => ({ t, seeds: seedsOf(t) }));
+    const done = thru.filter(x => x.seeds.length === 1);
+    const open = thru.filter(x => x.seeds.length !== 1);
+
+    /* A settled team goes in its own seed's slot. Everyone else is still a
+       count rather than an assignment, so they take the leftmost slots nobody
+       has been given — and are captioned with that whole band, which is what
+       stops the position they were drawn in from reading as the seed. */
+    const cells = r.routes.map(() => null);
+    for (const x of done) cells[x.seeds[0] - 1] = x;
+    const band = [];
+    cells.forEach((v, i) => { if (!v) band.push(i + 1); });
+    let bi = 0;
+    for (const x of open) {
+      if (!x.seeds.length) x.seeds = band;      // nothing known: it could be any of them
+      cells[band[bi++] - 1] = x;
+    }
+
+    /* The routes still to be run, against the places left to hold them. Those
+       two numbers usually match and the slots can name a route each; where a
+       region is three teams into four places nobody has been seeded in, they
+       cannot, and one title has to carry the lot rather than pick one. */
     const claimed = new Set(r.thru.map(t => t.via).filter(Boolean));
-    const open = r.routes.filter(x => !claimed.has(x.via));
+    const left = r.routes.filter(x => !claimed.has(x.via));
+    const empty = cells.filter(v => !v).length;
+    /* Four routes all called "Season Playoffs …" read as four repetitions of
+       the same two words, so the prefix is said once and the rest keep their
+       tails. Routes that share nothing keep their full names. */
+    const tails = names => names.map((nm, i) => {
+      if (!i) return nm;
+      const a = names[0].split(' '), b = nm.split(' ');
+      let k = 0;
+      while (k < a.length && k < b.length && a[k] === b[k]) k++;
+      return b.slice(k).join(' ') || nm;
+    });
+    const list = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' or ' + a[a.length - 1];
+    const spread = left.length !== empty
+      ? `${empty} place${empty === 1 ? '' : 's'} still to be played \u2014 ${list(tails(left.map(x => short(x.via))))} \u00B7 by ${day(left.map(x => x.on).sort().pop())}`
+      : null;
 
-    /* One slot per place, filled left to right — which is a count, not an
-       assignment. A team is placed in the first empty slot rather than in the
-       seed it won, because half of them have not been given a seed yet: both
-       LCP finalists are through with the draw still to come, and putting
-       either of them on a particular seed would invent it.
-
-       So the slot's title says what that slot knows. A filled one names its
-       team and how it got in; an empty one names the place still to be played
-       and the day it is settled. Nothing is printed — the board is crests, and
-       the words are what a pointer or a screen reader asks for. */
-    const slots = r.routes.map((_, i) => {
-      if (i < n) {
-        const t = r.thru[i];
-        return `<span class="q-slot on" data-crest="${esc(t.team)}" title="${esc(t.team)} \u2014 ${esc(t.via ? short(t.via) : 'seed to be drawn')} \u00B7 ${day(t.on)}"></span>`;
+    /* The slot's title says what that slot knows; the caption under it says
+       only the seed. A filled one names its team, how it got in and where it
+       is seeded; an empty one names the place still to be played and the day
+       it is settled. The rest is crests, because the board is crests. */
+    let ei = 0;
+    const slots = cells.map(v => {
+      if (v) {
+        const t = v.t, one = v.seeds.length === 1, lbl = seedLabel(v.seeds);
+        const title = one
+          ? `${t.team} \u2014 ${t.via ? short(t.via) : 'seeded ' + lbl} \u00B7 ${r.rg} ${lbl} \u00B7 ${day(t.on)}`
+          : `${t.team} \u2014 ${t.how ? t.how + ' \u00B7 ' : ''}through on ${day(t.on)} \u00B7 ${r.rg} ${lbl}, still to be decided`;
+        return `<span class="q-place">
+            <span class="q-slot on" data-crest="${esc(t.team)}" title="${esc(title)}"></span>
+            <span class="q-seed${one ? ' set' : ''}">${esc(lbl)}</span>
+          </span>`;
       }
-      const x = open[i - n];
-      return `<span class="q-slot" title="${x ? esc(short(x.via)) + ' \u00B7 ' + day(x.on) : 'place still open'}"></span>`;
+      const x = spread ? null : left[ei++];
+      const title = spread || (x ? `${short(x.via)} \u00B7 ${day(x.on)}` : 'place still open');
+      return `<span class="q-place">
+          <span class="q-slot" title="${esc(title)}"></span>
+          <span class="q-seed"></span>
+        </span>`;
     }).join('');
 
     return `<div class="q-rg" style="--qc:${esc(r.color)}">

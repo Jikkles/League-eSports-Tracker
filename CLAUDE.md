@@ -239,19 +239,33 @@ and are linked from the hero.
   the page the hero already links. Each region carries `routes` — the seed
   table, one entry per place, each with the `on` date that place is settled —
   and `thru`, every team already qualified. **Those two lists are deliberately
-  not the same list.** When this was written the LCP's final had not been
-  played, so both its finalists were through with neither seed assigned; filing
-  each of them under a seed row would have been inventing the result of a game
-  nobody had played.
-- **The board is drawn and not written.** A league mark per region, then one
-  slot per place that region sends: a filled slot carries a team's badge, an
-  empty one is the dashed outline of a place still to be played. Slots fill
-  left to right, which is a count and not an assignment — see the LCP above.
-  Nothing is printed, because the routes used to sit under the badges where
-  they read as a caption for the team above them; what each slot means is its
-  `title`, so a pointer and a screen reader get the words the board does not
-  show. Six regions are laid out two-across, and the whole panel takes three
-  quarters of the row with the Global Power Rankings in the last quarter —
+  not the same list**, because qualifying and being seeded are two different
+  games: three Korean teams are at Worlds with every placement that seeds them
+  still to be played, and filing any of them under a seed row would be
+  inventing a result nobody has played.
+- **A `thru` entry says three separable things**, and keeping them apart is what
+  lets the board be honest about a team it cannot place. `via` is the route it
+  took, and only once that is settled — `check.mjs` holds the name to `routes`,
+  and the route is struck off the places still open. `how` is free text for a
+  team through by something that is not one of its region's places at all
+  (Hanwha Life were at Worlds the day they won MSI, months before Korea seeded
+  anybody). `seed` is what gets printed: a number where the games have decided
+  it, a list where they have only narrowed it. Left out, it is read off `via`
+  — the routes are the seed table — and otherwise falls back to every seed
+  nobody has been given. **The list form is a narrowing, not a hedge.** T1
+  cannot finish below fourth and BILIBILI GAMING cannot finish below second,
+  and a board that only knew "unseeded" could not say either.
+- **The board is drawn, and the seed is the one thing written.** A league mark
+  per region, then one slot per place that region sends: a filled slot carries
+  a team's badge, an empty one is the dashed outline of a place still to be
+  played. A team with one seed left to it is drawn in that seed's slot and
+  captioned `#3`; a team with several is still only a count, drawn in the
+  leftmost slot nobody holds and captioned `#1–4` — which is what stops the
+  position it landed in from reading as its seed. Nothing else is printed: the
+  routes used to sit under the badges, where they read as a caption for the
+  team above them, and they are back in the `title` where a pointer and a
+  screen reader get them. Six regions are laid out two-across, and the whole
+  panel takes three quarters of the row with the Global Power Rankings in the last quarter —
   `renderRanks()` draws every `[data-ranks]` element on the page rather than
   the one id it used to own, so both boards come from one function and one
   constant.
@@ -267,15 +281,20 @@ and are linked from the hero.
   still open), requires each region's `slug` and an https `logo` (http would be
   blocked as mixed content and fall back to initials on a board where the crest
   is the only name), and holds the place totals to the prose in `EVENT.field`,
-  which is the same arithmetic written out twice on one screen. `smoke.mjs`
-  reads the slots back against the constant and fails on one that drew nothing
-  or carries no title. `stale.mjs` reads the `on` dates back: a place whose
-  date has passed while its region is still a team short is STALE, one falling
-  within a week is a NOTE, and — the case the arithmetic cannot see — a team
-  still reading *seed to be drawn* after every place in its region has been
-  settled is STALE too, because a full region's counts stay perfectly happy
-  while the board goes on saying it does not know something the league decided
-  days ago.
+  which is the same arithmetic written out twice on one screen. It also holds
+  every `seed` inside its region's route table and refuses two teams settled on
+  the same one, since the second of those is drawn into the first's slot and
+  disappears off the board. `smoke.mjs` reads the slots back against the
+  constant and fails on one that drew nothing, carries no title, or left a
+  qualified team with no seed under it — and counts the settled captions
+  against the constant, because a caption that silently widened to a range is
+  the board unlearning something. `stale.mjs` reads the `on` dates back: a
+  place whose date has passed while its region is still a team short is STALE,
+  one falling within a week is a NOTE, and — the case the arithmetic cannot see
+  — a team still drawn across a range of seeds after every place *in that
+  range* has been settled is STALE too, because a full region's counts stay
+  perfectly happy while the board goes on saying it does not know something the
+  league decided days ago.
 - **`stale.mjs` is what notices the tab has gone off.** Nothing on the page is
   fetched, so nothing about it can break loudly: once the event it names has been
   played, the tab advertises a finished tournament with TBD in every row while
