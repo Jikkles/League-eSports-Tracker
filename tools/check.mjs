@@ -49,6 +49,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Script } from 'node:vm';
+import { gzipSync } from 'node:zlib';
 import { extractConstants, DATA_CONSTANTS } from './constants.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -64,8 +65,24 @@ const SIZE_BUDGET = 400 * 1024;   // DRAFTS grows all split; shout before it get
    file growing quietly past it forever. This is the line that actually stops
    it: far enough above the budget that a full split of DRAFTS growth is a nudge
    rather than a wall, close enough that a single-file page never turns into a
-   megabyte download on someone's phone. Prune DRAFTS, or raise it on purpose. */
-const SIZE_CEILING = 480 * 1024;
+   megabyte download on someone's phone. Prune DRAFTS, or raise it on purpose.
+
+   Raised from 480 KB once the file reached 440 and the margin stopped being a
+   guard rail and started being the next feature's problem. It was raised on
+   evidence rather than to make a warning go away: padded to 600 KB of real
+   parsed JS and loaded at 4x CPU throttle on slow 4G, the page moved by about
+   17 ms to interactive, so parse is not what a bigger file costs here. What it
+   costs is download — roughly 0.3 KB on the wire per raw KB, this file
+   compressing about 3.3:1 — which puts a full 600 KB at around 180 KB
+   transferred and a quarter of a second of slow-4G time. That is a real price
+   and a payable one; a megabyte would not be, which is why there is still a
+   ceiling rather than no ceiling.
+
+   Nothing outside this repo enforces any of it. GitHub Pages allows 1 GB per
+   site and git refuses individual files at 100 MB, and Pages here deploys from
+   the branch rather than from a workflow — so exceeding this fails CI and
+   publishes anyway. It is a budget the project keeps, not a limit it is given. */
+const SIZE_CEILING = 600 * 1024;
 
 const fails = [];
 const warns = [];
@@ -224,16 +241,46 @@ if (stray.length) {
 
 /* ---- size budget ------------------------------------------------------- */
 
+/* Raw bytes are what the budget counts, but they are not what a visitor pays.
+   Pages serves this gzipped, so the number that predicts a phone's experience
+   is the compressed one — and this file compresses about 3.3:1, being one
+   stream of markup, CSS and JS with no images in it but the event wordmark.
+   Both are printed, because a warning that says "440 KB" and nothing else
+   invites a panic the transfer size does not support.
+
+   Measured at 440 KB, throttled to 4x CPU and slow 4G at a 390px viewport:
+   133 KB transferred, first paint 844 ms, interactive 1.1 s. Padding the same
+   page out to 600 KB of real parsed JS moved interactive by ~17 ms — parse
+   cost is not the constraint at this scale; download is, at roughly 0.3 KB
+   on the wire per raw KB added. */
 const bytes = Buffer.byteLength(html, 'utf8');
-const kb = (bytes / 1024).toFixed(0);
+const kb = n => (n / 1024).toFixed(0) + ' KB';
+const gzipped = gzipSync(html).length;
+
+/* Where the weight actually is. The old advice here was "most of the growth is
+   DRAFTS", which stopped being true: DRAFTS is a tenth of the file and pruning
+   it recovers that tenth, not the problem. So the warning now says which
+   blocks are big enough to be worth naming and leaves the reader to judge. */
+const blockSize = (a, b) => {
+  const i = src.indexOf(a), j = src.indexOf(b);
+  return i === -1 || j === -1 || j < i ? 0 : j - i;
+};
+const blocks = [
+  ['DRAFTS', blockSize('/* DRAFTS:generated */', '/* DRAFTS:end */')],
+  ['GPR', blockSize('/* GPR:generated */', '/* GPR:end */')],
+].filter(([, n]) => n > 8 * 1024);
+const named = blocks.reduce((n, [, b]) => n + b, 0);
+const breakdown = blocks.map(([n, b]) => `${n} ${kb(b)}`).join(', ')
+  + (blocks.length ? `, the page itself ${kb(bytes - named)}` : '');
+
 if (bytes > SIZE_CEILING) {
-  fail(`index.html is ${kb} KB, past the ${(SIZE_CEILING / 1024).toFixed(0)} KB hard ceiling.`,
-       'Run `node tools/drafts.mjs --prune` to drop previous splits, or raise SIZE_CEILING deliberately.');
+  fail(`index.html is ${kb(bytes)} (${kb(gzipped)} gzipped), past the ${kb(SIZE_CEILING)} hard ceiling.`,
+       `${breakdown}. Run \`node tools/drafts.mjs --prune\` to drop previous splits, or raise SIZE_CEILING deliberately.`);
 } else if (bytes > SIZE_BUDGET) {
-  warn(`index.html is ${kb} KB, past the ${(SIZE_BUDGET / 1024).toFixed(0)} KB budget (ceiling ${(SIZE_CEILING / 1024).toFixed(0)} KB).`,
-       'Most of the growth is DRAFTS; it resets at the split boundary.');
+  warn(`index.html is ${kb(bytes)} (${kb(gzipped)} gzipped), past the ${kb(SIZE_BUDGET)} budget (ceiling ${kb(SIZE_CEILING)}).`,
+       `${breakdown}. DRAFTS resets at the split boundary; the rest does not.`);
 } else {
-  console.log(`  size:   ${kb} KB of a ${(SIZE_BUDGET / 1024).toFixed(0)} KB budget`);
+  console.log(`  size:   ${kb(bytes)} of a ${kb(SIZE_BUDGET)} budget (${kb(gzipped)} gzipped)`);
 }
 
 /* ---- the baked-in data constants --------------------------------------- */

@@ -22,7 +22,10 @@ Deployed via GitHub Pages straight from this repo.
 - **Verify every edit** with `node tools/check.mjs`. It parses the inline `<script>`
   and checks the invariants that break the page silently: the `nexusdesk_` prefix, the
   DRAFTS markers and their JSON, duplicate element IDs, stray browser files at the root,
-  the file-size budget (400 KB warns, 480 KB fails — `SIZE_BUDGET` / `SIZE_CEILING`),
+  the file-size budget (400 KB warns, 600 KB fails — `SIZE_BUDGET` / `SIZE_CEILING`;
+  both are the project's own numbers, not limits anything outside it enforces, and
+  the check prints the gzipped size beside the raw one because that is the half a
+  visitor actually pays),
   and the structure of the baked-in data constants — every
   `defFormat` resolving to a real `FORMATS` key, every `w:`/`l:` bracket reference
   resolving to a match that exists, every seed placed exactly once, and the fields
@@ -517,8 +520,11 @@ kept only as documentation and as a fallback when that endpoint is unreachable �
 honest, but nothing is broken in the meantime.
 
 **Pruning is manual and deliberate.** DRAFTS is scoped to the current split, but nothing
-removes the previous one — it just grows against the 400 KB budget, and past 480 KB
-`check.mjs` stops warning and starts failing. `--prune` enumerates
+removes the previous one — it just grows against the 400 KB budget, and past 600 KB
+`check.mjs` stops warning and starts failing. Pruning is no longer the main lever on
+that number, and the warning no longer pretends it is: DRAFTS is around a tenth of the
+file, so `--prune` recovers a tenth. The rest is the page, and the page does not reset
+at a split boundary. `--prune` enumerates
 every game Riot places in the current split and drops everything else. It only ever runs
 on an explicit flag (or the `prune` input on the workflow's manual dispatch), and it
 refuses to delete anything if enumeration was incomplete, since a partial list would
