@@ -560,10 +560,21 @@ happened to be looking at.
   region page, and revealing it in one place and not the other would be a guard
   that only half remembers what you asked for. `spoilShown` is keyed by match
   id, and `applySpoil()` re-marks the whole page.
-- **One switch, in the header, not one per panel.** It was three panel buttons
-  first, which read as three separate controls for what was always a single
-  page-wide preference. It is cyan while the guard is on, because a page with
-  scores hidden and nothing saying so looks like a page with missing data.
+- **One switch, on the nav row, not one per panel.** It was three panel
+  buttons first, which read as three separate controls for what was always a
+  single page-wide preference. It sits at the far right of the tabs, pushed
+  there by an auto margin, because a mode that governs every tab belongs beside
+  the tabs rather than tucked in with the clock. It is cyan while the guard is
+  on, because a page with scores hidden and nothing saying so looks like a page
+  with missing data.
+  Below **1249px** it drops to the icon alone, and that number is measured
+  rather than picked: the tabs and their two rules take 1022px, so the labelled
+  pill only fits on that row from about 1250px up, and below it the nav wraps
+  and leaves the switch orphaned on a line of its own. The common laptop widths
+  (1280, 1366, 1440) keep the words. The same block trims the tab padding,
+  because the tab row was *exactly* full at 1024px before the switch joined it
+  — anything at all pushed LCS onto a second line, and the tabs give back the
+  44px rather than the switch giving up its tap target.
 - **Default on.** A spoiler guard that is off until you find it protects
   nobody — the visitor it exists for does not know it is there. The switch and
   the persisted preference are what keep that from being a nuisance to the

@@ -971,15 +971,41 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .match.spoil .sp-btn{inset:0}
 /* the panel switch reads as pressed while the guard is on, which is the state
    a viewer needs to recognise without reading the label */
-/* The header switch. Cyan while the guard is on, because that is the state a
-   viewer has to be able to recognise without reading the label — a page with
-   scores hidden and nothing saying so looks like a page with missing data. */
-.btn.pill{border-radius:var(--pill);padding:6px 12px;font-family:var(--mono);font-size:10px;
-  font-weight:600;letter-spacing:1.1px;text-transform:uppercase;display:inline-flex;
-  align-items:center;gap:7px;white-space:nowrap}
-.spoil-toggle{color:var(--cyan);border-color:rgba(11,198,227,.4)}
+/* The page-level switch, on the nav row and pushed to the far right by the
+   auto margin — a mode that governs every tab belongs beside the tabs rather
+   than tucked in with the clock. Sized to sit on that row rather than to match
+   the tabs: it is a control, not a destination, so it reads a size down from
+   them and carries a border where they carry none.
+
+   Cyan while the guard is on, because that is the state a viewer has to be
+   able to recognise without reading the label — a page with scores hidden and
+   nothing saying so looks like a page with missing data. */
+.navbtn{margin:6px 0 16px auto;display:inline-flex;align-items:center;gap:10px;white-space:nowrap;
+  font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;
+  background:transparent;border:1px solid var(--line2);border-radius:var(--pill);
+  padding:13px 22px;color:var(--dim);cursor:pointer;
+  transition:color .12s ease,background .12s ease,border-color .12s ease}
+.navbtn:hover{background:#1E1E1E;color:#FFFFFF}
+.navbtn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.spoil-toggle{color:var(--cyan);border-color:rgba(11,198,227,.45)}
+.spoil-toggle:hover{color:#FFFFFF;border-color:var(--cyan)}
 .spoil-toggle.on{color:var(--dim);border-color:var(--line2)}
-.spoil-toggle .sp-eye{font-size:12px;line-height:1}
+.spoil-toggle .sp-eye{font-size:16px;line-height:1}
+/* Measured, not guessed: the tabs and their two rules take 1022px, so the
+   labelled pill only sits on that row from about 1250px up. Below it the nav
+   wraps and the switch lands orphaned on a line of its own — so below it the
+   switch is the icon alone, which the colour and the aria-label carry. Common
+   laptop widths (1280, 1366, 1440) keep the words; a narrow window does not. */
+@media (max-width:1249px){
+  .navbtn{flex:none;width:44px;min-height:44px;padding:0;justify-content:center;gap:0}
+  .navbtn .sp-lbl{display:none}
+  .navbtn .sp-eye{font-size:18px}
+  /* The tab row was exactly full at 1024px before the switch joined it, so
+     adding anything at all pushed LCS onto a second line. The tabs give back
+     the 44px in padding rather than the switch giving up its tap target. */
+  .tab,.fchip{padding-left:16px;padding-right:16px}
+  .nav-div{margin:0 10px}
+}
 
 /* Masked wholesale rather than revealed row by row: the standings' Form and
    Streak. The cell keeps its box and the placeholder is drawn over it, so the
@@ -1121,7 +1147,7 @@ body.spoil-free td.num.sp-cell::after{justify-content:flex-end;letter-spacing:0}
      above this width is already comfortable. */
   .p-head .right a.mini,.p-head .right button.mini{padding:12px 2px}
   .btn.icon{width:44px;height:44px;padding:0;font-size:17px;flex:none}
-  .btn.pill{min-height:44px;padding:0 14px}
+  .navbtn{min-height:44px}
   .btn.small{padding:10px 14px}
   .rgf{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
   .pnl-btn{padding:13px 9px}
@@ -1304,10 +1330,6 @@ body.spoil-free td.num.sp-cell::after{justify-content:flex-end;letter-spacing:0}
         <span id="apiStatus"><span class="dot"></span>connecting…</span>
         <span id="lastRefresh"></span>
       </div>
-      <!-- One control for the whole page rather than one per results panel:
-           the preference was always page-wide, and three copies of it in three
-           panel heads read as three separate switches. -->
-      <button class="btn pill spoil-toggle" id="spoilBtn" type="button"></button>
       <button class="btn icon" id="refreshBtn" title="Refresh now" aria-label="Refresh now">⟳</button>
     </div>
   </div>
@@ -1325,6 +1347,12 @@ body.spoil-free td.num.sp-cell::after{justify-content:flex-end;letter-spacing:0}
     <button class="tab" data-tab="lck"><span class="lgw" data-lg="lck"></span>LCK</button>
     <button class="tab" data-tab="lpl"><span class="lgw" data-lg="lpl"></span>LPL</button>
     <button class="tab" data-tab="lcs"><span class="lgw" data-lg="lcs"></span>LCS</button>
+    <!-- One control for the whole page rather than one per results panel: the
+         preference was always page-wide, and three copies of it in three panel
+         heads read as three separate switches. It sits on the nav row at the
+         far right because that is where a page-level mode belongs — beside the
+         tabs it applies to, not tucked in with the clock. -->
+    <button class="navbtn spoil-toggle" id="spoilBtn" type="button"></button>
   </nav>
   <div class="ticker"><div class="ticker-track" id="tickerTrack"></div></div>
 </header>
@@ -3945,7 +3973,7 @@ document.addEventListener('click', e => {
 function syncSpoilToggles() {
   document.querySelectorAll('.spoil-toggle').forEach(b => {
     b.innerHTML = `<span class="sp-eye" aria-hidden="true">${spoilFree ? '◍' : '◉'}</span>`
-      + (spoilFree ? 'Scores hidden' : 'Scores shown');
+      + `<span class="sp-lbl">${spoilFree ? 'Scores hidden' : 'Scores shown'}</span>`;
     b.classList.toggle('on', !spoilFree);
     b.title = spoilFree
       ? 'Spoiler-free: scores, form and streaks are hidden until you ask for them. Click to show everything.'
