@@ -950,9 +950,10 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
    Three things give a result away, not one: the number, the winner's green
    and the loser's dimmed crest. All three are suppressed together, or the
    guard tells you who won while pretending not to. */
-.n-sc,.match .score{position:relative}
-/* The button is drawn on every finished row and shown only on a marked one, so
-   the panel switch is a class flip rather than a rebuild of six boards. */
+.n-sc,.match .score,.lc-score{position:relative}
+/* The button is drawn on every row that carries a score and shown only on a
+   marked one, so the panel switch is a class flip rather than a rebuild of six
+   boards. */
 .sp-btn{display:none;align-items:center;justify-content:center;position:absolute;
   font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1.2px;color:var(--faint);
   background:var(--panel2);border:1px dashed var(--line2);border-radius:3px;cursor:pointer;padding:0}
@@ -969,6 +970,19 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .match.spoil .score > span{visibility:hidden}
 .match.spoil .winner-tag{visibility:hidden}
 .match.spoil .sp-btn{inset:0}
+/* the live card, on the home board and the event tab. A live score is a result
+   too — 1–0 in a Bo5 says who won game one as plainly as a finished 3–1 says
+   who won the series — and so is the game number beside it: a Bo5 on game 5 is
+   2–2 whether the score is drawn or not. Both go, and the label falls back to
+   the one word the card can always say. */
+.lcard.spoil .lc-score > span{visibility:hidden}
+.lcard.spoil .lc-game{visibility:hidden;position:relative}
+.lcard.spoil .lc-game::after{content:'Live';visibility:visible;position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center}
+/* not the whole box, unlike the other two shapes: the score it covers is 38 to
+   64px tall, and a reveal button that size reads as a panel rather than as a
+   control. */
+.lcard.spoil .sp-btn{left:-2px;right:-2px;top:50%;height:26px;transform:translateY(-50%)}
 /* the panel switch reads as pressed while the guard is on, which is the state
    a viewer needs to recognise without reading the label */
 /* The page-level switch, on the nav row and pushed to the far right by the
@@ -3036,9 +3050,12 @@ function matchRow(ev, phase, opts) {
   } else {
     score = '<span class="vs">vs</span>';   // the kickoff time already sits in the left column
   }
-  /* Only a settled, finished row has a result to withhold. A live score is not
-     one, and neither is the dash a row carries while the result is unpublished. */
-  const guard = done && settled && !(opts && opts.noSpoil);
+  /* Any row with a scoreline on it has a result to withhold, and a live one
+     counts: 1–0 in a Bo5 hands over game one exactly as a finished 3–1 hands
+     over the series. What is never guarded is the dash a row carries while the
+     result is unpublished — there is nothing behind it to reveal. */
+  const scored = (done || live) && !(!settled && (done || assumed));
+  const guard = scored && !(opts && opts.noSpoil);
   const row = el('div','match' + (live ? ' is-live' : '') + (guard && spoilHidden(ev) ? ' spoil' : ''));
   const bothTBD = (!a.name || a.name==='TBD') && (!b.name || b.name==='TBD');
   if (live && bothTBD) {
@@ -3762,7 +3779,11 @@ function liveCard(ev, cols, opts) {
   // an inferred-live match has no trustworthy score behind it, so show none
   const score = assumed
     ? `<div class="lc-score tbc" title="The live feed doesn't carry this broadcast, so no score is published">\u2013</div>`
-    : `<div class="lc-score"><span class="${aw>bw?'hi':''}">${aw}</span><span class="sep">\u2013</span><span class="${bw>aw?'hi':''}">${bw}</span></div>`;
+    : `<div class="lc-score"><span class="${aw>bw?'hi':''}">${aw}</span><span class="sep">\u2013</span><span class="${bw>aw?'hi':''}">${bw}</span>${spoilBtn(ev)}</div>`;
+  /* The biggest number on the home board, and the one a viewer walks straight
+     into — so it is guarded like any other result, per match and revealable.
+     An inferred-live card has no score to guard, only the dash. */
+  if (!assumed && spoilHidden(ev)) card.classList.add('spoil');
   card.innerHTML = `<div class="lc-top">${chip}<span class="lc-game">${assumed ? 'Under way' : (bo ? 'Game ' + gameNo : 'Live')}</span>${clock}</div>
     <div class="lc-body">
       <div class="lc-side">${crestHTML(a.name,'lc-logo')}<div class="lc-code" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</div></div>
@@ -3920,7 +3941,7 @@ function applySpoil() {
      question and gets a per-match button; form is a mode. */
   document.body.classList.toggle('spoil-free', spoilFree);
   document.querySelectorAll('.sp-btn[data-spoil]').forEach(btn => {
-    const row = btn.closest('.nxt, .match');
+    const row = btn.closest('.nxt, .match, .lcard');
     if (!row) return;
     row.classList.toggle('spoil', spoilFree && !spoilShown.has(btn.dataset.spoil));
   });
@@ -3935,8 +3956,9 @@ function scoreCellHTML(ev, aw, bw, aWin, bWin, tbc) {
   return `<div class="n-sc"><span class="${aWin ? 'w' : 'l'}">${aw}</span><i>–</i><span class="${bWin ? 'w' : 'l'}">${bw}</span>${spoilBtn(ev)}</div>`;
 }
 
-/* Drawn on every finished row whether the guard is on or not — see applySpoil()
-   for why. It is `display:none` until the row is marked. */
+/* Drawn on every row carrying a scoreline, finished or live, whether the guard
+   is on or not — see applySpoil() for why. It is `display:none` until the row
+   is marked. */
 function spoilBtn(ev) {
   const id = ev.match?.id;
   if (!id) return '';
@@ -3960,9 +3982,10 @@ document.addEventListener('click', e => {
   e.stopPropagation();
   e.preventDefault();
   if (btn.dataset.spoil) spoilShown.add(btn.dataset.spoil);
-  /* Both row shapes: `.nxt` on the home board and the event tab, `.match` on
-     the region pages. The same fixture appears as both, so the reveal is
-     applied to every copy of it rather than only the one that was clicked. */
+  /* All three row shapes: `.nxt` on the home board and the event tab, `.match`
+     on the region pages, `.lcard` on either Live Now panel. The same fixture
+     appears as more than one of them, so the reveal is applied to every copy of
+     it rather than only to the one that was clicked. */
   applySpoil();
 }, true);
 

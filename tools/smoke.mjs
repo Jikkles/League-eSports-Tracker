@@ -602,6 +602,47 @@ if (loaded) {
     return `one row revealed, ${after} still hidden, series untouched`;
   });
 
+  /* The third row shape, and the one a viewer walks into first: the live card.
+     A series score is a result while it is still being played — 1–0 in a Bo5
+     hands over game one — and so is the game number beside it, since a Bo5 on
+     game 5 is 2–2 without the score being drawn at all. Only checkable while
+     something is actually on air, so it skips itself the rest of the time
+     rather than failing on an empty panel. */
+  await check('live: on-air scores are hidden too', async () => {
+    const r = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('#homeLive .lcard')]
+        .filter(c => c.querySelector('.lc-score:not(.tbc)'));
+      if (!cards.length) return { none: true };
+      const hidden = cards.filter(c => c.classList.contains('spoil'));
+      if (!hidden.length) return { err: `${cards.length} live scores on the board and none hidden` };
+      for (const c of hidden) {
+        const painted = [...c.querySelectorAll('.lc-score > span')]
+          .filter(x => getComputedStyle(x).visibility !== 'hidden');
+        if (painted.length) return { err: 'a hidden live card still paints its score' };
+        const btn = c.querySelector('.sp-btn');
+        if (!btn) return { err: 'a hidden live card carries no reveal button' };
+        if (getComputedStyle(btn).display === 'none')
+          return { err: 'the live reveal button is not displayed, so the score cannot be got at' };
+        const g = c.querySelector('.lc-game');
+        if (g && getComputedStyle(g).visibility !== 'hidden')
+          return { err: 'a hidden live card still names the game number, which gives a decider away' };
+      }
+      return { cards: cards.length, hidden: hidden.length };
+    });
+    if (r.err) throw new Error(r.err);
+    if (r.none) return 'nothing on air with a published score';
+
+    /* And it has to open: applySpoil() walks up from the button to its row, and
+       a selector that only knows the other two shapes seals every live card
+       permanently — which looks exactly like a working guard until you click. */
+    await page.locator('#homeLive .lcard.spoil .sp-btn').first().click();
+    await page.waitForTimeout(300);
+    const after = await page.locator('#homeLive .lcard.spoil').count();
+    if (after !== r.hidden - 1)
+      throw new Error(`revealing a live card left ${after} hidden, not ${r.hidden - 1} — the card was never unmarked`);
+    return `${r.hidden} of ${r.cards} live scores hidden, one revealed`;
+  });
+
   /* The region pages draw a different row (`.match`, not `.nxt`) with a
      different tell: no dimmed crest, but a green diamond beside the winner's
      name that answers the question on its own. Same guard, second shape — and

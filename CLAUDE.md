@@ -509,6 +509,14 @@ What that puts on the guarded side:
   and each region page's **Recent Results**. The fixture is drawn in full (the
   date, both crests, both team codes, the round, the Bo) and only the score is
   withheld, behind a per-match click.
+- **Every score on a match still being played**, which is the same result one
+  refresh early: the Live Now cards on the home board and the event tab, and the
+  live row on a region page's Schedule. 1–0 in a Bo5 hands over game one as
+  plainly as a finished 3–1 hands over the series — and so does the card's
+  **Game N** label, since a Bo5 on game 5 is 2–2 whether the score beside it is
+  drawn or not. Both go together, and the card falls back to saying *Live*. What
+  is never guarded is the dash a broadcast with no published score already
+  carries: there is nothing behind it to reveal.
 - **The standings' Form and Streak columns**, which are the two columns of that
   table that are not standings: the last five matches drawn as pips, and the
   current run. `L2` says you lost on Tuesday.
@@ -521,26 +529,29 @@ board needs to be spoiler-safe end to end, that is a writing decision.
 
 ### How it is built
 
-**There are two row shapes and both are guarded.** `.nxt`, built by
+**There are three row shapes and all three are guarded.** `.nxt`, built by
 `renderRecent()` and `evtFixRow()` and scored by the shared `scoreCellHTML()`;
-and `.match`, built by `matchRow()` for the region pages. They have different
-tells, which is the thing to remember when either is next edited — a change
-that guards one shape and not the other looks completely fine on the tab you
-happened to be looking at.
+`.match`, built by `matchRow()` for the region pages; and `.lcard`, built by
+`liveCard()` for either Live Now panel. They have different tells, which is the
+thing to remember when any of them is next edited — a change that guards one
+shape and not the others looks completely fine on the tab you happened to be
+looking at.
 
 - **Hiding the number is not hiding the result.** The `.nxt` row also dims the
   loser's crest and code and paints the winner's score green. The `.match` row
   does neither — instead it puts a green diamond beside the winner's name,
-  which answers the question on its own. Every one of those is suppressed
-  alongside the number by a `spoil` class on the row. Leaving one behind is the
-  bug this feature is most likely to grow, so `smoke.mjs` checks the dimming
-  and the diamond by name rather than only checking that the score went away.
+  which answers the question on its own. The `.lcard`'s tell is not a score at
+  all: **Game 5** of a Bo5 is 2–2 however carefully the number beside it is
+  covered. Every one of those is suppressed alongside the number by a `spoil`
+  class on the row. Leaving one behind is the bug this feature is most likely to
+  grow, so `smoke.mjs` checks the dimming, the diamond and the game number by
+  name rather than only checking that the score went away.
 - **Two mechanisms, because there are two kinds of question.** A score is a
   per-match question and gets a per-match reveal: the button is drawn on every
-  finished row, and the row's `spoil` class decides whether button or score is
-  painted. Form is a *mode* — nobody wants one team's form — so it is masked
-  wholesale off a single `spoil-free` class on `<body>`, with `sp-cell` /
-  `data-mask` giving the cell a placeholder. Anything else that turns out to
+  row carrying a score, live or finished, and the row's `spoil` class decides
+  whether button or score is painted. Form is a *mode* — nobody wants one
+  team's form — so it is masked wholesale off a single `spoil-free` class on
+  `<body>`, with `sp-cell` / `data-mask` giving the cell a placeholder. Anything else that turns out to
   need masking later says so in its markup rather than in a new mechanism.
 - **Everything is `visibility:hidden`, never `display:none`.** Cells keep their
   boxes, so nothing reflows when the switch is flipped, and the content leaves
