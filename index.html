@@ -1603,6 +1603,34 @@ const REGIONS = {
    15 Oct – 14 Nov 2026 in the United States, 19 teams (4 Korea, 4 China,
    3 EMEA, 3 Asia-Pacific, 3 North America, 2 Brazil), a play-in into a Swiss
    stage into an eight-team single-elimination knockout. */
+/* QUAL:generated */
+/* Who the bracket has already put through, and how narrowly they can still be
+   seeded. Worked out by tools/qual.mjs from Riot’s own published wiring, after
+   every result. NEVER HAND-EDIT: the whole block is rewritten, so an edit here
+   is overwritten rather than kept. Anything this cannot derive — a route taken
+   outside a region’s own places, a crest the feed does not carry — belongs in
+   EVENT.qual’s `thru`, which wins on every field except the seed range.
+   As of 2026-09-05. */
+const QUAL_AUTO = {
+  lck: [
+    {team:'Gen.G Esports', seed:[1,2], on:'2026-09-05',
+     logo:'https://static.lolesports.com/teams/1773829250929_GENGLOGO_GOLD.png'},
+    {team:'Hanwha Life Esports', seed:[1,2,3], on:'2026-09-05',
+     logo:'https://static.lolesports.com/teams/1631819564399_hle-2021-worlds.png'},
+  ],
+  lcp: [
+    {team:'CTBC Flying Oyster', seed:[2], on:'2026-08-30', via:'LCP Split 3 runner-up',
+     logo:'https://static.lolesports.com/teams/1656307849320_CFO_Logo.png'},
+    {team:'Team Secret Whales', seed:[1], on:'2026-08-30', via:'LCP Split 3 champion',
+     logo:'https://static.lolesports.com/teams/1774598000328_White_EyeText_600p.png'},
+  ],
+  lec: [
+    {team:'G2 Esports', seed:[1,2,3], on:'2026-09-05',
+     logo:'https://static.lolesports.com/teams/G2-FullonDark.png'},
+  ],
+};
+/* QUAL:end */
+
 const EVENT = {
   slug:'worlds', name:'Worlds 2026', full:'2026 Season World Championship',
   when:'15 Oct – 14 Nov 2026', host:'United States',
@@ -1715,11 +1743,11 @@ const EVENT = {
          drop to the lower final and can still come back through it, so they
          stay first to third; Dplus KIA and T1 meet on 6 Sep, where the loser
          is fourth and the winner can still win the whole thing. */
-      {rg:'Korea', lg:'LCK', slug:'lck', color:'var(--lck)',
-       routes:[{via:'LCK Season Playoffs champion',     on:'2026-09-13'},
-               {via:'LCK Season Playoffs runner-up',    on:'2026-09-13'},
-               {via:'LCK Season Playoffs third place',  on:'2026-09-12'},
-               {via:'LCK Season Playoffs fourth place', on:'2026-09-06'}],
+      {rg:'Korea', lg:'LCK', slug:'lck', color:'var(--lck)', feed:{league:'lck'},
+       routes:[{via:'LCK Season Playoffs champion',     on:'2026-09-13', at:{stage:'regional_championship', place:1}},
+               {via:'LCK Season Playoffs runner-up',    on:'2026-09-13', at:{stage:'regional_championship', place:2}},
+               {via:'LCK Season Playoffs third place',  on:'2026-09-12', at:{stage:'regional_championship', place:3}},
+               {via:'LCK Season Playoffs fourth place', on:'2026-09-06', at:{stage:'regional_championship', place:4}}],
        thru:[{team:'Hanwha Life Esports', how:'MSI 2026 champion', seed:[1,2,3], on:'2026-08-15',
               logo:'https://static.lolesports.com/teams/1631819564399_hle-2021-worlds.png'},
              {team:'Gen.G Esports', seed:[1,2], on:'2026-09-01',
@@ -1729,11 +1757,13 @@ const EVENT = {
              {team:'Dplus KIA', seed:[1,2,3,4], on:'2026-09-04',
               logo:'https://static.lolesports.com/teams/1673260049703_DPlusKIALOGO11.png'}]},
 
-      {rg:'China', lg:'LPL', slug:'lpl', color:'var(--lpl)',
-       routes:[{via:'LPL Grand Finals champion',     on:'2026-09-13'},
+      {rg:'China', lg:'LPL', slug:'lpl', color:'var(--lpl)', feed:{league:'lpl'},
+       /* The points place is the one route on this board that is not a bracket
+          placement at all, so it carries no `at` and qual.mjs leaves it alone. */
+       routes:[{via:'LPL Grand Finals champion',     on:'2026-09-13', at:{stage:'playoffs', place:1}},
                {via:'LPL championship points',       on:'2026-08-13'},
-               {via:'LPL Regional Finals winner',    on:'2026-09-17'},
-               {via:'LPL Regional Finals runner-up', on:'2026-09-19'}],
+               {via:'LPL Regional Finals winner',    on:'2026-09-17', at:{stage:'regional_qualifier', place:1}},
+               {via:'LPL Regional Finals runner-up', on:'2026-09-19', at:{stage:'regional_qualifier', place:2}}],
        /* The points place is theirs, but the champion's is still live: win the
           Grand Finals and BLG take that seed instead, the points place passing
           to the next team that has not already qualified. */
@@ -1749,19 +1779,19 @@ const EVENT = {
          and are through on that alone, with all three places still open to
          them. The winner of Karmine Corp against GIANTX joins them the moment
          that match ends, for the same reason. */
-      {rg:'EMEA', lg:'LEC', slug:'lec', color:'var(--lec)',
-       routes:[{via:'LEC Summer Playoffs champion',    on:'2026-09-20'},
-               {via:'LEC Summer Playoffs runner-up',   on:'2026-09-20'},
-               {via:'LEC Summer Playoffs third place', on:'2026-09-19'}],
+      {rg:'EMEA', lg:'LEC', slug:'lec', color:'var(--lec)', feed:{league:'lec'},
+       routes:[{via:'LEC Summer Playoffs champion',    on:'2026-09-20', at:{stage:'playoffs', place:1}},
+               {via:'LEC Summer Playoffs runner-up',   on:'2026-09-20', at:{stage:'playoffs', place:2}},
+               {via:'LEC Summer Playoffs third place', on:'2026-09-19', at:{stage:'playoffs', place:3}}],
        thru:[{team:'G2 Esports', seed:[1,2,3], on:'2026-09-05',
               logo:'https://static.lolesports.com/teams/G2-FullonDark.png'}]},
 
       /* Three places, three teams, and now three seeds: Team Secret Whales
          beat CTBC Flying Oyster in the Split 3 final on 30 Aug, which settled
          the first two, and MVK had taken the points place a week before. */
-      {rg:'Asia-Pacific', lg:'LCP', slug:'lcp', color:'var(--cyan)',
-       routes:[{via:'LCP Split 3 champion',    on:'2026-08-30'},
-               {via:'LCP Split 3 runner-up',   on:'2026-08-30'},
+      {rg:'Asia-Pacific', lg:'LCP', slug:'lcp', color:'var(--cyan)', feed:{league:'lcp'},
+       routes:[{via:'LCP Split 3 champion',    on:'2026-08-30', at:{stage:'playoffs', place:1}},
+               {via:'LCP Split 3 runner-up',   on:'2026-08-30', at:{stage:'playoffs', place:2}},
                {via:'LCP championship points', on:'2026-08-29'}],
        thru:[{team:'Team Secret Whales', via:'LCP Split 3 champion', on:'2026-08-30',
               logo:'https://static.lolesports.com/teams/1774598000328_White_EyeText_600p.png'},
@@ -1770,15 +1800,15 @@ const EVENT = {
              {team:'MVK Esports', via:'LCP championship points', on:'2026-08-22',
               logo:'https://static.lolesports.com/teams/1767089709161_White_Logo.png'}]},
 
-      {rg:'North America', lg:'LCS', slug:'lcs', color:'var(--lcs)',
-       routes:[{via:'LCS Summer Playoffs champion',    on:'2026-10-04'},
-               {via:'LCS Summer Playoffs runner-up',   on:'2026-10-04'},
-               {via:'LCS Summer Playoffs third place', on:'2026-10-03'}],
+      {rg:'North America', lg:'LCS', slug:'lcs', color:'var(--lcs)', feed:{league:'lcs'},
+       routes:[{via:'LCS Summer Playoffs champion',    on:'2026-10-04', at:{stage:'playoffs', place:1}},
+               {via:'LCS Summer Playoffs runner-up',   on:'2026-10-04', at:{stage:'playoffs', place:2}},
+               {via:'LCS Summer Playoffs third place', on:'2026-10-03', at:{stage:'playoffs', place:3}}],
        thru:[]},
 
-      {rg:'Brazil', lg:'CBLOL', slug:'cblol-brazil', color:'var(--cyan)',
-       routes:[{via:'CBLOL Split 2 Playoffs champion',  on:'2026-10-10'},
-               {via:'CBLOL Split 2 Playoffs runner-up', on:'2026-10-10'}],
+      {rg:'Brazil', lg:'CBLOL', slug:'cblol-brazil', color:'var(--cyan)', feed:{league:'cblol-brazil'},
+       routes:[{via:'CBLOL Split 2 Playoffs champion',  on:'2026-10-10', at:{stage:'playoffs', place:1}},
+               {via:'CBLOL Split 2 Playoffs runner-up', on:'2026-10-10', at:{stage:'playoffs', place:2}}],
        thru:[]},
     ],
   },
@@ -2583,7 +2613,7 @@ function addLogo(name, code, url) {
    to be seeded rather than harvested — the harvest walks fixtures from four
    leagues, and half that board plays in leagues this page never fetches. */
 for (const r of EVENT.qual?.regions || [])
-  for (const t of r.thru || []) addLogo(t.team, null, t.logo);
+  for (const t of (r.thru || []).concat(QUAL_AUTO[r.slug] || [])) addLogo(t.team, null, t.logo);
 
 function harvestLogos(events) {
   for (const ev of events||[])
@@ -4359,6 +4389,32 @@ function seedLabel(list) {
    count, drawn in the leftmost slot nobody has been given and captioned with
    every seed it could take. Nothing is ever placed in a seed the games have
    not awarded it. */
+/* The board is written from two places and read as one. `EVENT.qual[].thru` is
+   the hand-written half: a team through by something no bracket can be asked
+   about (Hanwha Life were at Worlds the day they won MSI), a crest the feed does
+   not carry, a route worth naming. `QUAL_AUTO` is tools/qual.mjs's half, worked
+   out from Riot's published bracket wiring after every result — which is what
+   stops a seed range going stale the way Gen.G's did.
+
+   Where both name the same team the hand-written entry wins on every field but
+   one: the seed range, where the narrower answer wins, and only the machine's
+   can be narrower because it may only ever tighten. That split is the point —
+   prose nobody can derive stays put, and the one field that follows mechanically
+   from results keeps itself current. */
+function qualThru(r) {
+  const auto = (QUAL_AUTO[r.slug] || []);
+  const merged = (r.thru || []).map(t => {
+    const a = auto.find(x => nk(x.team) === nk(t.team));
+    const hand = Array.isArray(t.seed) ? t.seed : Number.isInteger(t.seed) ? [t.seed] : null;
+    /* Only a tightening, and only of a range the hand already allowed. */
+    if (a && a.seed && (!hand || a.seed.every(x => hand.includes(x))) &&
+        (!hand || a.seed.length < hand.length)) return { ...t, seed: a.seed };
+    return t;
+  });
+  const extra = auto.filter(a => !(r.thru || []).some(t => nk(t.team) === nk(a.team)));
+  return merged.concat(extra);
+}
+
 function evtQual() {
   const q = EVENT.qual;
   if (!q) return '';
@@ -4370,7 +4426,7 @@ function evtQual() {
     .toLocaleDateString(undefined, {day:'numeric', month:'short', timeZone:'UTC'});
 
   const places = q.regions.reduce((n, r) => n + r.routes.length, 0);
-  const taken  = q.regions.reduce((n, r) => n + r.thru.length, 0);
+  const taken  = q.regions.reduce((n, r) => n + qualThru(r).length, 0);
 
   const rows = q.regions.map(r => {
     /* The crest carries the league, so a route drops the prefix it repeats:
@@ -4391,7 +4447,7 @@ function evtQual() {
       return i >= 0 ? [i + 1] : [];
     };
 
-    const thru = r.thru.map(t => ({ t, seeds: seedsOf(t) }));
+    const thru = qualThru(r).map(t => ({ t, seeds: seedsOf(t) }));
     const done = thru.filter(x => x.seeds.length === 1);
     const open = thru.filter(x => x.seeds.length !== 1);
 
@@ -4413,7 +4469,7 @@ function evtQual() {
        two numbers usually match and the slots can name a route each; where a
        region is three teams into four places nobody has been seeded in, they
        cannot, and one title has to carry the lot rather than pick one. */
-    const claimed = new Set(r.thru.map(t => t.via).filter(Boolean));
+    const claimed = new Set(qualThru(r).map(t => t.via).filter(Boolean));
     const left = r.routes.filter(x => !claimed.has(x.via));
     const empty = cells.filter(v => !v).length;
     /* Four routes all called "Season Playoffs …" read as four repetitions of

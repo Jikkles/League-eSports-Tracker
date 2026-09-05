@@ -1,0 +1,113 @@
+name: Refresh the qualification board
+
+# Who has already qualified for Worlds is not an editorial question, it is a
+# consequence of results — and Riot publishes both the results and the bracket
+# wiring they run through. tools/qual.mjs reads that wiring, works out how far
+# each team can still fall, and writes the ones who can no longer fall out of
+# their region's places into the QUAL block in index.html.
+#
+# Every two hours rather than nightly, because the thing it is watching for is a
+# series ending. A daily job would leave the board a day behind the broadcast
+# that everyone watched, which is the whole problem it exists to solve.
+#
+# It only ever adds teams and narrows seed ranges. Anything it cannot prove — a
+# place that is not a bracket placement, an answer that contradicts what is
+# written by hand — it reports and leaves alone, so a wrong rulebook assumption
+# shows up as a stalled board rather than as a false claim on the live site.
+
+on:
+  schedule:
+    - cron: '20 */2 * * *'
+  workflow_dispatch:
+
+# index.html is rewritten in place; never let two jobs race for it
+concurrency:
+  group: qual
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write        # to raise a failed run rather than leave it in the Actions tab
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Work out who is through and patch index.html
+        id: qual
+        run: |
+          if node tools/qual.mjs > qual-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat qual-log.txt
+          {
+            echo '```'
+            cat qual-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write the report
+        if: steps.qual.outputs.healthy == 'false'
+        run: |
+          {
+            echo "The qualification refresh failed, so the board on the Worlds tab of [index.html](../blob/main/index.html) is frozen at whatever it last worked out."
+            echo
+            echo "Nothing on the page is broken — it draws the teams it already has, and the hand-written half of \`EVENT.qual\` is untouched either way. The usual cause is the lolesports API being briefly unreachable, which clears on its own; the [api-canary](../issues?q=label%3Aapi-canary) issue is the place to check if it does not."
+            echo
+            echo "The failure this one cannot survive is a change in how Riot files a bracket. \`qual.mjs\` finds each region's stage by the slug in \`EVENT.qual.regions[].routes[].at.stage\`, and a stage that has been renamed or a season filed under a new tournament reads as *stage \"…\" is not in … yet*. That is a one-line fix to the constant, not to the tool."
+            echo
+            echo '```'
+            cat qual-log.txt
+            echo '```'
+            echo
+            echo "Reproduce locally with \`node tools/qual.mjs --dry-run\`."
+            echo
+            echo "<sub>Posted by [qual.yml](../blob/main/.github/workflows/qual.yml). Updated in place on each run, and closed automatically once a run succeeds.</sub>"
+          } > qual-report.md
+
+      - name: Report
+        uses: ./.github/actions/report-issue
+        with:
+          healthy: ${{ steps.qual.outputs.healthy }}
+          label: qual-failing
+          title: 'Qualification board: the bracket read is failing'
+          body-file: qual-report.md
+          color: FBCA04
+          description: Raised automatically when the qualification refresh cannot complete
+          token: ${{ github.token }}
+
+      - name: Stop here if the run failed
+        if: steps.qual.outputs.healthy == 'false'
+        run: exit 1
+
+      # The block is rewritten wholesale and it makes a claim about a team, so a
+      # bad write is worse than a broken page. Check before committing.
+      - name: Check the page still parses and the board still adds up
+        run: node tools/check.mjs
+
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "board unchanged; nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -F - <<'MSG'
+          Update the Worlds qualification board
+
+          Written by tools/qual.mjs from Riot's published bracket wiring: a team
+          is added once no result can drop it out of its region's places, and a
+          seed range is narrowed once the bracket closes part of it.
+          MSG
+          git push

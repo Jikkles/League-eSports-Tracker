@@ -399,9 +399,12 @@ Worlds Updates* post on lolesports.com; and the bracket from the API.
   holds them to each other, so getting two of them right fails the build rather
   than rendering a tab that opens a blank page.
 - **`EVENT.qual` is the qualification board, and it is the one part of the tab
-  with facts on it.** Riot publishes no qualification feed, so it is researched
-  and patched by hand like `HONOURS`, from Leaguepedia's participants table on
-  the page the hero already links. Each region carries `routes` — the seed
+  with facts on it.** Riot publishes no qualification *feed*, but it does publish
+  the brackets the places come out of, so the board is written from two sides:
+  `tools/qual.mjs` derives everything a bracket can settle (see the QUAL block
+  below), and what no bracket can be asked about is researched and patched by
+  hand like `HONOURS`, from Leaguepedia's participants table on the page the
+  hero already links. Each region carries `routes` — the seed
   table, one entry per place, each with the `on` date that place is settled —
   and `thru`, every team already qualified. **Those two lists are deliberately
   not the same list**, because qualifying and being seeded are two different
@@ -607,7 +610,7 @@ looking at.
 
 ## Generated data
 
-Two blocks in the script are written by tooling rather than by hand, both fenced
+Three blocks in the script are written by tooling rather than by hand, each fenced
 by markers `check.mjs` holds you to. Rewriting a whole block is deliberate: a
 generated region with a hard edge cannot be half-edited, and a hand-tweak inside
 one is simply overwritten on the next run rather than silently kept.
@@ -648,6 +651,66 @@ every game Riot places in the current split and drops everything else. It only e
 on an explicit flag (or the `prune` input on the workflow's manual dispatch), and it
 refuses to delete anything if enumeration was incomplete, since a partial list would
 take the live split with it. Run it once after a rollover.
+
+### The QUAL block
+
+`QUAL_AUTO` sits between `/* QUAL:generated */` and `/* QUAL:end */`, just above
+`EVENT`. **Never hand-edit it** — `tools/qual.mjs` rewrites the whole block, every
+two hours, from Riot's own published bracket wiring.
+
+- `node tools/qual.mjs --dry-run` — print what it would write, change nothing
+- `node tools/qual.mjs` — patch `index.html`
+- `node tools/qual.mjs --check` — exit 1 if a patch is pending
+- `.github/workflows/qual.yml` runs it every two hours and commits any change
+
+**It exists because "who has qualified" is a consequence, not a judgement.** Gen.G
+sat at `#1–3` for a day after the LCK's upper-bracket final had already made third
+impossible for them, and G2 sat off the board entirely after a win that put a
+floor of third under them. Neither is something `stale.mjs` can see: its
+arithmetic is per region and counts places against teams, so a full region stays
+green while a seed rots inside it, and its range check only fires once every
+place in a team's range is settled.
+
+- **The trick is that a bracket is a graph, and Riot publishes it before it is
+  played.** Every match slot in `/getStandingsV3` carries an `origin` naming
+  where its occupant comes from — another match (slot 1 the winner, slot 2 the
+  loser), a seeding position, or a `decisionPoint` for a pairing chosen later.
+  A match whose loser feeds no other match eliminates that loser; order those by
+  depth and the places fall out, the shallowest elimination taking last place
+  and the deepest being the final. Walk forward from where a team stands now,
+  losing every time, and where that ends is the worst they can still finish.
+- **So it never simulates opponents, and that is what makes it sound.** The
+  answer to "can this team still fall out of the places?" depends on the depth
+  of the bracket, not on who else is in it — which is why an unresolved
+  `decisionPoint` further down cannot make it wrong.
+- **Except in one direction, which is why the depth guard exists.** A bracket
+  that routes its upper-bracket losers *through* a decisionPoint (the LCK picks
+  which lower-bracket match takes which) hides that edge, and the match then
+  looks like the end of a road it is not. Every hidden edge lands at or above
+  the deepest decisionPoint, so a place is only quoted for eliminations deeper
+  than that one. Below it the tool says nothing. That costs a few answers the
+  bracket would have supported and it cannot invent one, which is the trade to
+  want in a file that publishes claims about real teams.
+- **`routes[].at` is what points it at a stage**, as `{stage, place}`, and a
+  route without one is deliberate rather than missing: the LPL's championship
+  points is a season standing, not a bracket placement, so it carries no `at`
+  and is reported instead of guessed. `feed.league` is the API's league slug.
+  Note the LCK files its playoff bracket under `regional_championship`, not
+  `playoffs` — the slugs are per league and worth checking against the feed
+  rather than assuming.
+- **The two halves of the board merge at render time**, in `qualThru()`. The
+  hand-written `thru` wins on every field except the seed range, where the
+  narrower answer wins — and only the machine's can be narrower, because it may
+  only ever tighten. Prose nobody can derive stays put; the one field that
+  follows mechanically from results keeps itself current.
+- **It only ever adds.** It never removes an entry, never invents a route name,
+  and where its answer *contradicts* a hand-written seed it reports and changes
+  nothing, because that is a question about the rules rather than the results.
+- **`check.mjs` validates the merged board, not just the hand-written half**,
+  which is the half worth checking: it is the one that changes without anybody
+  reading the diff. It also holds the markers, and refuses a `QUAL_AUTO`
+  declared after `EVENT`, because the boot-time crest seeding reads it earlier
+  than the renderer does.
 
 ### The GPR block
 
@@ -705,6 +768,7 @@ These run without anyone asking:
 - `.github/workflows/drafts.yml` — `tools/drafts.mjs` daily at 06:00 UTC, commits changes
 - `.github/workflows/api-canary.yml` — `tools/api-canary.mjs` daily at 07:00 UTC
 - `.github/workflows/gpr.yml` — `tools/gpr.mjs` daily at 07:45 UTC, commits changes
+- `.github/workflows/qual.yml` — `tools/qual.mjs` every two hours, commits changes
 - `.github/workflows/stale.yml` — `tools/stale.mjs` daily at 08:00 UTC
 - `.github/workflows/links.yml` — `tools/links.mjs` weekly, Wednesdays at 08:15 UTC
 - `.github/workflows/deployed.yml` — `tools/deployed.mjs` after each push to `main`, and daily at 08:45 UTC
@@ -723,6 +787,7 @@ The checks answer different questions and none of them substitutes for another:
 | `stale.mjs` | is the baked-in data still *true*? |
 | `deployed.mjs` | is the live site serving *this* build? |
 | `links.mjs` | do the links baked into the page still *resolve*? |
+| `qual.mjs` | has a result *settled* something the board has not caught up with? |
 
 `smoke.mjs` serves the repo over http, opens it in headless chromium against a cold
 profile (so, empty localStorage: the first-visit path), and checks the nav, home board,
@@ -746,7 +811,7 @@ canary issue is the explanation when that happens.
 that opens one labelled issue per check, updates it in place on subsequent runs, and
 closes it once the check passes again — so a multi-day problem is one issue, not a pile,
 and a recovery needs no cleanup. Each check owns a label: `api-canary`, `stale-data`,
-`smoke-failing`, `drafts-failing`, `gpr-failing`, `deploy-stale`, `links-dead`. Scheduled jobs report through it;
+`smoke-failing`, `drafts-failing`, `gpr-failing`, `qual-failing`, `deploy-stale`, `links-dead`. Scheduled jobs report through it;
 push and PR runs deliberately don't, because a red check is already in front of whoever
 caused it.
 

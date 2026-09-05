@@ -141,7 +141,7 @@ export function extractFunctions(src, names) {
 
 /** The data constants every caller cares about, in one call. */
 export const DATA_CONSTANTS =
-  ['REGIONS', 'EVENT', 'HONOURS', 'STORYLINES', 'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'FORMATS'];
+  ['REGIONS', 'EVENT', 'QUAL_AUTO', 'HONOURS', 'STORYLINES', 'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'FORMATS'];
 
 export function readDataConstants() {
   const { html, src } = readIndex();

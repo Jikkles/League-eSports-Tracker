@@ -218,6 +218,28 @@ else {
            'tools/gpr.mjs replaces everything between them, so a declaration left outside would be orphaned.');
 }
 
+/* ---- the QUAL block ------------------------------------------------------
+   Same reasoning as the two above, plus one more: this block is the only
+   generated one whose contents make a *claim* — that a team has qualified —
+   rather than mirroring a number. So the markers are checked here and the data
+   itself is held against EVENT.qual further down, where the routes it has to
+   agree with are already parsed. */
+
+const qualStart = src.indexOf('/* QUAL:generated */');
+const qualEnd = src.indexOf('/* QUAL:end */');
+
+if (qualStart === -1 || qualEnd === -1)
+  fail('The QUAL:generated / QUAL:end markers are missing.',
+       'tools/qual.mjs rewrites QUAL_AUTO between them and cannot find it without both.');
+else if (qualEnd < qualStart)
+  fail('The QUAL markers are in the wrong order.');
+else if (!src.slice(qualStart, qualEnd).includes('const QUAL_AUTO'))
+  fail('QUAL_AUTO is not inside the QUAL markers.',
+       'tools/qual.mjs replaces everything between them, so a declaration left outside would be orphaned.');
+else if (qualStart > src.indexOf('const EVENT ='))
+  fail('QUAL_AUTO is declared after EVENT.',
+       'qualThru() reads it while rendering, but the boot-time crest seeding reads it earlier than that.');
+
 /* ---- duplicate element IDs --------------------------------------------- */
 
 const ids = [...html.matchAll(/\sid=["']([^"']+)["']/g)].map(x => x[1]);
@@ -301,7 +323,7 @@ if (m && !fails.length) {
   }
 
   if (C) {
-    const { REGIONS, EVENT, HONOURS, STORYLINES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
+    const { REGIONS, EVENT, QUAL_AUTO, HONOURS, STORYLINES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
 
     /* -- FORMATS: the playoff bracket wirings ------------------------------ */
     if (FORMATS) {
@@ -605,8 +627,16 @@ if (m && !fails.length) {
                 fail(`${at}.routes[${j}] (${x.via}) has no parseable date: ${x.on}`);
             });
 
-            const thru = r.thru;
-            if (!Array.isArray(thru)) { fail(`${at}.thru is not an array.`); return; }
+            /* Checked as the page reads it: the hand-written half and
+               tools/qual.mjs's generated half merged into one board. Holding
+               only `thru` to these rules would leave the half that a bot writes
+               unchecked, which is the half worth checking — it is the one that
+               can change without anybody looking at the diff. */
+            if (!Array.isArray(r.thru)) { fail(`${at}.thru is not an array.`); return; }
+            const auto = (QUAL_AUTO && QUAL_AUTO[r.slug]) || [];
+            if (!Array.isArray(auto)) { fail(`QUAL_AUTO.${r.slug} is not an array.`); return; }
+            const key = x => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const thru = r.thru.concat(auto.filter(a => !r.thru.some(t => key(t.team) === key(a.team))));
             if (thru.length > r.routes.length)
               fail(`${at} has ${thru.length} teams through for ${r.routes.length} places.`);
 
