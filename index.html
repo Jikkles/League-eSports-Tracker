@@ -1740,11 +1740,21 @@ const EVENT = {
        thru:[{team:'BILIBILI GAMING', via:'LPL championship points', seed:[1,2], on:'2026-08-13',
               logo:'https://static.lolesports.com/teams/1682322954525_Bilibili_Gaming_logo_20211.png'}]},
 
+      /* Three places out of a six-team double elimination, and the bracket
+         hands them out one round earlier than the calendar suggests: the two
+         upper-bracket Round 1 winners meet in the upper final, and whoever
+         loses that drops into the lower final, where the loser is third. So
+         winning an upper Round 1 is qualification, not progress — the floor
+         is third and third is a Worlds place. G2 beat Vitality 3–0 on 5 Sep
+         and are through on that alone, with all three places still open to
+         them. The winner of Karmine Corp against GIANTX joins them the moment
+         that match ends, for the same reason. */
       {rg:'EMEA', lg:'LEC', slug:'lec', color:'var(--lec)',
        routes:[{via:'LEC Summer Playoffs champion',    on:'2026-09-20'},
                {via:'LEC Summer Playoffs runner-up',   on:'2026-09-20'},
                {via:'LEC Summer Playoffs third place', on:'2026-09-19'}],
-       thru:[]},
+       thru:[{team:'G2 Esports', seed:[1,2,3], on:'2026-09-05',
+              logo:'https://static.lolesports.com/teams/G2-FullonDark.png'}]},
 
       /* Three places, three teams, and now three seeds: Team Secret Whales
          beat CTBC Flying Oyster in the Split 3 final on 30 Aug, which settled
