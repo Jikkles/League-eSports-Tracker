@@ -475,6 +475,14 @@ if (loaded) {
       const q = typeof EVENT !== 'undefined' ? EVENT.qual : null;
       const rows = [...document.querySelectorAll('.qual-panel .q-rg')];
       if (!q) return { err: 'EVENT.qual is not on the page' };
+      /* The board is two halves: the hand-written `thru` and tools/qual.mjs's
+         generated QUAL_AUTO, merged by qualThru(). Read it back through the
+         page's own merge rather than a copy, so this holds the pips against
+         the thing that actually drew them — counting the hand-written half
+         alone fails the moment the bot adds a team, which is its whole job. */
+      if (typeof qualThru !== 'function')
+        return { err: 'qualThru() is not on the page, so the board cannot be merged' };
+      const thruOf = i => qualThru(q.regions[i]);
       if (rows.length !== q.regions.length)
         return { err: `${rows.length} region rows drawn for ${q.regions.length} in the constant` };
       let pips = 0, on = 0;
@@ -485,7 +493,7 @@ if (loaded) {
         pips += p.length;
         on += rows[i].querySelectorAll('.q-slot.on').length;
       }
-      const want = q.regions.reduce((n, x) => n + x.thru.length, 0);
+      const want = q.regions.reduce((n, x, i) => n + thruOf(i).length, 0);
       if (on !== want) return { err: `${on} places drawn as filled, ${want} teams on the board` };
 
       /* Crests do all the naming on this board, so a filled slot that draws
@@ -514,7 +522,7 @@ if (loaded) {
           .map(b => b.parentElement.querySelector('.q-seed'));
         if (caps.some(c => !c || !c.textContent.trim()))
           return { err: `${reg.rg} drew a qualified team with no seed under it` };
-        const want = reg.thru.filter(t => {
+        const want = thruOf(i).filter(t => {
           const n = seated(t);
           return n === 1 || (n === 0 && reg.routes.some(x => x.via === t.via));
         }).length;
