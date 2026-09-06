@@ -139,6 +139,36 @@ export function extractFunctions(src, names) {
   return { sources: out, missing };
 }
 
+/*
+ * The qualification board as the page draws it, using the page's own merge.
+ *
+ * EVENT.qual.regions[].thru is the hand-written half; QUAL_AUTO is the half
+ * tools/qual.mjs derives from Riot's bracket wiring. What a viewer sees is the
+ * two merged, and qualThru() in index.html is the merge — hand prose wins on
+ * every field except the seed range, where only the machine may narrow.
+ *
+ * Every checker needs that merged view and none of them should own a copy of
+ * it. smoke.mjs went stale exactly that way: written before QUAL_AUTO existed,
+ * it went on counting `thru` alone and called the board a bug the first time
+ * the generator added a team. Same discipline as extractFunctions above — run
+ * the page's code, so a change to the merge reaches the checks that rely on it.
+ *
+ * Throws if the page has no qualThru() to lift, which is a real finding rather
+ * than something to paper over with a fallback copy.
+ */
+export function qualThruFn(src, QUAL_AUTO) {
+  const { sources, missing } = extractFunctions(src, ['qualThru']);
+  if (missing.length) throw new Error('index.html has no top-level qualThru()');
+  /* qualThru() calls nk(), which is an arrow const rather than a declaration,
+     so extractFunctions cannot see it. Lift the one line it lives on. */
+  const nk = src.match(/^const nk *=.*$/m);
+  if (!nk) throw new Error('index.html has no nk()');
+  const ctx = { QUAL_AUTO: QUAL_AUTO || {} };
+  runInNewContext([nk[0], ...sources].join('\n'), ctx);
+  if (typeof ctx.qualThru !== 'function') throw new Error('qualThru() did not evaluate to a function');
+  return ctx.qualThru;
+}
+
 /** The data constants every caller cares about, in one call. */
 export const DATA_CONSTANTS =
   ['REGIONS', 'EVENT', 'QUAL_AUTO', 'HONOURS', 'STORYLINES', 'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'FORMATS'];

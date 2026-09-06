@@ -34,7 +34,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { readDataConstants, extractConstants, extractFunctions } from './constants.mjs';
+import { readDataConstants, extractConstants, extractFunctions, qualThruFn } from './constants.mjs';
 import { discoverTournament } from './golgg.mjs';
 import { LEAGUES } from './drafts.mjs';
 
@@ -213,15 +213,27 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
       .map(resultLine).filter(Boolean).slice(0, EVIDENCE_MAX);
   };
 
+  /* The board is two halves - the hand-written `thru` and the QUAL_AUTO that
+     tools/qual.mjs derives - and what a viewer sees is the two merged. Read it
+     through the page's own qualThru() so this counts the board that is drawn:
+     counting `thru` alone reports a region a team short the moment the
+     generator adds one, which is a STALE finding about nothing. */
+  let merge = null;
+  try { merge = qualThruFn(C.src, C.QUAL_AUTO); }
+  catch (e) {
+    note('EVENT.qual', `Could not read qualThru() out of index.html (${e.message}).`,
+         'The board below is being read from its hand-written half alone, so the count check is skipped rather than reported off a half board.');
+  }
+
   for (const r of EVENT.qual.regions) {
-    const routes = r.routes || [], thru = r.thru || [];
+    const routes = r.routes || [], thru = merge ? merge(r) : (r.thru || []);
     places += routes.length; filled += thru.length;
 
     /* Dates rather than routes: which place a team ends up holding is often
        drawn later than the place is won, so the honest question is how many
        of this region's places should be settled by now. */
     const due = routes.filter(x => Date.parse(x.on) < NOW);
-    if (due.length > thru.length) {
+    if (merge && due.length > thru.length) {
       const last = due.map(x => x.on).sort().pop();
       stale('EVENT.qual', `${r.rg}: ${due.length} of its ${routes.length} places were settled by ${day(last)}, but only ${thru.length} team${thru.length === 1 ? ' is' : 's are'} on the board.`,
             `Patch EVENT.qual.regions[].thru for ${r.rg} from the participants table on ${EVENT.wiki}. The ${r.lg} results since then:`,

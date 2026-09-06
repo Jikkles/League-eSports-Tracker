@@ -615,6 +615,26 @@ by markers `check.mjs` holds you to. Rewriting a whole block is deliberate: a
 generated region with a hard edge cannot be half-edited, and a hand-tweak inside
 one is simply overwritten on the next run rather than silently kept.
 
+**A generated block gives the constant beside it a second half, and every tool
+that reads that constant has to read both.** The page merges the two at render
+time, so the merge — not either half — is what a viewer sees, and a checker
+holding rendered output against one half reports a bug that is not there. That
+is not hypothetical: `smoke.mjs` was written before `QUAL_AUTO` existed, went on
+counting `EVENT.qual`'s hand-written `thru` alone, and failed the first time
+`qual.mjs` did its job and put a team through. `stale.mjs` had the same gap
+waiting, and `check.mjs` had a *copy* of the merge that had already drifted from
+the page's — it skipped the seed narrowing, so it validated a range the
+generator had closed and could not see a collision inside it.
+
+So the merge lives in exactly one place, `qualThru()` in `index.html`, and the
+tools lift it rather than reimplementing it: `constants.mjs` exports
+`qualThruFn()`, which `check.mjs` and `stale.mjs` call, while `smoke.mjs` calls
+the live page's own copy in the browser. Same discipline as the ranking engine
+and for the same reason — a second copy of a rule agrees with itself forever
+while the page drifts. **If you add a fourth generated block, the question to
+ask is not "does check.mjs know?" but "which tools read this constant, and do
+they all read it merged?"**
+
 ### The DRAFTS block
 
 `DRAFTS` sits between `/* DRAFTS:generated */` and `/* DRAFTS:end */` markers in the
@@ -706,11 +726,14 @@ place in a team's range is settled.
 - **It only ever adds.** It never removes an entry, never invents a route name,
   and where its answer *contradicts* a hand-written seed it reports and changes
   nothing, because that is a question about the rules rather than the results.
-- **`check.mjs` validates the merged board, not just the hand-written half**,
-  which is the half worth checking: it is the one that changes without anybody
-  reading the diff. It also holds the markers, and refuses a `QUAL_AUTO`
-  declared after `EVENT`, because the boot-time crest seeding reads it earlier
-  than the renderer does.
+- **All three checkers validate the merged board, not just the hand-written
+  half**, which is the half worth checking: it is the one that changes without
+  anybody reading the diff. They share one merge — the page's own `qualThru()`,
+  lifted by `constants.mjs`'s `qualThruFn()` — rather than each keeping a copy;
+  see the note under **Generated data** for what went wrong when they did not.
+  `check.mjs` also holds the markers, and refuses a `QUAL_AUTO` declared after
+  `EVENT`, because the boot-time crest seeding reads it earlier than the
+  renderer does.
 
 ### The GPR block
 

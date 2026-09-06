@@ -50,7 +50,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Script } from 'node:vm';
 import { gzipSync } from 'node:zlib';
-import { extractConstants, DATA_CONSTANTS } from './constants.mjs';
+import { extractConstants, DATA_CONSTANTS, qualThruFn } from './constants.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -603,6 +603,19 @@ if (m && !fails.length) {
           const seen = new Map();          // team -> region, across the whole board
           let places = 0;
 
+          /* The merge below is the page's own qualThru(), lifted rather than
+             copied. It used to be a concat written out here, which is a second
+             implementation of the same rule and had already drifted from it:
+             the copy took the hand-written entry whole, so a seed range the
+             generator had narrowed was validated at its old width and a
+             collision inside it could not be seen. One merge, three checkers. */
+          let mergeBoard = null;
+          try { mergeBoard = qualThruFn(src, QUAL_AUTO); }
+          catch (err) {
+            fail(`Could not read qualThru() out of index.html (${err.message}).`,
+                 'The qualification board is validated as the page merges it, so that check cannot run.');
+          }
+
           q.regions.forEach((r, i) => {
             const at = `EVENT.qual.regions[${i}]${r.rg ? ` (${r.rg})` : ''}`;
             for (const field of ['rg', 'lg', 'slug', 'color'])
@@ -635,8 +648,8 @@ if (m && !fails.length) {
             if (!Array.isArray(r.thru)) { fail(`${at}.thru is not an array.`); return; }
             const auto = (QUAL_AUTO && QUAL_AUTO[r.slug]) || [];
             if (!Array.isArray(auto)) { fail(`QUAL_AUTO.${r.slug} is not an array.`); return; }
-            const key = x => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const thru = r.thru.concat(auto.filter(a => !r.thru.some(t => key(t.team) === key(a.team))));
+            if (!mergeBoard) return;
+            const thru = mergeBoard(r);
             if (thru.length > r.routes.length)
               fail(`${at} has ${thru.length} teams through for ${r.routes.length} places.`);
 
