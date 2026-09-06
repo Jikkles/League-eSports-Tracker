@@ -25,11 +25,16 @@
  *     renders fine and silently stops being refreshed)
  *   - no duplicate element IDs, which silently break getElementById wiring
  *   - index.html is still the only file the browser loads
- *   - the file has not blown past its size budget (a warning, not a failure)
+ *   - the file has not blown past its size budget, measured gzipped because
+ *     that is what a visitor pays (a warning, not a failure)
+ *   - no CSS class is defined and then never used, since editing one of those
+ *     silently does nothing (a warning; DYNAMIC_CLASSES is the escape hatch)
  *   - the baked-in data constants are structurally sound: every REGIONS entry
  *     points at a real FORMATS wiring, every bracket reference resolves to a
- *     match that exists, every seed is used exactly once, and HONOURS /
- *     POWER_RANKINGS / STORYLINES carry the fields the render code reads
+ *     match that exists, every seed is used exactly once, SEASON agrees with
+ *     the <title>, every TICKER_NOTES headline carries a parseable expiry, and
+ *     HONOURS / POWER_RANKINGS / STORYLINES carry the fields the render code
+ *     reads
  *
  * That last group matters because those constants are patched by hand (and,
  * increasingly, by bots) against a page with no runtime type checking. A
@@ -59,7 +64,21 @@ const INDEX = join(ROOT, 'index.html');
 const STRICT = process.argv.includes('--strict');
 /* the metric names raceMetric() in index.html actually answers to */
 const RANK_METRICS = ['wins', 'gamePct', 'h2h', 'h2hGamePct', 'sov', 'sovGames'];
-const SIZE_BUDGET = 400 * 1024;   // DRAFTS grows all split; shout before it gets silly
+/* The budget is measured on the gzipped size, because that is the number a
+   visitor actually pays: Pages serves this compressed and the file goes about
+   3.3:1. It used to be measured raw, and that had stopped saying anything —
+   the page-without-DRAFTS passed the 400 KB raw budget on its own, and unlike
+   DRAFTS it does not reset at a split boundary, so the warning was on
+   permanently and had become part of the scenery. A warning nobody can ever
+   clear is a warning nobody reads.
+
+   Measuring the transferred number also settles the thing the raw one kept
+   inviting, which is minifying the file. Roughly 30 KB of the raw size is
+   comment-only lines, and in this repo those comments are the documentation —
+   they are why an edit six months from now knows what the pick swap is for.
+   Gzip already collapses them to very little, so they cost the visitor
+   approximately nothing and the raw number was the only thing pricing them. */
+const GZIP_BUDGET = 165 * 1024;   // shout before it gets silly
 /* The budget above only warns, and it is a warning nobody sees unless they read
    the log — health.yml does not pass --strict, so nothing has ever stopped the
    file growing quietly past it forever. This is the line that actually stops
@@ -81,8 +100,16 @@ const SIZE_BUDGET = 400 * 1024;   // DRAFTS grows all split; shout before it get
    Nothing outside this repo enforces any of it. GitHub Pages allows 1 GB per
    site and git refuses individual files at 100 MB, and Pages here deploys from
    the branch rather than from a workflow — so exceeding this fails CI and
-   publishes anyway. It is a budget the project keeps, not a limit it is given. */
-const SIZE_CEILING = 600 * 1024;
+   publishes anyway. It is a budget the project keeps, not a limit it is given.
+
+   In gzipped terms the old 600 KB raw ceiling was about 180 KB. This is 200,
+   raised deliberately and on the same evidence the paragraph above rests on:
+   the cost of this file is download, at roughly a quarter-second of slow 4G
+   for 180 KB, and 200 is still comfortably the "real price and a payable one"
+   end of that. The thing the ceiling exists to refuse — a single-file page
+   that becomes a megabyte download, around 300 KB gzipped — is still refused
+   with room to spare. */
+const GZIP_CEILING = 200 * 1024;
 
 const fails = [];
 const warns = [];
@@ -263,12 +290,11 @@ if (stray.length) {
 
 /* ---- size budget ------------------------------------------------------- */
 
-/* Raw bytes are what the budget counts, but they are not what a visitor pays.
-   Pages serves this gzipped, so the number that predicts a phone's experience
-   is the compressed one — and this file compresses about 3.3:1, being one
+/* Gzipped bytes are what the budget counts, because they are what a visitor
+   pays. Pages serves this compressed and the file goes about 3.3:1, being one
    stream of markup, CSS and JS with no images in it but the event wordmark.
-   Both are printed, because a warning that says "440 KB" and nothing else
-   invites a panic the transfer size does not support.
+   Both numbers are printed — the raw one is what the breakdown below is
+   measured in, and it is the one that moves when a block is pruned.
 
    Measured at 440 KB, throttled to 4x CPU and slow 4G at a 390px viewport:
    133 KB transferred, first paint 844 ms, interactive 1.1 s. Padding the same
@@ -295,14 +321,48 @@ const named = blocks.reduce((n, [, b]) => n + b, 0);
 const breakdown = blocks.map(([n, b]) => `${n} ${kb(b)}`).join(', ')
   + (blocks.length ? `, the page itself ${kb(bytes - named)}` : '');
 
-if (bytes > SIZE_CEILING) {
-  fail(`index.html is ${kb(bytes)} (${kb(gzipped)} gzipped), past the ${kb(SIZE_CEILING)} hard ceiling.`,
-       `${breakdown}. Run \`node tools/drafts.mjs --prune\` to drop previous splits, or raise SIZE_CEILING deliberately.`);
-} else if (bytes > SIZE_BUDGET) {
-  warn(`index.html is ${kb(bytes)} (${kb(gzipped)} gzipped), past the ${kb(SIZE_BUDGET)} budget (ceiling ${kb(SIZE_CEILING)}).`,
+if (gzipped > GZIP_CEILING) {
+  fail(`index.html is ${kb(gzipped)} gzipped (${kb(bytes)} raw), past the ${kb(GZIP_CEILING)} hard ceiling.`,
+       `${breakdown}. Run \`node tools/drafts.mjs --prune\` to drop previous splits, or raise GZIP_CEILING deliberately.`);
+} else if (gzipped > GZIP_BUDGET) {
+  warn(`index.html is ${kb(gzipped)} gzipped (${kb(bytes)} raw), past the ${kb(GZIP_BUDGET)} budget (ceiling ${kb(GZIP_CEILING)}).`,
        `${breakdown}. DRAFTS resets at the split boundary; the rest does not.`);
 } else {
-  console.log(`  size:   ${kb(bytes)} of a ${kb(SIZE_BUDGET)} budget (${kb(gzipped)} gzipped)`);
+  console.log(`  size:   ${kb(gzipped)} gzipped of a ${kb(GZIP_BUDGET)} budget (${kb(bytes)} raw)`);
+}
+
+/* ---- dead CSS ---------------------------------------------------------- */
+
+/* A class defined in <style> whose name appears nowhere in the rest of the
+   file. The bytes are not the point — 42 such rules were about 4 KB. The point
+   is that an edit to one of them silently does nothing, which is the failure
+   mode this whole file exists to catch. The sweep that introduced this check
+   found a complete superseded generation of the rankings row (.rk-row, .rk-num,
+   .rk-name…) still sitting in the stylesheet while renderRanks() had long since
+   moved to .rk2: a plausible-looking selector that no element has worn for
+   months, waiting for somebody to tune it and wonder why nothing moved.
+
+   It warns rather than fails, because unlike everything else here a dead rule
+   does not break the page — and because a class assembled at runtime
+   (`'rk' + n`) would look dead while being perfectly alive. There are none of
+   those today; DYNAMIC_CLASSES is where one goes if a future edit needs it, so
+   that the exception is written down rather than the check being deleted. */
+const DYNAMIC_CLASSES = [];
+const styleAt = html.indexOf('<style>'), styleEndAt = html.indexOf('</style>');
+if (styleAt !== -1 && styleEndAt > styleAt) {
+  const cssText = html.slice(styleAt, styleEndAt);
+  /* Everything outside the stylesheet, not merely everything after it — the
+     head sits above <style>, and a class used only up there would otherwise
+     read as dead and get swept. */
+  const outside = html.slice(0, styleAt) + html.slice(styleEndAt);
+  const declared = new Set();
+  for (const m of cssText.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)) declared.add(m[1]);
+  const dead = [...declared]
+    .filter(c => !DYNAMIC_CLASSES.includes(c) && !outside.includes(c))
+    .sort();
+  if (dead.length)
+    warn(`${dead.length} CSS class${dead.length > 1 ? 'es are' : ' is'} defined but never used: ${dead.join(', ')}.`,
+         'Delete the rules, or add the name to DYNAMIC_CLASSES in check.mjs if it is built at runtime.');
 }
 
 /* ---- the baked-in data constants --------------------------------------- */
@@ -323,7 +383,21 @@ if (m && !fails.length) {
   }
 
   if (C) {
-    const { REGIONS, EVENT, QUAL_AUTO, HONOURS, STORYLINES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
+    const { SEASON, REGIONS, EVENT, QUAL_AUTO, HONOURS, STORYLINES, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
+
+    /* -- SEASON -------------------------------------------------------------
+       The render code reads SEASON; the <title> carries its own literal,
+       because it has to be real markup for anything that reads the page
+       without running it. Two copies of one number is fine as long as nothing
+       can move one without the other, which is this. */
+    if (SEASON != null) {
+      if (!Number.isInteger(SEASON) || SEASON < 2000 || SEASON > 2100)
+        fail(`SEASON is ${JSON.stringify(SEASON)}, which is not a plausible season year.`);
+      const title = (html.match(/<title>([^<]*)<\/title>/) || [])[1] || '';
+      if (title && !title.includes(String(SEASON)))
+        fail(`The <title> reads "${title}" but SEASON is ${SEASON}.`,
+             'The page heading and the browser tab would name different seasons; move both together.');
+    }
 
     /* -- FORMATS: the playoff bracket wirings ------------------------------ */
     if (FORMATS) {
@@ -789,6 +863,24 @@ if (m && !fails.length) {
       STORYLINES.forEach((s, i) => {
         for (const field of ['icon', 'title', 'sub'])
           if (!s[field]) fail(`STORYLINES[${i}]${s.title ? ` (${s.title})` : ''}.${field} is missing.`);
+      });
+    }
+
+    /* -- TICKER_NOTES ------------------------------------------------------ */
+    /* The ticker's standing headlines. `until` is the whole point of the
+       constant — it is what lets the page retire a note and stale.mjs ask for
+       its replacement — so an unparseable or backwards one is a fail rather
+       than a note that quietly never expires. */
+    if (Array.isArray(TICKER_NOTES)) {
+      TICKER_NOTES.forEach((n, i) => {
+        const at = `TICKER_NOTES[${i}]${n.tag ? ` (${n.tag})` : ''}`;
+        for (const field of ['tag', 'text', 'until'])
+          if (!n[field]) fail(`${at}.${field} is missing.`);
+        if (n.until && !/^\d{4}-\d{2}-\d{2}$/.test(n.until))
+          fail(`${at}.until is "${n.until}", which is not an ISO date.`,
+               'The page compares it as a string against today, so anything else never expires.');
+        else if (n.until && Number.isNaN(Date.parse(n.until)))
+          fail(`${at}.until is "${n.until}", which is not a real date.`);
       });
     }
 

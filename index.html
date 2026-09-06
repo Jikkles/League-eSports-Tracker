@@ -4,10 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="LoL Tracker">
+<!-- No app-capable metas, and that is a decision rather than an omission.
+     They promise an installable, launches-from-the-home-screen app, and this
+     page cannot be one: that needs a manifest and a service worker, and a
+     service worker has to be its own file served from the origin root — it is
+     the one thing on this site that genuinely cannot be inlined, so it would
+     cost the single-file rule the whole project is built on. Claiming it in
+     four metas and not delivering it is the worst of the three options.
+     `theme-color` above stays: it colours the browser chrome and needs none of
+     that machinery. -->
 <meta name="format-detection" content="telephone=no">
 <title>League Esports Tracker · Season 2026</title>
 <meta name="description" content="Schedules, live games, standings, power rankings, honours and a playoff bracket predictor for the LEC, LCK, LPL and LCS. Unofficial single-page fan tool.">
@@ -25,7 +30,13 @@
   /* lolesports.com palette: pure-black canvas, near-black surfaces, white type,
      colour reserved for live state, league identity and team logos */
   --bg:#000000; --bg2:#0A0A0A; --panel:#111111; --panel2:#181818; --line:#242424; --line2:#333333;
-  --gold:#FFFFFF; --gold-dim:#3A3A3A; --cyan:#0BC6E3; --cyan-lo:#33D6EF; --teal:#0BC6E3;
+  /* --hi / --hi-dim are the plain emphasis pair: white on a dark inset. They
+     were --gold / --gold-dim under the old hextech theme and kept those names
+     through the rebrand while being quietly redefined to white, so the
+     stylesheet spent a season telling anyone who read it that a value was gold
+     when nothing on the page had been gold for months. Renamed, because the
+     one thing a colour variable has to be right about is its colour. */
+  --hi:#FFFFFF; --hi-dim:#3A3A3A; --cyan:#0BC6E3; --cyan-lo:#33D6EF; --teal:#0BC6E3;
   /* Three tiers of type on the near-black panels. --faint was #6A6A6A, which
      lands at 3.2:1 on the darkest panel — under the 4.5:1 WCAG AA wants for
      body text, and the source of every contrast finding axe reported. Lifting
@@ -84,10 +95,21 @@ header{border-bottom:1px solid var(--line);background:#0C0C0C;position:sticky;to
 .ticker::after{right:0;background:linear-gradient(-90deg,#000,transparent)}
 .ticker-track{display:flex;gap:36px;padding:7px 0;width:max-content;animation:tick 45s linear infinite}
 @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){.ticker-track{animation:none}}
+/* Stopping the animation is not enough on its own: the track is `max-content`
+   inside an `overflow:hidden` strip, so with the scroll switched off everything
+   past the right-hand edge became unreachable — the readers who asked for less
+   motion were the only ones who could not see the whole ticker. So the strip
+   scrolls by hand instead, the edge fades go (at rest they sit on top of the
+   first item rather than hinting at more), and the duplicate half is dropped:
+   it exists to hide the seam in a loop that is no longer running. */
 .tick-item{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap;display:flex;align-items:center;gap:8px}
 .tick-item b{color:var(--text);font-weight:600}
 .tick-lg{font-family:var(--body);font-weight:800;font-size:12px;letter-spacing:.8px}
+/* Below .tick-item deliberately: `.tick-dup` and `.tick-item` are both one
+   class, so the later rule wins on order alone, and with this block above them
+   the `display:flex` on .tick-item quietly beat the `display:none` here. Being
+   inside a media query buys no specificity at all. */
+@media (prefers-reduced-motion:reduce){.ticker{overflow-x:auto}.ticker::before,.ticker::after{display:none}.ticker-track{animation:none}.tick-dup{display:none}}
 
 .live-chip{display:inline-flex;align-items:center;gap:5px;background:var(--live);border:1px solid var(--live);color:#FFFFFF;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:3px}
 .live-chip::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--live);animation:pulse 1.4s ease infinite}
@@ -182,8 +204,6 @@ main{min-width:0}
   .tbl-big td{font-size:15px;padding:9px 5px}
   .tbl-big .rank-cell{font-size:12px;width:26px}
   th{font-size:11px;padding:9px 5px}
-  .ag-row{gap:8px;padding:10px 4px}
-  .cardgrid{grid-template-columns:1fr}
   .btn{padding:8px 14px}          /* larger tap targets */
   .vod-btn{padding:6px 12px}
   .sim-toolbar{gap:6px}
@@ -201,7 +221,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 .streak-w{color:var(--win);font-family:var(--mono);font-size:11px}
 .streak-l{color:var(--loss);font-family:var(--mono);font-size:11px}
 .bar-wrap{background:var(--panel2);height:5px;width:100%;margin-top:3px}
-.bar{height:100%;background:var(--rg,var(--gold))}
+.bar{height:100%;background:var(--rg,var(--hi))}
 
 /* team logos */
 .twrap{display:inline-flex;align-items:center;vertical-align:middle}
@@ -210,15 +230,12 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 .tmono.only{display:inline-flex}
 .match .t1 .twrap{margin-left:8px}
 .match .t2 .twrap{margin-right:8px}
-.rk-row .tlogo,.rk-row .tmono{width:20px;height:20px}
 td .twrap{margin-right:8px}
 td .tlogo,td .tmono{width:18px;height:18px}
 .tbl-big td{font-size:19px;padding:12px 10px;font-weight:600}
 .tbl-big .rank-cell{font-size:15px;width:40px}
 .tbl-big td.num{font-size:19px}
 .tbl-big .tlogo,.tbl-big .tmono{width:24px;height:24px}
-.nextcard .vs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.nextcard .tlogo,.nextcard .tmono{width:18px;height:18px}
 
 /* watch panel */
 .watch-live{display:flex;align-items:center;gap:12px;padding:12px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;font-size:14px}
@@ -241,8 +258,6 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .stream-note{font-family:var(--mono);font-size:10px;color:var(--faint)}
 .vod-btn{background:#1C1C1C;border:1px solid #262626;color:var(--dim);font-family:var(--body);font-weight:600;font-size:10px;padding:3px 10px;border-radius:var(--pill);transition:background .12s ease,color .12s ease}
 .vod-btn:hover{background:var(--cyan);border-color:var(--cyan);color:#001014}
-.vod-links{display:inline-flex;gap:6px}
-.vod-links a{font-family:var(--mono);font-size:10px;border:1px solid rgba(91,155,255,.45);border-radius:3px;padding:2px 6px}
 
 /* series detail — the game-by-game boards that open under a finished series */
 .match.expandable{cursor:pointer}
@@ -459,28 +474,12 @@ a.btn-watchlive[data-brand="trovo"]{background:#19C819;color:#032703 !important}
 .m-upcoming .big{font-family:var(--disp);font-weight:800;font-size:20px;letter-spacing:.4px;color:var(--cyan)}
 .m-upcoming .d{font-family:var(--mono);font-size:13px;color:var(--text)}
 
-/* summary cards on home */
-.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
-.nextcard{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--rg,var(--gold));border-radius:var(--radius);padding:14px 16px;transition:background .12s ease,border-color .12s ease}
-.nextcard:hover{background:#1C1C1C;border-color:var(--line2);border-left-color:var(--rg,var(--gold))}
-.nextcard .lg{font-family:var(--body);font-weight:800;font-size:14px;letter-spacing:.8px;color:var(--rg,var(--cyan))}
-.nextcard .vs{font-weight:600;font-size:14px;margin:6px 0 2px}
-.nextcard .tm{font-family:var(--mono);font-size:11px;color:var(--dim)}
 
 /* merged cross-region agenda */
 .ag-day{font-family:var(--body);font-size:17px;font-weight:800;letter-spacing:-.2px;color:#FFFFFF;text-transform:none;padding:14px 4px 8px;border-bottom:1px solid var(--line)}
-.ag-row{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer}
-.ag-row:last-child{border-bottom:none}
-.ag-row:hover{background:var(--hover)}
-.ag-lg{font-family:var(--body);font-weight:800;font-size:13px;letter-spacing:.8px;color:var(--ag,var(--cyan))}
-.ag-vs{display:flex;align-items:center;gap:6px;font-weight:600;font-size:15px;flex-wrap:wrap}
-.ag-vs .tlogo,.ag-vs .tmono{width:18px;height:18px}
-.ag-when{font-family:var(--mono);font-size:13px;text-align:right;white-space:nowrap}
-.ag-when .cdn{display:block;font-size:10px;color:var(--faint);letter-spacing:.5px}
 .cdn-mini{font-family:var(--mono);font-size:10px;color:var(--cyan)}
 .sched-blk{margin-top:20px;border-bottom:1px solid var(--line);padding-bottom:6px}
 .sched-blk:first-child{margin-top:0}
-@media (max-width:640px){.ag-row{grid-template-columns:48px 1fr auto;font-size:12px}.ag-vs{font-size:12px}}
 
 /* top-10 clash badge */
 .big-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--body);font-size:10px;font-weight:700;letter-spacing:.6px;color:#001014;background:var(--cyan);border:1px solid var(--cyan);padding:2px 9px;border-radius:var(--pill);text-transform:uppercase;white-space:nowrap}
@@ -571,35 +570,17 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .form-dots .fw{color:var(--win)} .form-dots .fl{color:var(--loss)} .form-dots .fe{color:var(--faint)}
 
 /* sidebar: rankings */
-.rk-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
-.rk-row:last-child{border-bottom:none}
-.rk-num{font-family:var(--body);font-weight:800;font-size:20px;width:30px;color:#FFFFFF;text-align:right}
-.rk-row:nth-child(n+4) .rk-num{color:var(--faint)}
-.rk-name{font-weight:600;flex:1;font-size:15px;line-height:1.25}
-.rk-name .rk-wl{display:block;font-family:var(--mono);font-size:11px;color:var(--faint);font-weight:400}
-.rk-pts{font-family:var(--mono);font-size:12px;color:var(--dim);white-space:nowrap}
-.rk-move{font-family:var(--mono);font-size:11px;width:26px;text-align:center}
-.rk-move.up{color:var(--win)} .rk-move.down{color:var(--loss)} .rk-move.flat{color:var(--faint)}
-.rk-region{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--faint);border:1px solid var(--line2);padding:1px 6px}
 .rk-note{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:8px}
 
 /* predictor */
-.pred-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .field label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
 .field input[type=number]{width:100%;background:var(--bg2);border:1px solid var(--line2);color:var(--text);font-family:var(--mono);font-size:13px;padding:6px 8px}
-.field input[type=range]{width:100%;accent-color:var(--gold)}
+.field input[type=range]{width:100%;accent-color:var(--hi)}
 .field.full{grid-column:1/-1}
-.pred-out{background:var(--panel2);border:1px solid var(--line);padding:12px;text-align:center;margin-bottom:10px}
-.pred-out .pct{font-family:var(--disp);font-weight:700;font-size:42px;letter-spacing:1px;color:var(--gold);line-height:1}
-.pred-out .lbl{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;margin-top:4px}
-.pred-secondary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.pred-secondary .pred-out{margin-bottom:0}
-.pred-secondary .pct{font-size:24px;color:var(--teal)}
 .dist{display:flex;align-items:flex-end;gap:2px;height:70px;margin-top:6px}
-.dist .col{flex:1;background:var(--gold-dim);min-height:1px;position:relative}
-.dist .col.hit{background:var(--gold)}
+.dist .col{flex:1;background:var(--hi-dim);min-height:1px;position:relative}
+.dist .col.hit{background:var(--hi)}
 .dist .col:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--line2);font-family:var(--mono);font-size:9px;padding:2px 6px;white-space:nowrap;z-index:5;color:var(--text)}
-.dist-axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--faint);margin-top:3px}
 .hint{font-family:var(--mono);font-size:10px;color:var(--faint);line-height:1.6}
 
 /* region hero strip */
@@ -699,7 +680,6 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .evt-ranks .rk2 .nm{font-size:13.5px}
 
 .loading{font-family:var(--mono);font-size:11px;color:var(--faint);padding:14px;text-align:center}
-.err-msg{font-family:var(--mono);font-size:11px;color:var(--loss);padding:10px;border:1px dashed rgba(224,82,96,.4);margin:6px 0}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 @media (max-width:900px){.two-col{grid-template-columns:1fr}}
 footer{border-top:1px solid var(--line);background:#080808;margin-top:24px}
@@ -1341,7 +1321,11 @@ body.spoil-free td.num.sp-cell::after{justify-content:flex-end;letter-spacing:0}
       </div>
       <div class="hdr-meta">
         <span class="live-pill idle" id="hdrLive">OFFLINE</span>
-        <span id="apiStatus"><span class="dot"></span>connecting…</span>
+        <!-- The one live region on the page. It carries the connection state,
+             which is the only thing here a reader needs told rather than shown;
+             the boards repaint every minute and announcing those would make the
+             page unusable. setStatus() writes it only when the words change. -->
+        <span id="apiStatus" role="status" aria-live="polite"><span class="dot"></span>connecting…</span>
         <span id="lastRefresh"></span>
       </div>
       <button class="btn icon" id="refreshBtn" title="Refresh now" aria-label="Refresh now">⟳</button>
@@ -1500,10 +1484,26 @@ body.spoil-free td.num.sp-cell::after{justify-content:flex-end;letter-spacing:0}
    LEAGUE ESPORTS TRACKER — Season 2026
    (localStorage keys keep the historical nexusdesk_ prefix so saved
    state survives the rename)
-   Single-file, offline-capable. Live data from the same unofficial API
-   the lolesports website uses; everything degrades to baked-in season
-   data + external links if the API is unreachable.
+   Single-file, and it survives an API outage rather than an offline
+   device: with no service worker the document itself still has to be
+   fetched, but once it has loaded, everything degrades to cached
+   schedules, baked-in season data and external links if the feed is
+   unreachable. Live data comes from the same unofficial API the
+   lolesports website uses.
 ===================================================================== */
+
+/* The season every baked-in constant on this page describes. It was written out
+   as a literal in three separate template strings — the region honours heading,
+   the honours modal's date line and the ticker's fallback item — which is the
+   same trap TICKER_NOTES was in and worth naming as a rule rather than three
+   fixes: a fact with a date in it, sitting inside a render function, is
+   invisible to every tool in tools/. On 1 January the page would have gone on
+   saying 2026 in all three places with check, smoke and stale all green.
+
+   The <title> keeps its own literal deliberately — it has to be real markup for
+   anything that reads the page without running it — and check.mjs holds the two
+   to each other instead, so they cannot drift apart silently. */
+const SEASON = 2026;
 
 const API = 'https://esports-api.lolesports.com/persisted/gw';
 const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z'; // public key shipped in the lolesports web client
@@ -2080,6 +2080,30 @@ const STORYLINES = [
    sub:'Beaten in the Versus final, the Spring final and the EWC final inside one year. They swept the Summer regular season 9–0 (18–2 in games), two matches clear of Vitality, and go into playoffs as the top seed.'},
   {icon:'🗽', title:'Road to NYC', stat:'14 Nov', statLbl:'Worlds final',
    sub:'Worlds comes to North America with the final at Barclays Center. The LEC, LCK and LCS each send their summer top three; T1 defend a three-peat.'}
+];
+
+/* The ticker's standing headlines — the two trophies already won this season
+   and the date of the final that has not been played. The feed produces none
+   of them, so they are written by hand like HONOURS and STORYLINES.
+
+   They were string literals inside renderTicker() until now, which is the
+   reason this constant exists rather than the strings simply moving: a fact
+   with an expiry date sitting in render code is invisible to every tool in
+   tools/. On 15 November that ticker would still have been advertising a final
+   played the day before, and check.mjs, stale.mjs and smoke.mjs would all have
+   stayed green — none of them reads the inside of a function. Out here they are
+   checked like everything else: check.mjs holds the shape, stale.mjs reads the
+   dates and reports one that has gone.
+
+   `until` is the last day the note is true, inclusive, as an ISO date so it
+   both sorts and compares as a string. The page drops a note of its own accord
+   once that day has passed, so the failure mode of a missed patch is a shorter
+   ticker rather than a wrong one — stale.mjs asks for the replacement, the page
+   does not wait to be told. */
+const TICKER_NOTES = [
+  {tag:'MSI',    until:'2026-12-31', text:'Hanwha Life Esports — champions of Daejeon'},
+  {tag:'EWC',    until:'2026-12-31', text:'Dplus KIA — Paris 2026 winners'},
+  {tag:'WORLDS', until:'2026-11-14', text:'Final · Barclays Center NYC · 14 Nov'}
 ];
 
 /* GPR:generated */
@@ -4247,7 +4271,7 @@ function buildRegionPage(slug) {
   hero.style.setProperty('--rg', R.color);
   hero.innerHTML = `<span class="lgw" data-lg="${slug}" style="width:52px;height:52px"></span>
     <h1>${R.name}</h1>
-    <div><div class="sub">${esc(R.full)}</div><div class="sub" style="color:var(--gold)">${esc(R.splitLabel)}</div></div>
+    <div><div class="sub">${esc(R.full)}</div><div class="sub" style="color:var(--hi)">${esc(R.splitLabel)}</div></div>
     <div class="links">
       <a class="btn small" href="${R.wiki}" target="_blank" rel="noopener">Leaguepedia ↗</a>
       <a class="btn small" href="${R.liqui}" target="_blank" rel="noopener">Liquipedia ↗</a>
@@ -4348,7 +4372,7 @@ function buildRegionPage(slug) {
   // now carry crests and the logo cache is empty at boot: the panel is redrawn
   // by renderRegionHonours() on every refresh, once the badges have arrived
   const hon = el('div','panel rg'); hon.style.setProperty('--rg', R.color);
-  hon.innerHTML = `<div class="p-head"><div class="p-title">${R.name} · 2026 So Far</div></div>` +
+  hon.innerHTML = `<div class="p-head"><div class="p-title">${R.name} · ${SEASON} So Far</div></div>` +
     `<div id="honours-${slug}"></div>`;
   page.appendChild(hon);
   renderRegionHonours(slug);
@@ -4972,7 +4996,7 @@ function openHonour(idx) {
   bg.id = 'tModal';
   const box = el('div','modal');
   let html = `<button class="modal-close" aria-label="Close">✕</button>
-    <div class="eyebrow">${esc(h.date)} 2026</div>
+    <div class="eyebrow">${esc(h.date)} ${SEASON}</div>
     <h2>${esc(h.ev)}${h.done && h.champ !== 'In progress' ? ' — <span class="champ">'+esc(h.champ)+'</span>' : ''}</h2>
     <div class="m-meta"><span>📅 <b>${esc(d.dates||'')}</b></span><span>📍 <b>${esc(d.host||'')}</b></span></div>
     <div class="m-blurb">${esc(d.fmt||'')}</div>`;
@@ -6200,11 +6224,46 @@ function renderTicker() {
       items.push(`<span class="tick-item"><span class="tick-lg" style="color:${REGIONS[slug].color}">${REGIONS[slug].name}</span> NEXT · <b>${esc(teamsLabel(nx))}</b> · ${day} ${time}</span>`);
     }
   }
-  items.push(`<span class="tick-item"><span class="tick-lg" style="color:var(--gold)">MSI</span> Hanwha Life Esports — champions of Daejeon</span>`);
-  items.push(`<span class="tick-item"><span class="tick-lg" style="color:var(--gold)">EWC</span> Dplus KIA — Paris 2026 winners</span>`);
-  items.push(`<span class="tick-item"><span class="tick-lg" style="color:var(--gold)">WORLDS</span> Final · Barclays Center NYC · 14 Nov</span>`);
-  if (!items.length) items.push('<span class="tick-item">LEAGUE ESPORTS TRACKER · Season 2026</span>');
-  track.innerHTML = items.join('') + items.join(''); // doubled for seamless loop
+  /* ISO dates compare as strings, so this is the whole expiry rule: a note is
+     carried up to and including its `until` day and then stops drawing itself.
+     Local date rather than UTC, because "is this still today's news" is a
+     question about the reader's day. */
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60e3)
+    .toISOString().slice(0, 10);
+  for (const n of TICKER_NOTES) {
+    if (n.until < today) continue;
+    items.push(`<span class="tick-item"><span class="tick-lg" style="color:var(--hi)">${esc(n.tag)}</span> ${esc(n.text)}</span>`);
+  }
+  if (!items.length) items.push(`<span class="tick-item">LEAGUE ESPORTS TRACKER · Season ${SEASON}</span>`);
+  /* Doubled so the scroll can loop without a seam. The second copy is the same
+     words over again, so it is marked: hidden from the accessibility tree —
+     otherwise every headline is announced twice — and dropped altogether under
+     prefers-reduced-motion, where there is no loop and so no seam to hide.
+     Marking the copies rather than wrapping them keeps the flex row flat, which
+     is what the -50% keyframe measures itself against. */
+  const run = items.join('');
+  track.innerHTML = run + run.replace(/<span class="tick-item"/g,
+    '<span class="tick-item tick-dup" aria-hidden="true"');
+
+  /* Under reduced motion the strip scrolls by hand, and something that scrolls
+     has to be reachable from the keyboard — a mouse-only scroll is no scroll at
+     all for a good number of readers, which is axe's scrollable-region-focusable
+     and simply true besides. It takes the tab stop only in that mode, because
+     while the animation is running there is nothing to scroll and a focusable
+     element that does nothing is its own small nuisance. Given a tab stop it
+     also needs a name, or it announces itself as an unlabelled group. */
+  const strip = track.parentElement;
+  if (strip) {
+    if (reducedMotion()) {
+      strip.setAttribute('tabindex', '0');
+      strip.setAttribute('role', 'region');
+      strip.setAttribute('aria-label', 'Headlines');
+    } else {
+      strip.removeAttribute('tabindex');
+      strip.removeAttribute('role');
+      strip.removeAttribute('aria-label');
+    }
+  }
 }
 
 /* =====================================================================
@@ -7457,15 +7516,49 @@ const markCurrent = (elm, on) => {
   if (on) elm.setAttribute('aria-current', 'page'); else elm.removeAttribute('aria-current');
 };
 
-function switchTab(name) {
+/* The tab is in the URL as well as in localStorage, and the two answer
+   different questions. The hash answers "which tab is this link about", which
+   localStorage never could: a link to this page used to be a link to whichever
+   tab *you* last had open, so nobody could send anybody "look at the LCK
+   race". It also leaves the back button inert, and on Android an inert Back
+   exits the site from every tab rather than stepping home. localStorage stays
+   on as the fallback for a bare URL, so returning to the site still lands
+   where you left it.
+
+   Only a hash naming a section that exists is honoured, which matters because
+   the event tab's slug rolls on with the tournament: a bookmark of last year's
+   #worlds2025 should open the home board rather than select nothing and leave
+   every page hidden — the same failure the saved-tab check below guards. */
+const tabFromHash = () => {
+  const h = String(location.hash || '').replace(/^#/, '').replace(/[^a-z0-9_-]/gi, '');
+  return h && document.getElementById('page-' + h) ? h : '';
+};
+let currentTab = '';
+
+/* `fromHash` says we are here *because* the hash moved — a click, or Back.
+   Writing the hash is what pushes the history entry, so doing it on that path
+   would push a duplicate of the entry we just arrived at and make Back appear
+   to stick for one press. */
+function switchTab(name, fromHash) {
+  currentTab = name;
   document.querySelectorAll('.tab').forEach(t => markCurrent(t, t.dataset.tab===name));
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id==='page-'+name));
   document.querySelectorAll('.fchip').forEach(c => markCurrent(c, name === 'home'));
   lsWrite(LS('tab'), name);
+  if (!fromHash && tabFromHash() !== name) location.hash = name;
   // the bracket wiring is measured, so it can only be drawn once the page is visible
   if (REGIONS[name]) drawSimWires(name);
   window.scrollTo({top:0, behavior: reducedMotion() ? 'auto' : 'smooth'});
 }
+
+/* An empty hash is Back arriving at the bare URL the visitor started on, which
+   is the home board rather than nothing. The guard is what stops the loop:
+   switchTab writes the hash, the write fires this, and this recognises the tab
+   it is already standing on and stops. */
+window.addEventListener('hashchange', () => {
+  const name = tabFromHash() || 'home';
+  if (name !== currentTab) switchTab(name, true);
+});
 
 /* boxes move when the column widths do, so the wiring is re-measured after a
    resize and once the display fonts have settled */
@@ -7487,6 +7580,18 @@ syncHeaderOffset();
 
 window.addEventListener('resize', () => { clearTimeout(wireTimer); wireTimer = setTimeout(() => { redrawAllWires(); syncHeaderOffset(); }, 150); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { redrawAllWires(); syncHeaderOffset(); });
+
+/* Reduced motion can be switched on while the page is open, and the ticker
+   changes shape when it is — it starts scrolling, and only then takes a tab
+   stop. Waiting for the next refresh would leave a strip that scrolls and
+   cannot be focused for up to a minute. addListener is the old spelling, kept
+   for the Safari versions that never learned the new one. */
+if (window.matchMedia) {
+  const mq = matchMedia('(prefers-reduced-motion: reduce)');
+  const onMotion = () => { try { renderTicker(); } catch (e) {} };
+  if (mq.addEventListener) mq.addEventListener('change', onMotion);
+  else if (mq.addListener) mq.addListener(onMotion);
+}
 document.querySelectorAll('.tab, .f-rg').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
 /* the All chip is the way back to the home board */
@@ -7510,11 +7615,24 @@ function setBoardRegion(slug) {
 document.querySelectorAll('.rgf').forEach(b =>
   b.addEventListener('click', () => setBoardRegion(b.dataset.r || '')));
 
+/* The status line is the page's only spoken channel: it is where "the feed has
+   gone down and you are reading a cache" gets said, and until it was a live
+   region that sentence appeared in silence for anyone not watching this corner
+   of the header.
+
+   Which is also why it only writes when the words actually change. The line is
+   rewritten on every refresh, mostly with the message it already carried, and a
+   live region that is re-filled every sixty seconds announces itself every sixty
+   seconds however little has happened. Comparing first turns it back into what
+   it should be \u2014 something that speaks when the connection state moves, and not
+   otherwise. */
+let statusHTML = '';
 function setStatus(ok, msg) {
   apiOk = ok;
   const via = (!ok || transport === 0) ? '' : ' (via proxy)';
   const el2 = $('#apiStatus');
-  el2.innerHTML = `<span class="dot ${ok?'ok':'err'}"></span>${msg}${via}${ok?'':' \u2139'}`;
+  const html = `<span class="dot ${ok?'ok':'err'}"></span>${msg}${via}${ok?'':' \u2139'}`;
+  if (html !== statusHTML) { statusHTML = html; el2.innerHTML = html; }
   el2.style.cursor = 'pointer';
   el2.title = 'Tap for connection details';
   el2.onclick = openApiHelp;
@@ -7635,9 +7753,19 @@ renderTicker();
 /* A saved tab can outlive its page. The event tab's slug changes every time it
    rolls on to the next tournament, and someone who left the site on the old one
    would come back to a nav with nothing selected and a main element with every
-   page hidden — blank, and silent about why. */
+   page hidden — blank, and silent about why.
+
+   A hash in the URL outranks the saved tab: it is what the person who sent the
+   link meant, while the saved tab is only where this browser happened to be. */
 const savedTab = lsRead(LS('tab'));
-switchTab(savedTab && document.getElementById('page-' + savedTab) ? savedTab : 'home');
+const bootTab = tabFromHash()
+  || (savedTab && document.getElementById('page-' + savedTab) ? savedTab : 'home');
+/* Replace rather than push, and pass fromHash so switchTab does not push
+   either: a first paint is not a navigation, and an entry here would leave
+   Back returning to the page it started on. replaceState throws on file://
+   in some browsers, and the tab still works without the URL being tidy. */
+try { if (tabFromHash() !== bootTab) history.replaceState(null, '', '#' + bootTab); } catch (e) {}
+switchTab(bootTab, true);
 refreshAll(true);
 tickClocks();
 setInterval(tickClocks, 1000);                     // header clock + live match timers

@@ -1,6 +1,6 @@
 # League Esports Tracker
 
-A single-file, offline-capable dashboard tracking LoL esports (LEC, LCK, LPL, LCS) —
+A single-file, outage-tolerant dashboard tracking LoL esports (LEC, LCK, LPL, LCS) —
 schedules, live games, standings, power rankings, honours, playoff race odds, playoff
 bracket predictor.
 Deployed via GitHub Pages straight from this repo.
@@ -22,15 +22,23 @@ Deployed via GitHub Pages straight from this repo.
 - **Verify every edit** with `node tools/check.mjs`. It parses the inline `<script>`
   and checks the invariants that break the page silently: the `nexusdesk_` prefix, the
   DRAFTS markers and their JSON, duplicate element IDs, stray browser files at the root,
-  the file-size budget (400 KB warns, 600 KB fails — `SIZE_BUDGET` / `SIZE_CEILING`;
-  both are the project's own numbers, not limits anything outside it enforces, and
-  the check prints the gzipped size beside the raw one because that is the half a
-  visitor actually pays),
+  the file-size budget (**measured gzipped**: 165 KB warns, 200 KB fails —
+  `GZIP_BUDGET` / `GZIP_CEILING`; both are the project's own numbers, not limits
+  anything outside it enforces. It was measured raw until the page-without-DRAFTS
+  passed the old 400 KB raw budget on its own — and unlike DRAFTS the page does not
+  reset at a split boundary, so the warning was permanently on and had stopped being
+  read. Gzipped is what a visitor pays, and it is also what settles the recurring
+  question of minifying: ~30 KB of the raw size is comment-only lines, gzip collapses
+  them to almost nothing, and in this repo those comments are the documentation),
+  unused CSS (a class defined in `<style>` whose name appears nowhere after it —
+  warns, with `DYNAMIC_CLASSES` for a name built at runtime; the point is not the
+  bytes but that editing such a rule silently does nothing),
   and the structure of the baked-in data constants — every
   `defFormat` resolving to a real `FORMATS` key, every `w:`/`l:` bracket reference
   resolving to a match that exists, every seed placed exactly once, and the fields
-  `HONOURS` / `POWER_RANKINGS` / `STORYLINES` are read by. It checks *shape*, never
-  *currency*; whether the data is still true is `tools/stale.mjs`'s question.
+  `HONOURS` / `POWER_RANKINGS` / `STORYLINES` / `TICKER_NOTES` are read by. It checks
+  *shape*, never *currency*; whether the data is still true is `tools/stale.mjs`'s
+  question.
   `.github/workflows/health.yml` runs it on every push and PR, so a broken edit fails
   CI rather than reaching Pages.
 - **For anything that touches rendering**, also run `node tools/smoke.mjs` — it opens the
@@ -51,7 +59,10 @@ Deployed via GitHub Pages straight from this repo.
   (`--bg:#000000`), near-black panels, white type, cyan (`--cyan:#0BC6E3`) as the sole
   accent for live state / league identity, red for live/loss, green for win. Region
   colours: LEC teal, LCK silver, LPL red, LCS blue (see `:root` CSS vars). Keep new UI
-  consistent with this — don't reintroduce gold.
+  consistent with this — don't reintroduce gold. There is no `--gold` var any more:
+  it survived the rebrand as a name while being redefined to `#FFFFFF`, so the
+  stylesheet read as gold long after the page had stopped being. It is `--hi` /
+  `--hi-dim` now — plain white emphasis on a dark inset.
 - Fonts: Barlow Condensed (display), IBM Plex Mono (mono/labels), Inter (body).
 
 ## Data model
@@ -60,6 +71,13 @@ Deployed via GitHub Pages straight from this repo.
   lolesports public API (`API` / `API_KEY` constants near the top of the script) at
   runtime. This needs no manual maintenance.
 - **Baked-in constants** go stale and need periodic research + patching:
+  - `SEASON` — the year everything else here describes. The render code reads it;
+    the `<title>` keeps its own literal because it has to be real markup for
+    anything reading the page without running it, and `check.mjs` holds the two to
+    each other so they cannot drift. `stale.mjs` NOTEs a mismatch with the calendar
+    year rather than calling it stale, because the year turns weeks before the first
+    game and the old number is right until then. Moving it is a whole-season pass:
+    `HONOURS`, `STORYLINES` and `TICKER_NOTES` all go with it
   - `REGIONS` — per-region split label, regular-season game count, default playoff
     format, channel/wiki links, and `rank` (how the league orders its table — see
     the playoff race section). Two optional fields cover leagues that do not fit
@@ -72,6 +90,20 @@ Deployed via GitHub Pages straight from this repo.
     section below
   - `HONOURS` — season honours board (tournament winners, runners-up, dates)
   - `STORYLINES` — home-tab narrative bullets
+  - `TICKER_NOTES` — the ticker's standing headlines, the ones the feed cannot
+    produce: trophies already won, and the date of a final not yet played. Each
+    carries `tag`, `text` and an `until` ISO date, and **the date is the reason
+    the constant exists.** These were string literals inside `renderTicker()`,
+    which put facts with expiry dates in the one place no tool in `tools/` can
+    see — on 15 November the ticker would still have been advertising a final
+    played the day before, with `check.mjs`, `stale.mjs` and `smoke.mjs` all
+    green, because none of them reads the inside of a function. `renderTicker()`
+    now drops a note once `until` has passed, so a missed patch shortens the
+    ticker instead of falsifying it, and `stale.mjs` reports the gap: STALE once
+    a note has expired, NOTE in the week before. **If you add editorial copy
+    anywhere on this page, the question to ask is whether it has an expiry date,
+    and if it does it belongs in a constant with the date attached** — not in the
+    function that draws it
   - `POWER_RANKINGS` + `POWER_RANKINGS_ASOF` — mirror of lolesports.com Global Power
     Rankings. **No longer hand-maintained** — `tools/gpr.mjs` rewrites both nightly
     (see the GPR block below). Left in this list because everything else here reads
@@ -91,9 +123,11 @@ Deployed via GitHub Pages straight from this repo.
   date — a split label naming the wrong split, a `defaultGames` the standings have
   already exceeded, a `groupCuts` key no longer matching any group, a cut line past the
   end of its table, a ranking rule that no longer reproduces the last published table, a
-  rankings mirror older than three weeks) or NOTE (a judgement call
+  rankings mirror older than three weeks, a `TICKER_NOTES` headline whose `until`
+  has passed) or NOTE (a judgement call
   — a split that just started, a season link pointing at last year, a trophy the
-  honours board may be missing). Start a data session here rather than guessing.
+  honours board may be missing, a ticker headline expiring within the week).
+  Start a data session here rather than guessing.
   Anything it reports comes with the constant to edit.
 
 ## The playoff race panel
@@ -491,6 +525,63 @@ Worlds Updates* post on lolesports.com; and the bracket from the API.
   URI it is not an http link, so `links.mjs` does not check it; nothing can rot.
   Keep the two wiki links, which it does check.
 
+## The tab in the URL
+
+`switchTab()` keeps the current tab in the location hash as well as in
+`nexusdesk_tab`, and the two answer different questions. The hash is what a
+*link* is about; localStorage is where *this browser* last was. Without the
+hash a link to the site was always a link to whichever tab the sender happened
+to have open, so "look at the LCK race" could not be sent to anybody, and the
+back button did nothing — which on Android means Back exits the site from every
+tab rather than stepping home.
+
+- **The hash outranks the saved tab on boot, and only if it names a section that
+  exists.** The event tab's slug rolls on with the tournament, so a bookmark of
+  last year's `#worlds2025` has to land on the home board rather than select
+  nothing and leave every page hidden — the same failure the saved-tab guard
+  already covered, arriving by a new route.
+- **`switchTab(name, fromHash)` — the flag is what stops the loop.** Writing the
+  hash is what pushes the history entry, so it must not happen when we are here
+  *because* the hash moved; doing it anyway pushes a duplicate of the entry just
+  arrived at and Back appears to stick for one press. The `hashchange` listener
+  passes the flag and also compares against `currentTab`, so the write-fires-the-
+  listener round trip stops on the second pass.
+- **Boot uses `replaceState`, not a push.** A first paint is not a navigation,
+  and an entry there leaves Back returning to the page it started on. It is in a
+  try/catch because `replaceState` throws on `file://` in some browsers, and the
+  tab still works with an untidy URL.
+- **An empty hash means home**, because that is Back arriving at the bare URL
+  the visitor started on rather than at nothing.
+
+## What the page says out loud
+
+Two things here are easy to undo by accident, so they are written down.
+
+- **`#apiStatus` is the only live region on the page**, and it should stay that
+  way. It carries the connection state, which is the one thing here that has to
+  be *told* rather than shown — "the feed has gone down and you are reading a
+  cache" used to happen in silence. The boards must never become live regions:
+  they repaint every sixty seconds and announcing that would make the page
+  unusable.
+- **Which is why `setStatus()` compares before it writes.** The line is rewritten
+  on every refresh, almost always with the message it already carried, and a live
+  region re-filled every minute announces itself every minute however little has
+  changed. Keep the comparison if you touch that function.
+- **The ticker's second copy is decorative and marked as such.** `renderTicker()`
+  draws the run twice so the scroll can loop without a seam, and stamps the
+  duplicate `tick-dup` + `aria-hidden` — otherwise every headline is announced
+  twice. The marking is per item rather than a wrapper, because the `-50%`
+  keyframe measures itself against a flat flex row.
+- **Under `prefers-reduced-motion` the ticker scrolls by hand.** Stopping the
+  animation is not enough on its own: the track is `max-content` inside an
+  `overflow:hidden` strip, so with the scroll off everything past the right edge
+  was unreachable, and the readers who asked for less motion were the only ones
+  who could not see the whole ticker. That block switches on `overflow-x`, drops
+  the edge fades (at rest they sit on top of the first item) and hides
+  `.tick-dup`. **The general shape of that bug is worth remembering: turning an
+  animation off can remove the only means of reaching content, so check what the
+  motion was doing before you cancel it.**
+
 ## The spoiler guard
 
 Somebody who opens this page to see when their team plays next should not have
@@ -820,8 +911,24 @@ exception or console error.
 It also checks that **the race panel's odds add up**: exactly `cut` teams qualify in
 every ending, so a group's probabilities must sum to its number of places. That one is
 load-bearing — the race board is computed rather than fetched, so a broken edit renders
-its empty state and throws nothing, and every other check here would stay green. It then narrows to a 390px viewport, runs axe, and finally
-blocks the API to exercise the offline path.
+its empty state and throws nothing, and every other check here would stay green.
+
+It then checks a group of things that share one property — **they break without
+throwing anything** — which is why they are checked at all rather than left to axe
+and the exception handler. The hash routing is walked with the browser's own Back
+button, because the failure it guards is a double history push: every tab click
+would need two Back presses, which looks like nothing happening and raises no error.
+A slug that no longer names a section is loaded deliberately, since the event tab's
+rolls on each tournament and the wrong answer there is a page with every section
+hidden. `#apiStatus` is asserted to be a live region **and the only one**, because a
+live region added to a board that repaints every minute would read the page out on a
+loop. The ticker's duplicate half is checked to be `aria-hidden`, and under an
+emulated `prefers-reduced-motion` the strip is checked to still be reachable —
+computed style, not appearance, because a ticker that has quietly stopped being
+scrollable looks entirely normal and just ends early.
+
+Finally it narrows to a 390px viewport, runs axe, and blocks the API to exercise the
+offline path.
 
 That last group is the only check in the repo that does **not** need the network — it
 blocks the API deliberately — so it keeps working during exactly the upstream outage

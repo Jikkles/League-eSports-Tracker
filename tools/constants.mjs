@@ -171,7 +171,8 @@ export function qualThruFn(src, QUAL_AUTO) {
 
 /** The data constants every caller cares about, in one call. */
 export const DATA_CONSTANTS =
-  ['REGIONS', 'EVENT', 'QUAL_AUTO', 'HONOURS', 'STORYLINES', 'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'FORMATS'];
+  ['SEASON', 'REGIONS', 'EVENT', 'QUAL_AUTO', 'HONOURS', 'STORYLINES', 'TICKER_NOTES',
+   'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'FORMATS'];
 
 export function readDataConstants() {
   const { html, src } = readIndex();

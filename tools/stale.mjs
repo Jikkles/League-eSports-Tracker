@@ -95,9 +95,48 @@ if (C.missing.length) {
   console.error(`Could not read ${C.missing.join(', ')} from index.html — run node tools/check.mjs first.`);
   process.exit(1);
 }
-const { REGIONS, EVENT, HONOURS, POWER_RANKINGS, POWER_RANKINGS_ASOF } = C;
+const { SEASON, REGIONS, EVENT, HONOURS, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF } = C;
 const NOW = Date.now();
 const YEAR = new Date(NOW).getUTCFullYear();
+
+/* ---- SEASON --------------------------------------------------------------
+   The year the whole page describes — the honours heading, the honours modal's
+   dates, the ticker's fallback and, held to it by check.mjs, the <title>. It
+   only moves when a new season starts, which is exactly why nobody remembers
+   to move it: the page would spend January confidently labelling last year's
+   results as this year's. A NOTE rather than STALE, because a rollover is a
+   judgement call — the calendar year turns weeks before the first game, and
+   for those weeks the old number is still the right answer. */
+if (SEASON != null && SEASON !== YEAR)
+  note('SEASON', `The page describes season ${SEASON}; the calendar year is ${YEAR}.`,
+       `If the ${YEAR} season has started, move SEASON and the <title> together — check.mjs holds them to each other — and expect HONOURS, STORYLINES and TICKER_NOTES to need the same pass.`);
+else if (SEASON != null)
+  fine('SEASON', `${SEASON}, matching the calendar year`);
+
+/* ---- TICKER_NOTES freshness ---------------------------------------------
+   The ticker's standing headlines are the only hand-written copy on the page
+   with a date attached, and the page already retires one on its own once
+   `until` has passed. That is the safe half — the ticker gets shorter rather
+   than wrong. This is the other half: nothing else would ever tell anyone the
+   line had gone, so the board would quietly shrink towards empty, a headline
+   at a time, and look like a rendering bug rather than a patch nobody made. */
+if (Array.isArray(TICKER_NOTES)) {
+  const today = new Date(NOW).toISOString().slice(0, 10);
+  const soon = new Date(NOW + 7 * 86400e3).toISOString().slice(0, 10);
+  const gone = TICKER_NOTES.filter(n => n.until < today);
+  const going = TICKER_NOTES.filter(n => n.until >= today && n.until <= soon);
+
+  if (gone.length)
+    stale('TICKER_NOTES', `${gone.length} ticker headline${gone.length > 1 ? 's have' : ' has'} expired and stopped drawing.`,
+          'Replace or re-date them in TICKER_NOTES — the page has already dropped them, so the ticker is short rather than wrong.',
+          gone.map(n => `${n.tag} · until ${n.until} · ${n.text}`));
+  else if (going.length)
+    note('TICKER_NOTES', `${going.length} ticker headline${going.length > 1 ? 's expire' : ' expires'} within a week.`,
+         'Worth a replacement before the ticker loses the line; this check calls them stale the day after.',
+         going.map(n => `${n.tag} · until ${n.until} · ${n.text}`));
+  else
+    fine('TICKER_NOTES', `${TICKER_NOTES.length} headlines, none expiring within a week`);
+}
 
 /* ---- POWER_RANKINGS freshness -------------------------------------------
    The board is rebuilt nightly by tools/gpr.mjs, so this is no longer a nudge

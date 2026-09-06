@@ -548,6 +548,127 @@ if (loaded) {
     return 'nav round-trips';
   });
 
+  /* The tab is in the URL, and the failure worth catching is the loop:
+     switchTab writes the hash, the write fires hashchange, and hashchange calls
+     switchTab. If the guard on that ever goes, every tab click pushes two
+     entries and Back needs pressing twice — which looks like nothing happening
+     and would never throw. So this asserts the history depth by using it. */
+  await check('the tab is in the URL', async () => {
+    await page.click('.tab[data-tab=lec]');
+    await page.waitForSelector('#page-lec.active', { timeout: STEP_MS });
+    const hash = await page.evaluate(() => location.hash);
+    if (hash !== '#lec') throw new Error(`clicking LEC left the hash as "${hash}"`);
+
+    await page.goBack();
+    await page.waitForSelector('#page-home.active', { timeout: STEP_MS });
+    const back = await page.evaluate(() => location.hash);
+    if (back === '#lec')
+      throw new Error('one Back press left the hash on #lec — switchTab is pushing twice');
+    return `#lec, and one Back returns home`;
+  });
+
+  /* The other half: a hash the visitor was *sent*. A bare reload would prove
+     nothing, since localStorage would restore the same tab anyway. */
+  await check('a shared link opens its tab', async () => {
+    await page.goto(`${origin}/#lck`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#page-lck.active', { timeout: STEP_MS });
+    /* A slug for a tab that has rolled on — the event tab's does, every
+       tournament — must land somewhere rather than hiding every page. */
+    await page.goto(`${origin}/#worlds2019`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#page-home.active', { timeout: STEP_MS });
+    return '#lck opens the LCK; a slug that no longer exists opens home';
+  });
+
+  await check('the status line is a live region', async () => {
+    const r = await page.$eval('#apiStatus', e => ({
+      live: e.getAttribute('aria-live'), role: e.getAttribute('role'),
+    })).catch(() => null);
+    if (!r) throw new Error('#apiStatus is missing');
+    if (r.live !== 'polite' || r.role !== 'status')
+      throw new Error(`#apiStatus is role="${r.role}" aria-live="${r.live}"`);
+    /* Nothing else may be one. The boards repaint every minute, and a live
+       region on one of those would read the whole page out on a loop. */
+    const others = await page.$$eval('[aria-live]', els =>
+      els.filter(e => e.id !== 'apiStatus').map(e => e.id || e.className || e.tagName));
+    if (others.length) throw new Error(`other live regions on the page: ${others.join(', ')}`);
+    return 'role=status, aria-live=polite, and the only one';
+  });
+
+  /* The ticker draws its headlines twice so the loop has no seam. Both halves
+     used to be in the accessibility tree, so every headline was announced
+     twice; the duplicate is marked now, and a marking that silently stops
+     matching is exactly the kind of thing nothing else here would notice. */
+  await check('ticker: the second copy is hidden from readers', async () => {
+    const r = await page.evaluate(() => {
+      const all = [...document.querySelectorAll('.tick-item')];
+      const dup = all.filter(e => e.classList.contains('tick-dup'));
+      return { all: all.length, dup: dup.length,
+               unmarked: dup.filter(e => e.getAttribute('aria-hidden') !== 'true').length };
+    });
+    if (!r.all) throw new Error('the ticker drew nothing');
+    if (r.dup * 2 !== r.all)
+      throw new Error(`${r.all} ticker items but ${r.dup} marked as the duplicate half`);
+    if (r.unmarked) throw new Error(`${r.unmarked} duplicate items are not aria-hidden`);
+    return `${r.dup} of ${r.all} items marked and hidden`;
+  });
+
+  /* Turning an animation off can take the only means of reaching the content
+     with it: the track is max-content inside an overflow:hidden strip, so with
+     the scroll stopped everything past the right edge was unreachable, and the
+     readers who asked for less motion were the only ones who could not see the
+     whole ticker. Checked by computed style, because the bug is invisible —
+     the strip looks completely normal, it just ends early. */
+  await check('reduced motion: the ticker is still reachable', async () => {
+    /* The reset is in a finally because it was not, and a throw here left every
+       later check — axe included — running under emulated reduced motion. That
+       reported a real violation against a state the page is not normally in,
+       three checks away from the one that caused it. */
+    try {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.waitForTimeout(250);   // the matchMedia listener redraws the ticker
+      const r = await page.evaluate(() => {
+        const t = document.querySelector('.ticker');
+        const d = document.querySelector('.tick-dup');
+        const cs = getComputedStyle(t);
+        return {
+          ox: cs.overflowX,
+          anim: getComputedStyle(document.querySelector('.ticker-track')).animationName,
+          dup: d ? getComputedStyle(d).display : 'none',
+          scrolls: t.scrollWidth > t.clientWidth + 1,
+          tab: t.getAttribute('tabindex'), label: t.getAttribute('aria-label'),
+        };
+      });
+      if (r.anim !== 'none') throw new Error(`the track is still animating (${r.anim})`);
+      if (r.dup !== 'none') throw new Error('the duplicate half is still drawn with no loop to hide a seam');
+      if (r.scrolls && r.ox !== 'auto' && r.ox !== 'scroll')
+        throw new Error(`the ticker overflows with overflow-x:${r.ox} — the rest is unreachable`);
+      /* A region that scrolls and cannot be focused is reachable by mouse only,
+         which for this feature's whole audience is not reachable at all. */
+      if (r.tab !== '0') throw new Error(`the scrollable strip has tabindex="${r.tab}" — no keyboard route to it`);
+      if (!r.label) throw new Error('the strip takes a tab stop with no accessible name');
+      return `overflow-x:${r.ox}, animation off, duplicate dropped, focusable as "${r.label}"`;
+    } finally {
+      await page.emulateMedia({ reducedMotion: null });
+    }
+  });
+
+  /* Back to the home board on a clean load: the spoiler checks below want the
+     first-visit path, and the navigations above have left us elsewhere. */
+  await page.goto(origin, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#page-home.active', { timeout: STEP_MS });
+  /* Wait for the refresh to have actually landed, not merely for a board to
+     exist. The boards paint their placeholder rows immediately, so a selector
+     on `.nxt` matches long before any result is in one — which is how a first
+     attempt at this left every spoiler check below reporting "no results to
+     hide" and passing two of them for the wrong reason. `#lastRefresh` reads
+     "updated HH:MM" only once a fetch has come back, so that is the signal.
+     Swallowed on timeout: whether there is data to guard is the next checks'
+     finding to report, not this line's to throw outside one. */
+  await page.waitForFunction(
+    () => (document.querySelector('#lastRefresh')?.textContent || '').startsWith('updated'),
+    null, { timeout: STEP_MS * 2 },
+  ).catch(() => {});
+
   /* The spoiler guard, on a cold profile — which is the visit it exists for.
      It fails open by nature: a row that loses its `spoil` class renders a
      perfectly good result and throws nothing, so nothing else here would ever
