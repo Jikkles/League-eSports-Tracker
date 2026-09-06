@@ -33,6 +33,7 @@ Deployed via GitHub Pages straight from this repo.
   unused CSS (a class defined in `<style>` whose name appears nowhere after it —
   warns, with `DYNAMIC_CLASSES` for a name built at runtime; the point is not the
   bytes but that editing such a rule silently does nothing),
+  the API credentials appearing in exactly one place (see below),
   and the structure of the baked-in data constants — every
   `defFormat` resolving to a real `FORMATS` key, every `w:`/`l:` bracket reference
   resolving to a match that exists, every seed placed exactly once, and the fields
@@ -41,6 +42,15 @@ Deployed via GitHub Pages straight from this repo.
   question.
   `.github/workflows/health.yml` runs it on every push and PR, so a broken edit fails
   CI rather than reaching Pages.
+- **The API's base URL, key and proxy list live in `index.html` and nowhere else.**
+  Every tool lifts them through `constants.mjs`'s `apiCreds()`, and `check.mjs`
+  fails a build that spells any of them out again. They *were* copied into five
+  tools. The key is public but not permanent, and the failure that sets up is
+  nasty in a specific way: on the day Riot rotates it, `index.html` gets patched
+  and every tool holding its own copy keeps the dead one — with `api-canary.mjs`,
+  whose entire job is noticing that rotation, testing the wrong key and holding
+  an issue open on a page that already works. Same rule, same reason, as the
+  ranking engine and `qualThru()`: one copy, lifted, never re-typed.
 - **For anything that touches rendering**, also run `node tools/smoke.mjs` — it opens the
   real page in a browser and is the only check that catches a parse-clean edit which
   throws on first render. It also re-runs the nav at a 390px phone viewport looking for
@@ -51,7 +61,7 @@ Deployed via GitHub Pages straight from this repo.
   one command**, because with no package.json npm treats `node_modules` as the entire
   dependency tree and a second `--no-save` install silently removes the first:
   ```
-  npm install --no-save playwright axe-core && npx playwright install chromium
+  npm install --no-save playwright@1.62.1 axe-core@4.13.0 && npx playwright install chromium
   ```
   `--headed` watches it happen, `--shot out.png` saves a full-page screenshot.
   `node_modules/` is gitignored; the repo still has no package.json and must not grow one.
@@ -124,11 +134,71 @@ Deployed via GitHub Pages straight from this repo.
   already exceeded, a `groupCuts` key no longer matching any group, a cut line past the
   end of its table, a ranking rule that no longer reproduces the last published table, a
   rankings mirror older than three weeks, a `TICKER_NOTES` headline whose `until`
-  has passed) or NOTE (a judgement call
+  has passed, a recorded `HONOURS` scoreline the feed contradicts, a `defFormat`
+  wiring a different number of matches than the league is playing) or NOTE (a
+  judgement call
   — a split that just started, a season link pointing at last year, a trophy the
   honours board may be missing, a ticker headline expiring within the week).
-  Start a data session here rather than guessing.
+  It also carries the automation heartbeat, so a job that has stopped running
+  reports in the same place. Start a data session here rather than guessing.
   Anything it reports comes with the constant to edit.
+
+### Checking HONOURS against the feed
+
+`check.mjs` validates that a bracket row has an integer `col`/`row` and somebody
+who won. That is a question about shape, and it left **124 hand-typed bracket
+matches, 119 of them with a scoreline, checked against nothing at all.** A 3–1
+typed where the series was 3–2 renders perfectly, reads plausibly, and lives
+forever.
+
+Matching is by the two teams rather than by any name a tournament goes under —
+Riot says `lck_split_3_2026`, the board says "LCK Summer", and nothing bridges
+those, which is the same reason the trophy-count check counts instead of naming.
+Who played whom needs no bridging. The team names *do*: HONOURS says "Gen.G"
+where every feed says "Gen.G Esports", so the check lifts `LOGO_ALIAS` and
+reuses `findLogo()`'s substring fallback rather than inventing a second matcher.
+
+**Four things have to line up before a series is judged, and the first draft had
+only one of them.** Getting this wrong is expensive — a false finding costs a
+session to disprove — so each was added because the previous version was caught
+lying:
+
+1. **Same two teams, same series length.** A Bo5 is only compared against Bo5s,
+   so a regular-season 2–0 cannot be mistaken for the playoff Bo5 in question.
+2. **Inside the tournament's own dates**, parsed from the honour's `d.dates`
+   prose. Without this the check reported the Esports World Cup's third-place
+   Bo3 as wrong by quoting two LCK regular-season Bo3s between the same pair,
+   three months earlier.
+3. **Exactly one candidate.** Two meetings of the same pair, same length, same
+   window and it cannot tell which one is being transcribed — the queue problem
+   `simFillFrom()` solves with played order, which a bracket table does not have.
+4. **The honour as a whole has to land.** Still not enough: the KeSPA Cup is in
+   no league feed but is played in the same weeks as the LCK's summer split, so
+   two of its Bo3s found a unique same-pair Bo3 in the window and were reported
+   with total confidence. What separates the cases cleanly is *how much* of the
+   bracket lands. The nine league tournaments locate 5–14 scorelines each and
+   agree with **56 of 56**; the KeSPA Cup locates two and agrees with neither;
+   First Stand, MSI and the Esports World Cup locate nothing. So an honour is
+   believed only past `MIN_LOCATED` with `MIN_AGREEMENT` agreement, and the
+   disagreements inside a believed honour are the findings.
+
+**The trade that buys:** a bracket where most scorelines are wrong is dismissed
+as the wrong tournament rather than reported. That is the right way round — half
+a bracket disagreeing is far more likely to mean the check found the wrong games
+than that six scores were typed wrong — and one or two typos, the realistic
+failure, still reports, with the feed's own line quoted beside it.
+
+### Checking the bracket the league is actually playing
+
+`REGIONS[].defFormat` names a wiring and `check.mjs` proves the name resolves.
+Neither asks whether it is the bracket being played *this* split, which is the
+one thing about a format that goes out of date. Riot publishes the whole bracket
+before it is played, so the count is available on day one rather than after the
+final: the largest stage in the tournament is the bracket, and its match count
+has to equal the format's. Currently 8/8, 10/10, 12/12, 10/10. Size alone is
+coarse — two different eight-match brackets both pass — but a size mismatch is
+unambiguous and needs no name matching. `smoke.mjs`'s "fill from results" ratio
+is the finer-grained version of the same question, and stays where it is.
 
 ## The playoff race panel
 
@@ -761,7 +831,32 @@ at a split boundary. `--prune` enumerates
 every game Riot places in the current split and drops everything else. It only ever runs
 on an explicit flag (or the `prune` input on the workflow's manual dispatch), and it
 refuses to delete anything if enumeration was incomplete, since a partial list would
-take the live split with it. Run it once after a rollover.
+take the live split with it.
+
+**Both of those chores now happen by themselves, off one signal.** gol.gg
+renaming a split is the cleanest evidence this repo has that a split has moved
+on, and two manual jobs hung off a person noticing it: updating
+`LEAGUES[].golgg`, and remembering to run `--prune`. `detectRollover()` asks
+before the main loop — one HTTP call for the whole run, since `golgg.mjs` caches
+the season's tournament list — and turns pruning on for that run when a name has
+moved. `recordNames()` then rewrites `LEAGUES[].golgg` in `drafts.mjs`'s own
+source, so `drafts.yml` commits `tools/drafts.mjs` alongside `index.html`.
+
+- **A tool editing its own source deserves a flinch,** so the rewrite is as
+  narrow as it can be: an exact `golgg: '<the string already there>'`, only where
+  it appears exactly once, never building a literal out of a name containing a
+  quote or a backslash — and the result is handed to `node --check` before it is
+  allowed to stay, reverting if it does not parse. A corrupted `drafts.mjs`
+  breaks the daily job permanently, which is far worse than a stale comment.
+- **Auto-pruning is not more dangerous than pruning, only more frequent.** The
+  prune rule is "keep what Riot places in the current tournament", which is the
+  invariant DRAFTS is supposed to hold anyway; running it sooner enforces it
+  sooner. The enumeration-incompleteness guard is untouched and still refuses to
+  delete anything from a partial list.
+- **`--no-auto-prune` opts out**, and `--prune` still forces it on.
+- It fires on any rename, not only a season rollover — gol.gg splitting "LEC 2026
+  Summer Season" into "LEC 2026 Summer Playoffs" counts. That is harmless: Riot
+  files both under one tournament, so the prune drops nothing.
 
 ### The QUAL block
 
@@ -877,15 +972,19 @@ So don't try to move this to a runtime fetch; it was checked.
 
 These run without anyone asking:
 
-- `.github/workflows/health.yml` — `tools/check.mjs` on every push and PR
-- `.github/workflows/smoke.yml` — `tools/smoke.mjs` on every push and PR, and daily at 07:30 UTC
+- `.github/workflows/health.yml` — `tools/check.mjs` on every push and PR, plus the
+  page-weight comment (`tools/size.mjs`) on a PR and the automation heartbeat
+- `.github/workflows/smoke.yml` — `tools/smoke.mjs` on every push and PR, after each
+  generator, and daily at 07:30 UTC
 - `.github/workflows/drafts.yml` — `tools/drafts.mjs` daily at 06:00 UTC, commits changes
 - `.github/workflows/api-canary.yml` — `tools/api-canary.mjs` daily at 07:00 UTC
 - `.github/workflows/gpr.yml` — `tools/gpr.mjs` daily at 07:45 UTC, commits changes
 - `.github/workflows/qual.yml` — `tools/qual.mjs` every two hours, commits changes
-- `.github/workflows/stale.yml` — `tools/stale.mjs` daily at 08:00 UTC
+- `.github/workflows/stale.yml` — `tools/stale.mjs` daily at 08:00 UTC (carries the
+  heartbeat too)
 - `.github/workflows/links.yml` — `tools/links.mjs` weekly, Wednesdays at 08:15 UTC
-- `.github/workflows/deployed.yml` — `tools/deployed.mjs` after each push to `main`, and daily at 08:45 UTC
+- `.github/workflows/deployed.yml` — `tools/deployed.mjs` after each push to `main`,
+  after each generator, and daily at 08:45 UTC
 - `.github/workflows/research.yml` — weekly data-refresh PR, Mondays at 09:00 UTC
   (**inert until an `ANTHROPIC_API_KEY` secret exists**; it skips with a note rather than failing)
 - `.github/dependabot.yml` — monthly action bumps, minor/patch grouped into one PR
@@ -902,6 +1001,9 @@ The checks answer different questions and none of them substitutes for another:
 | `deployed.mjs` | is the live site serving *this* build? |
 | `links.mjs` | do the links baked into the page still *resolve*? |
 | `qual.mjs` | has a result *settled* something the board has not caught up with? |
+| `heartbeat.mjs` | are the jobs that answer all of the above still *running*? |
+| `size.mjs` | what did this change cost the visitor? |
+| `rollover.mjs` | what does moving to a new season actually touch? |
 
 `smoke.mjs` serves the repo over http, opens it in headless chromium against a cold
 profile (so, empty localStorage: the first-visit path), and checks the nav, home board,
@@ -927,6 +1029,28 @@ emulated `prefers-reduced-motion` the strip is checked to still be reachable —
 computed style, not appearance, because a ticker that has quietly stopped being
 scrollable looks entirely normal and just ends early.
 
+Two more in that family, both added because they fail without any symptom:
+
+- **The webfonts are loaded non-render-blocking** — `media="print"` on the link,
+  swapped to `all` on load — which took first contentful paint from 800ms to
+  124ms with a 600ms delay on `fonts.googleapis.com`. If the swap never runs, the
+  stylesheet stays scoped to print, every heading falls back to a system font,
+  and the page looks *restyled* rather than broken: nothing throws, no request
+  fails. So the check asks `document.fonts` what actually resolved, not what the
+  CSS asked for.
+- **The proxy fallback is exercised the way a filtered user meets it.** Blocking
+  only `esports-api.lolesports.com` leaves the proxied request — which goes to
+  `corsproxy.io` — alive, so the real chain runs. **What this can honestly assert
+  is the page's behaviour, not the proxies':** whether it *tries*. A page that
+  never reaches for a proxy has a broken fallback and that is a real bug,
+  catchable here and nowhere else. If it tries and both refuse, that is two
+  third-party services having a bad day — reported, never failed, the same rule
+  the absent-bracket check follows. This is what `api-canary.mjs` could not do:
+  corsproxy.io answers any server-side caller 401 as policy, so from a datacentre
+  "refusing us" and "gone" are the same answer, and that check warned on every
+  run and could never clear. It now treats a policy refusal as `ok` and warns
+  only on a proxy that does not answer at all.
+
 Finally it narrows to a 390px viewport, runs axe, and blocks the API to exercise the
 offline path.
 
@@ -936,6 +1060,101 @@ that turns the rest of the file red.
 
 Because it needs the live API, a genuine upstream outage turns the smoke run red; the
 canary issue is the explanation when that happens.
+
+### A generator's commit is a commit like any other
+
+**A push made with `GITHUB_TOKEN` raises no `push` event.** That is GitHub's
+recursion guard and nothing in a workflow can opt out of it. The consequence
+went unnoticed for a long time: `drafts.yml`, `gpr.yml` and `qual.yml` write to
+`index.html` and push it to `main` — 22 commits in a fortnight — and **not one of
+them was ever seen by `smoke.mjs` or `deployed.mjs`.** Each generator runs
+`check.mjs` inline before committing, so the script was known to parse; whether
+the page still *rendered*, and whether the deploy landed, nobody asked.
+
+It cost a real one. On 6 September the qual bot put a team through at 04:42, the
+page and the board disagreed about it, and the failure sat on the live site for
+**seven hours** until the *scheduled* smoke run at 11:42 happened to catch it.
+
+`workflow_run` does fire for those, because it keys on a workflow finishing
+rather than on the push it made. Both `smoke.yml` and `deployed.yml` now carry
+one, listing the three generators **by workflow `name:`, not by filename** —
+renaming a generator silently unhooks it.
+
+- **Each has a `guard` job that asks whether anything was actually pushed.** A
+  generator that found nothing to do finishes green having written nothing, and
+  opening a browser to look at an unchanged file is waste. `workflow_run`'s
+  `head_sha` is the commit the generator *started* from, so `main` having moved
+  past it is exactly the question — no cross-run plumbing, no job outputs to
+  thread through.
+- **The concurrency group includes the triggering workflow's name.** Under
+  `workflow_run`, `github.ref` is always the default branch, so all three
+  generators would otherwise share one group and cancel each other's checks.
+- **`smoke.yml` reports to an issue on `workflow_run` as well as on `schedule`.**
+  The rule is *unattended runs report*: nobody is watching either of those,
+  which is the entire reason the report exists. Push and PR runs still don't.
+- **The generators rebase before pushing.** Their concurrency groups are
+  per-workflow, so two can be in flight at once — qual runs every two hours and
+  has already overlapped a drafts run. The loser of that race gets a
+  non-fast-forward rejection and raises *its own* issue blaming the source it
+  scrapes, which is a lie that costs a session to unpick. They now retry three
+  times, rebasing onto whatever landed first, and check out at `fetch-depth: 0`
+  because a depth-1 clone has no merge base to rebase onto. The three generated
+  blocks are disjoint regions of the file, so a genuine conflict means something
+  is wrong that a human should see — the rebase is aborted rather than forced.
+
+### Nothing was watching the watchers
+
+Every check above asks a question about the *data*. `tools/heartbeat.mjs` asks
+whether the jobs that ask those questions are still firing, which is silent in
+two directions:
+
+- **GitHub drops scheduled runs it cannot fit,** and on a free-tier repo it drops
+  a lot of them. `qual.yml` asks for every two hours; over one measured 29-hour
+  window it ran 8 times where 14 were due, with a **6h18m** hole in the middle.
+  `drafts.yml` is scheduled for 06:00 UTC and has been firing between 10:42 and
+  13:22. A board six hours behind on the day a final settles a seed looks exactly
+  like a board that is current.
+- **GitHub disables scheduled workflows after ~60 days of repository
+  inactivity,** and says so in the workflow's `state` as `disabled_inactivity`.
+  The activity in this repo is almost entirely the generators' own commits, and
+  they only commit when something *changed* — so a long off-season, with no new
+  games for drafts and a frozen board for gpr, is precisely the stretch in which
+  this repo can go quiet enough to have its automation switched off. Everything
+  would stay green. Nothing would run.
+
+The thresholds are deliberately loose — `every` × `grace` in `WATCHED` — because
+this exists to catch automation that has *stopped*, not to complain about
+ordinary drift that nothing here can fix and that does no harm at half a day.
+
+- **It rides in `stale.yml`'s issue rather than opening a ninth workflow and a
+  ninth label.** A person reading "the tracker needs attention" wants one place
+  to look. The report's opening line is now conditional, because an automation
+  outage described as "the baked-in data has drifted" sends the reader to the
+  wrong file.
+- **`health.yml` runs it too, and that is not redundancy.** There is a
+  circularity in having the daily job watch the daily jobs: if the schedules are
+  disabled, the thing that would tell you is one of the ones that stopped. A
+  push is the one event that cannot be dropped, so any push surfaces a dead
+  schedule. It is informational there — a workflow GitHub throttled overnight is
+  not a reason to fail the commit in front of you.
+- **The repo is public, so the Actions API answers unauthenticated** and the tool
+  runs locally with no setup. An unreachable API is a NOTE, never a failure: this
+  check must not be the reason an issue opens.
+
+### Page weight is a slope, not a cliff
+
+`check.mjs` owns the budget and fails past the ceiling, which is right for a
+cliff and useless for a slope. The page is **88% of the way through its budget**
+and got there a couple of KB at a time, each one individually reasonable. By the
+time a build fails, the feature that pushed it over is finished and the choice is
+between reverting it and raising the number.
+
+`tools/size.mjs` prints the delta and `health.yml` posts it as one comment per
+PR, edited in place. It never fails anything. It splits the change into *page*
+and *generated data*, because a bigger DRAFTS block is yesterday's games and a
+bigger page is a decision. It normalises CRLF to LF before measuring, for the
+reason `deployed.mjs` gives at length — without that, a Windows working copy
+reports a phantom +7 KB on a branch that has not touched `index.html`.
 
 **Everything reports the same way.** `.github/actions/report-issue` is a composite action
 that opens one labelled issue per check, updates it in place on subsequent runs, and
@@ -966,3 +1185,14 @@ rebuilds automatically in ~1 minute, and `deployed.yml` confirms it landed.
 Two of those constants are not yours to patch: `DRAFTS` and the GPR block. If a
 session wants either refreshed now rather than at its next scheduled run, run
 `tools/drafts.mjs` or `tools/gpr.mjs` and commit what it writes.
+
+**A new season starts with `node tools/rollover.mjs --year <year>`.** It is the
+scariest edit in the repo and the least practised — once a year, by which time
+nobody remembers what it touches. The tool does the only mechanical part
+(`SEASON`, and the year inside the `<title>` that `check.mjs` holds it to) and
+then prints everything else *with its current contents in it*: not "remember to
+do HONOURS" but the fourteen trophies on the board and who won each. Seeing last
+season's board is what stops it quietly surviving into the new one. It changes
+nothing else, because every remaining item is a claim about the real world —
+same rule as everywhere else here. `--dry-run` prints the checklist and writes
+nothing; a real run finishes by running `check.mjs`.
