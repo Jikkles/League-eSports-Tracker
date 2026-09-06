@@ -56,13 +56,15 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { apiCreds } from './constants.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const INDEX = join(HERE, '..', 'index.html');
 
 const SITE = 'https://lolesports.com';
-const API = 'https://esports-api.lolesports.com/persisted/gw';
-const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+/* Lifted from index.html rather than spelled again: the key is public but not
+   permanent, and a copy here would outlive a rotation. See apiCreds(). */
+const { API, API_KEY } = apiCreds();
 const UA = 'LeagueEsportsTracker-gpr/1.0 (+https://github.com/Jikkles/League-eSports-Tracker)';
 
 const MOVE_DAYS = 7;             // window the ▲/▼ column measures over

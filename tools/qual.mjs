@@ -56,10 +56,11 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import { INDEX, readIndex, extractConstants } from './constants.mjs';
+import { INDEX, readIndex, extractConstants, apiCreds } from './constants.mjs';
 
-const API = 'https://esports-api.lolesports.com/persisted/gw';
-const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+/* Lifted from index.html rather than spelled again: the key is public but not
+   permanent, and a copy here would outlive a rotation. See apiCreds(). */
+const { API, API_KEY } = apiCreds();
 const UA = 'league-esports-tracker qual.mjs (+https://github.com/Jikkles/League-eSports-Tracker)';
 
 const DRY = process.argv.includes('--dry-run');

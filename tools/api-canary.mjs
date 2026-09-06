@@ -31,10 +31,11 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import { readDataConstants } from './constants.mjs';
+import { readDataConstants, apiCreds } from './constants.mjs';
 
-const API = 'https://esports-api.lolesports.com/persisted/gw';
-const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+/* Lifted from index.html rather than spelled again: the key is public but not
+   permanent, and a copy here would outlive a rotation. See apiCreds(). */
+const { API, API_KEY } = apiCreds();
 const HL = 'en-GB';
 const UA = 'LeagueEsportsTracker-canary/1.0 (+https://github.com/Jikkles/League-eSports-Tracker)';
 
@@ -329,9 +330,24 @@ if (Object.keys(leagueIds).length !== SLUGS.length) {
      So a red result would mean "could not be verified from a datacentre",
      which is not the same as "broken for users", and an issue nobody can
      action or close is worse than no issue at all. This reports what it saw
-     and leaves the judgement to a human. */
+     and leaves the judgement to a human.
 
-  const PROXIES = ['https://corsproxy.io/?url=', 'https://api.codetabs.com/v1/proxy?quest='];
+     Which is why a policy refusal is now reported as `ok` rather than `warn`.
+     It used to warn on every single run — corsproxy.io always answers a server
+     401 — and a warning that can never clear is a warning nobody reads, the
+     same way the raw size budget stopped being read once it was permanently
+     on. A proxy that does not answer at all is still a finding, because that
+     one really is the transport going away.
+
+     The check that *can* pass or fail here is smoke.mjs's "the proxy fallback
+     still carries the page": a real browser, with the direct host blocked, is
+     the only place the chain can be exercised the way a filtered user hits it.
+     This one stays as the view from a datacentre. */
+
+  /* Lifted from index.html rather than copied: the page's list is the list
+     under test, and a second copy here would drift the moment one is swapped
+     out. The leading '' is the direct call, which is not a proxy. */
+  const PROXIES = apiCreds().PROXIES.filter(Boolean);
   const proxyHost = p => { try { return new URL(p).hostname; } catch { return p; } };
 
   {
@@ -374,8 +390,14 @@ if (Object.keys(leagueIds).length !== SLUGS.length) {
       down.length ? `did not answer: ${down.join('; ')}` : null,
     ].filter(Boolean);
 
+    /* `down` is the only state worth a warning. `blocked` is a policy about
+       server-side callers and says nothing about the browser traffic that
+       actually uses these, so a run where every proxy is either reachable or
+       merely refusing us is a clean run. */
     if (alive.length === PROXIES.length)
       ok(name, `all ${PROXIES.length} reachable`);
+    else if (!down.length)
+      ok(name, `${parts.join(' · ')} — nothing here says a proxy is gone; smoke.mjs exercises the chain in a browser.`);
     else if (!alive.length && !blocked.length)
       warn(name, `no proxy answered — ${parts.join(' · ')}. The direct call still works, so the page is fine for almost everyone, but the last-resort transport looks gone. Worth replacing PROXIES in index.html.`);
     else

@@ -55,10 +55,11 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { Script } from 'node:vm';
 import { gzipSync } from 'node:zlib';
-import { extractConstants, DATA_CONSTANTS, qualThruFn } from './constants.mjs';
+import { extractConstants, DATA_CONSTANTS, qualThruFn, apiCreds } from './constants.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
+const TOOLS = HERE;
 const INDEX = join(ROOT, 'index.html');
 
 const STRICT = process.argv.includes('--strict');
@@ -286,6 +287,46 @@ const stray = readdirSync(ROOT)
 if (stray.length) {
   fail(`Loose browser file${stray.length > 1 ? 's' : ''} at the repo root: ${stray.join(', ')}`,
        'Everything the browser loads belongs inside index.html; tooling belongs in tools/.');
+}
+
+/* ---- one copy of the API's credentials ----------------------------------- */
+
+/* The base URL, the key and the proxy list live in index.html, and every tool
+   lifts them through constants.mjs's apiCreds(). They were spelled out again in
+   five tools until the sweep that added this check.
+
+   The key is public but not permanent. The day Riot rotates it, index.html gets
+   patched and any tool holding its own copy keeps the dead one — and the worst
+   of those to get wrong is api-canary.mjs, whose whole job is noticing exactly
+   that rotation. A stale copy has it reporting the API as broken against a page
+   that already works, and holding an issue open on a healthy site.
+
+   So the literal may appear in index.html and nowhere else. Same rule, same
+   reason, as the ranking engine and qualThru(): one copy, lifted, never
+   re-typed. */
+
+{
+  const creds = apiCreds(src);
+  const offenders = [];
+  for (const f of readdirSync(TOOLS).filter(f => f.endsWith('.mjs'))) {
+    const body = readFileSync(join(TOOLS, f), 'utf8');
+    /* constants.mjs is where the lifting happens, so it is allowed to name the
+       shape it looks for. What it must not do is carry a value. */
+    const hits = [];
+    if (body.includes(creds.API_KEY)) hits.push('the API key');
+    if (f !== 'constants.mjs') {
+      /* the full base URL, not the bare hostname — a tool is free to name the
+         host in a comment or a playwright route glob, and several do. */
+      if (body.includes(creds.API)) hits.push('the API base URL');
+      for (const px of creds.PROXIES.filter(Boolean))
+        if (body.includes(px)) hits.push(`the ${new URL(px).hostname} proxy`);
+    }
+    if (hits.length) offenders.push(`tools/${f} (${[...new Set(hits)].join(', ')})`);
+  }
+  if (offenders.length) {
+    fail(`The API credentials are spelled out again outside index.html: ${offenders.join('; ')}`,
+         'Import apiCreds() from constants.mjs instead. A second copy survives a key rotation and quietly tests the wrong key.');
+  }
 }
 
 /* ---- size budget ------------------------------------------------------- */

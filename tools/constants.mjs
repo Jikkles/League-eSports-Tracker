@@ -169,6 +169,35 @@ export function qualThruFn(src, QUAL_AUTO) {
   return ctx.qualThru;
 }
 
+/*
+ * The API's base URL, its key, and the CORS proxies the page falls back to.
+ *
+ * These were spelled out again in five tools. That is the same mistake the
+ * merge above exists to prevent, with a nastier failure: the key is public but
+ * not permanent, and the day Riot rotates it the page gets patched while every
+ * tool keeps the dead one. api-canary.mjs is the worst of those to get wrong —
+ * its entire job is noticing a rotation, so a stale copy has it reporting the
+ * API as broken against a page that has already been fixed, and holding the
+ * issue open on a site that works.
+ *
+ * Read from index.html, so there is exactly one place to edit.
+ *
+ * PROXIES keeps the page's leading '' (the direct call) — a caller wanting only
+ * the proxies filters it out, which is what the page itself does.
+ */
+export function apiCreds(src) {
+  const source = src || readIndex().src;
+  const api = source.match(/^const API *= *'([^']+)'/m);
+  const key = source.match(/^const API_KEY *= *'([^']+)'/m);
+  if (!api) throw new Error('index.html has no top-level `const API`');
+  if (!key) throw new Error('index.html has no top-level `const API_KEY`');
+
+  const proxies = extractConstants(source, ['PROXIES']).values.PROXIES;
+  if (!Array.isArray(proxies)) throw new Error('index.html has no PROXIES array');
+
+  return { API: api[1], API_KEY: key[1], PROXIES: proxies };
+}
+
 /** The data constants every caller cares about, in one call. */
 export const DATA_CONSTANTS =
   ['SEASON', 'REGIONS', 'EVENT', 'QUAL_AUTO', 'HONOURS', 'STORYLINES', 'TICKER_NOTES',
@@ -183,6 +212,10 @@ export function readDataConstants() {
 /* Run directly: dump a summary of what parsed. */
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const { missing, ...c } = readDataConstants();
+  const creds = apiCreds();
+  console.log(`  ok  ${'API'.padEnd(20)} ${creds.API}`);
+  console.log(`  ok  ${'API_KEY'.padEnd(20)} ${creds.API_KEY.slice(0, 8)}… (${creds.API_KEY.length} chars)`);
+  console.log(`  ok  ${'PROXIES'.padEnd(20)} ${creds.PROXIES.length} transports, ${creds.PROXIES.filter(Boolean).length} proxied`);
   for (const name of DATA_CONSTANTS) {
     if (missing.includes(name)) { console.log(`  MISSING  ${name}`); continue; }
     const v = c[name];
