@@ -9,6 +9,12 @@ name: Deploy check
 # So after each push to main, wait for the rebuild and prove the deployed bytes
 # are the ones just pushed. Also runs daily, because a deploy can be rolled back
 # or a settings change can strand the site long after the push that built it.
+#
+# And after each generator, for the reason spelled out in smoke.yml: a push made
+# with GITHUB_TOKEN raises no `push` event, so the three jobs that write to
+# index.html unattended were the ones whose deploys nothing confirmed — the
+# daily run was the only thing that would ever have noticed, up to 24 hours
+# later.
 
 on:
   push:
@@ -16,11 +22,16 @@ on:
     paths: ['index.html']
   schedule:
     - cron: '45 8 * * *'
+  workflow_run:
+    workflows: [Refresh drafts, Refresh power rankings, Refresh the qualification board]
+    types: [completed]
   workflow_dispatch:
 
+# One at a time, and never cancel: two generators landing close together would
+# otherwise leave the survivor proving a build that has already been replaced.
 concurrency:
   group: deployed
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -31,11 +42,56 @@ env:
   LABEL: deploy-stale
 
 jobs:
+  # Same question smoke.yml's guard asks: did the generator actually push? Its
+  # head_sha is where it started, so main having moved past it is the answer.
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      # Only a workflow_run run has anything to look up; on a push or a PR this
+      # job is a three-line script, so do not pay for a checkout it will not
+      # read. It gates the real job, which means it is on the critical path of
+      # every commit.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'workflow_run'
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || '' }}
+
+      - id: decide
+        env:
+          KIND: ${{ github.event_name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          FROM: ${{ github.event.workflow_run.head_sha }}
+          WHO: ${{ github.event.workflow_run.name }}
+        run: |
+          if [ "$KIND" != "workflow_run" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "$WHO finished $CONCLUSION; nothing was deployed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          head=$(git rev-parse HEAD)
+          if [ "$head" = "$FROM" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "$WHO had nothing to commit; no deploy to confirm." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "$WHO pushed \`${head:0:7}\`; confirming it reaches Pages." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   deployed:
+    needs: guard
+    if: needs.guard.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || '' }}
 
       - uses: actions/setup-node@v7
         with:
@@ -46,7 +102,12 @@ jobs:
       - name: Check the live site against this commit
         id: probe
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then TIMEOUT=480; else TIMEOUT=60; fi
+          # a run following a real push waits out the rebuild; the daily audit
+          # asks about a site that has had all day to catch up
+          case "${{ github.event_name }}" in
+            push|workflow_run) TIMEOUT=480 ;;
+            *)                 TIMEOUT=60  ;;
+          esac
           if node tools/deployed.mjs --timeout "$TIMEOUT" > deployed-log.txt 2>&1; then
             echo "healthy=true" >> "$GITHUB_OUTPUT"
           else

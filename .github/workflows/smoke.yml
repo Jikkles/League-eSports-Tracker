@@ -11,6 +11,18 @@ name: Smoke test
 # It runs on push and PR as the regression gate, and again daily — a payload
 # the canary is happy with can still be one the render code chokes on.
 #
+# And it runs after each of the three generators, which is the gap that used to
+# let a bad generated block reach Pages unseen. A push made with GITHUB_TOKEN
+# raises no `push` event — that is GitHub's recursion guard, not something the
+# workflow can opt out of — so every commit from drafts.yml, gpr.yml and
+# qual.yml arrived on main having been seen by check.mjs (which those jobs run
+# inline) and by nothing else. 22 bot commits in a fortnight, none of them
+# smoke-tested. It cost us a real one: the qual bot put a team through at
+# 04:42, the board and the page disagreed about it, and nothing noticed until
+# the *scheduled* run at 11:42 — seven hours of a wrong page. `workflow_run`
+# does fire for those, because it keys on a workflow finishing rather than on
+# the push it made.
+#
 # Note it depends on the live API, so a genuine upstream outage will show up
 # here as a red run. When that happens the canary issue is the explanation.
 
@@ -19,26 +31,87 @@ on:
   pull_request:
   schedule:
     - cron: '30 7 * * *'
+  workflow_run:
+    workflows: [Refresh drafts, Refresh power rankings, Refresh the qualification board]
+    types: [completed]
   workflow_dispatch:
 
+# workflow_run always reports github.ref as the default branch, so the three
+# generators would share one group and cancel each other's checks. Key those
+# runs on the generator instead.
 concurrency:
-  group: smoke-${{ github.ref }}
+  group: smoke-${{ github.ref }}-${{ github.event.workflow_run.name || '' }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  issues: write        # only used by the scheduled run, to raise the failure
+  issues: write        # used by the unattended runs, to raise the failure
 
 env:
-  # pinned so the browser cache key is stable; this repo has no lockfile to pin it
+  # Pinned so the browser cache key is stable; this repo has no lockfile to pin
+  # it. axe-core is pinned for a different reason: an unpinned rule set can add
+  # a rule overnight and turn a green page red with nothing in the diff to blame.
+  # CLAUDE.md's install line carries the same two numbers — a local run on
+  # different versions reproduces a CI failure that is not really there.
   PLAYWRIGHT_VERSION: 1.62.1
+  AXE_VERSION: 4.13.0
 
 jobs:
+  # A generator that found nothing to do finishes green having pushed nothing,
+  # and there is no point opening a browser to look at a file that has not
+  # moved. `workflow_run.head_sha` is the commit the generator *started* from,
+  # so main having moved past it is exactly the question "did it push?" —
+  # answered without any cross-run plumbing.
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      # Only a workflow_run run has anything to look up; on a push or a PR this
+      # job is a three-line script, so do not pay for a checkout it will not
+      # read. It gates the real job, which means it is on the critical path of
+      # every commit.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'workflow_run'
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || '' }}
+
+      - id: decide
+        env:
+          KIND: ${{ github.event_name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          FROM: ${{ github.event.workflow_run.head_sha }}
+          WHO: ${{ github.event.workflow_run.name }}
+        run: |
+          if [ "$KIND" != "workflow_run" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "$WHO finished $CONCLUSION and raises its own issue; nothing to smoke." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          head=$(git rev-parse HEAD)
+          if [ "$head" = "$FROM" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "$WHO had nothing to commit (main is still \`${head:0:7}\`); skipping." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "$WHO pushed \`${FROM:0:7}\` -> \`${head:0:7}\`; smoking it." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   smoke:
+    needs: guard
+    if: needs.guard.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          # workflow_run checks out the default branch by default, which is what
+          # we want — but say so, so a generator's commit is what gets opened.
+          ref: ${{ github.event.workflow_run.head_branch || '' }}
 
       - uses: actions/setup-node@v7
         with:
@@ -56,7 +129,7 @@ jobs:
       # `npm install --no-save x` uninstalls whatever the first one put there.
       - name: Install playwright and axe-core
         run: |
-          npm install --no-save playwright@"$PLAYWRIGHT_VERSION" axe-core
+          npm install --no-save playwright@"$PLAYWRIGHT_VERSION" axe-core@"$AXE_VERSION"
           npx playwright install --with-deps chromium
 
       - name: Open the page and check it renders
@@ -99,15 +172,18 @@ jobs:
             cat smoke-log.txt
             echo '```'
             echo
-            echo "Reproduce locally with \`npm install --no-save playwright axe-core && npx playwright install chromium\`, then \`node tools/smoke.mjs --headed\`."
+            echo "Reproduce locally with \`npm install --no-save playwright@${{ env.PLAYWRIGHT_VERSION }} axe-core@${{ env.AXE_VERSION }} && npx playwright install chromium\`, then \`node tools/smoke.mjs --headed\`."
             echo
             echo "<sub>Posted by [smoke.yml](../blob/main/.github/workflows/smoke.yml). Updated in place on each run, and closed automatically once the page renders again.</sub>"
           } > smoke-report.md
 
       # Only the scheduled run raises an issue. On push and PR the red check is
       # already in front of whoever caused it; an issue as well is just noise.
+      # Every unattended run reports. A push or PR run deliberately does not —
+      # a red check is already in front of whoever caused it — but nobody is
+      # watching a scheduled run or a generator's, which is the whole point.
       - name: Report
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_run'
         uses: ./.github/actions/report-issue
         with:
           healthy: ${{ steps.smoke.outputs.healthy }}

@@ -35,6 +35,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          # the push below may need to rebase, and a depth-1 clone has no
+          # merge base to rebase onto
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -110,4 +114,21 @@ jobs:
           is added once no result can drop it out of its region's places, and a
           seed range is narrowed once the bracket closes part of it.
           MSG
-          git push
+          # Three jobs write to this one file and their concurrency groups are
+          # per-workflow, so two can be in flight at once — qual runs every two
+          # hours and has already overlapped a drafts run. The loser of that
+          # race gets a non-fast-forward rejection and raises its own issue
+          # blaming the source it scrapes, which is a lie that costs a session
+          # to unpick. Rebase onto whatever landed first and push again.
+          for attempt in 1 2 3; do
+            if git push; then exit 0; fi
+            echo "push rejected (attempt $attempt); rebasing onto origin/main"
+            if ! git pull --rebase --autostash origin main; then
+              git rebase --abort || true
+              echo "the rebase itself conflicted — the generated blocks are meant to be"
+              echo "disjoint regions of the file, so this needs a human."
+              exit 1
+            fi
+          done
+          echo "still could not push after 3 attempts"
+          exit 1
