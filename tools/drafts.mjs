@@ -27,21 +27,28 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { discoverTournament } from './golgg.mjs';
+import { apiCreds } from './constants.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const INDEX = join(HERE, '..', 'index.html');
 
-const API = 'https://esports-api.lolesports.com/persisted/gw';
-const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+/* Lifted from index.html rather than spelled again: the key is public but not
+   permanent, and a copy here would outlive a rotation. See apiCreds(). */
+const { API, API_KEY } = apiCreds();
 const FEED = 'https://feed.lolesports.com/livestats/v1';
 const GOLGG = 'https://gol.gg';
 const UA = 'LeagueEsportsTracker/1.0 (+https://github.com/Jikkles/League-eSports-Tracker)';
 
 const DRY = process.argv.includes('--dry-run');
-const PRUNE = process.argv.includes('--prune');
+let PRUNE = process.argv.includes('--prune');
+/* A split rollover is a thing this tool can see for itself — gol.gg renames the
+   tournament — and both of the chores that follow from it were manual. See
+   detectRollover() below. */
+const NO_AUTO = process.argv.includes('--no-auto-prune');
 const POLITE_MS = 1100;          // gol.gg is a small Patreon-funded site; don't hammer it
 const MAX_NEW_GAMES = 400;       // a runaway run shouldn't scrape the whole site
 
@@ -49,7 +56,7 @@ const MAX_NEW_GAMES = 400;       // a runaway run shouldn't scrape the whole sit
    fallback if the discovery endpoint is down — not as the address itself. The
    live name comes from tools/golgg.mjs on every run. */
 export const LEAGUES = {
-  lec: { id: '98767991302996019', name: 'LEC', golgg: 'LEC 2026 Summer Season' },
+  lec: { id: '98767991302996019', name: 'LEC', golgg: 'LEC 2026 Summer Playoffs' },
   lck: { id: '98767991310872058', name: 'LCK', golgg: 'LCK 2026 Season Playoffs' },
   lpl: { id: '98767991314006698', name: 'LPL', golgg: 'LPL 2026 Grand Finals' },
   lcs: { id: '98767991299243165', name: 'LCS', golgg: 'LCS 2026 Summer' },
@@ -60,16 +67,35 @@ const strip = s => s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\
 const nk = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const day = d => new Date(d).toISOString().slice(0, 10);
 
+/* Two things this used to get wrong. There was no deadline, so a half-open
+   socket hung until the workflow's 45-minute timeout rather than failing and
+   retrying in a second. And it retried only on a thrown transport error — a
+   429 or a 502 comes back as a perfectly good Response, went straight to the
+   caller, and threw there with no second attempt, which is the one case a
+   politely-throttled scraper should expect to meet. */
+const HTTP_TIMEOUT_MS = 25000;
 async function get(url, opts = {}, tries = 3) {
+  let last = null;
   for (let i = 0; i < tries; i++) {
     try {
-      const res = await fetch(url, { ...opts, headers: { 'User-Agent': UA, ...(opts.headers || {}) } });
+      const res = await fetch(url, {
+        ...opts,
+        headers: { 'User-Agent': UA, ...(opts.headers || {}) },
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+      });
+      if ((res.status === 429 || res.status >= 500) && i < tries - 1) {
+        last = new Error(`HTTP ${res.status}`);
+        await sleep(POLITE_MS + 800 * (i + 1));
+        continue;
+      }
       return res;
     } catch (e) {
+      last = e;
       if (i === tries - 1) throw e;
       await sleep(800 * (i + 1));
     }
   }
+  throw last || new Error('request failed');
 }
 async function apiJSON(path, params = {}) {
   const url = new URL(API + path);
@@ -195,7 +221,90 @@ ${END}`;
 }
 
 /* ---- main ----------------------------------------------------------------- */
+const SELF = fileURLToPath(import.meta.url);
+const renamed = [];
+
+/* Has the split moved on?
+ *
+ * (Not necessarily a season rollover — gol.gg splitting "LEC 2026 Summer
+ * Season" into "LEC 2026 Summer Playoffs" counts, and is harmless: Riot files
+ * both under one tournament, so the prune that follows drops nothing.)
+ *
+ * gol.gg addresses tournaments by name and renames them every split, which is
+ * why the name is discovered at runtime rather than trusted from LEAGUES. That
+ * rename is also the cleanest signal this repo has that a split has ended — and
+ * two chores hung off it, both of them manual and both of them things a person
+ * has to notice first:
+ *
+ *   - LEAGUES[].golgg goes out of date. Nothing breaks, but the recorded name
+ *     is documentation, and documentation that lies is worse than none.
+ *     stale.mjs has been reporting this drift as a NOTE and waiting for a human.
+ *
+ *   - DRAFTS wants pruning. It is scoped to the current split and nothing ever
+ *     removed the last one; --prune is the reset, and "run it once after a
+ *     rollover" was a line in CLAUDE.md rather than anything that happens.
+ *
+ * Asking costs one HTTP call for the whole run — golgg.mjs caches the season's
+ * tournament list — so it is asked before the main loop, where the answer can
+ * still turn pruning on for this run.
+ */
+async function detectRollover() {
+  if (PRUNE || NO_AUTO) return;
+  const year = new Date().getUTCFullYear();
+  const moved = [];
+  for (const cfg of Object.values(LEAGUES)) {
+    try {
+      const found = await discoverTournament(cfg.name, year);
+      if (found && found.name !== cfg.golgg) moved.push(`${cfg.name}: "${cfg.golgg}" -> "${found.name}"`);
+    } catch { /* the main loop reports an unreachable gol.gg properly */ }
+  }
+  if (!moved.length) return;
+  PRUNE = true;
+  console.log('gol.gg has renamed a split, so this run also prunes:');
+  for (const m of moved) console.log(`  ${m}`);
+  console.log('');
+}
+
+/* Rewrite this file's own record of what gol.gg calls each split.
+ *
+ * A tool editing its own source deserves a flinch, so it is kept as narrow as
+ * it can be: an exact `golgg: '<the string we already had>'` inside LEAGUES,
+ * replaced only when discovery returned something different, and the result is
+ * handed to `node --check` before it is allowed to stay. A corrupted drafts.mjs
+ * would break the daily job permanently, which is a much worse outcome than a
+ * stale comment, so the verification is the point of the function.
+ */
+function recordNames() {
+  if (!renamed.length || DRY) return;
+  const before = readFileSync(SELF, 'utf8');
+  let after = before;
+  const done = [];
+  for (const r of renamed) {
+    const from = `golgg: '${r.from}'`;
+    const to = `golgg: '${r.to}'`;
+    // never build a broken literal out of a name we did not write
+    if (/['\\]/.test(r.to)) continue;
+    if (after.split(from).length !== 2) continue;                // not exactly one place to change
+    after = after.replace(from, to);
+    done.push(`${r.slug}: "${r.from}" -> "${r.to}"`);
+  }
+  if (after === before) return;
+
+  writeFileSync(SELF, after);
+  const check = spawnSync(process.execPath, ['--check', SELF], { encoding: 'utf8' });
+  if (check.status !== 0) {
+    writeFileSync(SELF, before);
+    console.log(`
+LEAGUES not updated: the rewrite did not parse (${(check.stderr || '').split(String.fromCharCode(10))[0]}). Left as it was.`);
+    return;
+  }
+  console.log(`
+LEAGUES updated in tools/drafts.mjs:`);
+  for (const d of done) console.log(`  ${d}`);
+}
+
 async function main() {
+  await detectRollover();
   const html = readFileSync(INDEX, 'utf8');
   if (!html.includes(START)) {
     console.error(`index.html has no ${START} marker — add it before running this.`);
@@ -246,8 +355,10 @@ async function main() {
         problems.push(`${slug}: gol.gg lists no ${cfg.name} tournament for this season — falling back to "${cfg.golgg}"`);
       } else {
         tournament = found.name;
-        if (found.name !== cfg.golgg)
-          console.log(`${slug}: gol.gg now calls this "${found.name}" (was "${cfg.golgg}") — update LEAGUES to keep the log honest`);
+        if (found.name !== cfg.golgg) {
+          console.log(`${slug}: gol.gg now calls this "${found.name}" (was "${cfg.golgg}")`);
+          renamed.push({ slug, from: cfg.golgg, to: found.name });
+        }
       }
     } catch (e) {
       problems.push(`${slug}: tournament discovery failed (${e.message}) — falling back to "${cfg.golgg}"`);
@@ -359,7 +470,15 @@ async function main() {
     console.log('\nproblems:');
     problems.forEach(p => console.log('  ' + p));
   }
-  if (DRY) { console.log('\n--dry-run: index.html untouched'); return; }
+  if (DRY) {
+    console.log(String.fromCharCode(10) + '--dry-run: index.html untouched');
+    if (renamed.length) console.log(`--dry-run: would update LEAGUES for ${renamed.map(r => r.slug).join(', ')}`);
+    return;
+  }
+  /* Before the early return below: a split that has just been renamed often has
+     no new games to add, and that is precisely the state that most wants the
+     name recording. */
+  recordNames();
   if (!added && !removed) { console.log('nothing new; index.html untouched'); return; }
 
   const i = html.indexOf(START), j = html.indexOf(END) + END.length;

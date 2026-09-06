@@ -38,17 +38,49 @@ export const REGION_OF = { LEC: 'EUW', LCK: 'KR', LPL: 'CN', LCS: 'NA' };
 
 let cache = new Map();
 
+/* A stalled request is not a failed one. Without a deadline a half-open socket
+   — gol.gg going dark mid-handshake, a runner behind a filter that accepts and
+   then says nothing — leaves this pending for as long as the OS allows, and
+   the caller's only backstop is the workflow's 45-minute timeout. Every other
+   tool in this repo already takes an AbortSignal; this was the one that did
+   not. Retry the transport errors while we are here, on the same 800ms ladder
+   drafts.mjs uses, and stay inside POLITE_MS's spirit by not hammering. */
+const TIMEOUT_MS = 20000;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 export async function listTournaments(season) {
   if (cache.has(season)) return cache.get(season);
-  const res = await fetch(`${GOLGG}/tournament/ajax.trlist.php`, {
-    method: 'POST',
-    headers: {
-      'User-Agent': UA,
-      'Referer': `${GOLGG}/tournament/list/`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({ season, league: '' }),
-  });
+  let res = null, last = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      res = await fetch(`${GOLGG}/tournament/ajax.trlist.php`, {
+        method: 'POST',
+        headers: {
+          'User-Agent': UA,
+          'Referer': `${GOLGG}/tournament/list/`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ season, league: '' }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      /* 429 and 5xx are worth another go; a 404 is a definite answer. On the
+         last attempt we keep the response and let the !res.ok check below
+         report it, rather than dressing a real HTTP status as a thrown error. */
+      if ((res.status === 429 || res.status >= 500) && attempt < 2) {
+        last = new Error(`HTTP ${res.status}`);
+        await sleep(800 * (attempt + 1));
+        continue;
+      }
+      last = null;   // we have a response to speak for itself
+      break;
+    } catch (e) {
+      last = e;
+      if (attempt === 2) break;
+      await sleep(800 * (attempt + 1));
+    }
+  }
+  /* `last` survives only when every attempt threw — no response to inspect. */
+  if (last) throw new Error(`gol.gg tournament list -> ${last.message}`);
   if (!res.ok) throw new Error(`gol.gg tournament list -> HTTP ${res.status}`);
   const rows = await res.json();
   if (!Array.isArray(rows)) throw new Error('gol.gg tournament list did not return an array');
