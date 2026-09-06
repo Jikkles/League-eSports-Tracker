@@ -1038,6 +1038,97 @@ if (loaded) {
   }
   const blockAPI = p => Promise.all(API_HOSTS.map(h => p.route(h, r => r.abort())));
 
+  /* The proxy fallback, exercised the way a filtered user meets it.
+
+     index.html calls the API directly when it can and through two public CORS
+     proxies when it cannot — a captive portal, a corporate filter, a DNS
+     ad-blocker, some in-app webviews. api-canary.mjs tries to check those, and
+     structurally cannot: corsproxy.io answers any server-side caller 401 as a
+     matter of policy, so from a datacentre "refusing us" and "gone" are the
+     same answer. That check warned on every single run and could never clear,
+     which is a warning nobody reads.
+
+     A browser is the one place the question can be asked properly. Block the
+     direct host only — the proxied request goes to corsproxy.io, so it survives
+     — and watch what the page does.
+
+     The failure this can honestly assert is the page's, not the proxies':
+     whether it *tries*. A page that never reaches for a proxy has a broken
+     fallback chain and that is a real bug, catchable here and nowhere else. If
+     it tries and both refuse, that is two third-party services having a bad day
+     — reported, never failed, because an issue nobody can action or close is
+     worse than no issue at all. Same rule the absent-bracket check follows. */
+  /* The webfonts are loaded non-render-blocking — `media="print"` on the link,
+     swapped to `all` by an onload handler — which took first contentful paint
+     from 800ms to 124ms on a slow font connection. The failure mode of that
+     trick is silent and total: if the swap does not run, the stylesheet stays
+     scoped to print, every heading and label falls back to a system font, and
+     the page looks merely restyled rather than broken. Nothing throws, no
+     request fails, and no other check here would notice.
+
+     So ask the browser what it actually resolved. document.fonts is the
+     authority — a CSS `font-family` string lists Barlow Condensed whether or
+     not it ever arrived. */
+  await check('webfonts load without blocking the first paint', async () => {
+    const r = await page.evaluate(async () => {
+      const link = [...document.querySelectorAll('link[rel=stylesheet]')]
+        .find(l => l.href.includes('fonts.googleapis.com'));
+      if (!link) return { err: 'no Google Fonts stylesheet on the page' };
+      await document.fonts.ready;
+      const families = [...document.fonts].map(f => f.family.replace(/["']/g, ''));
+      return { media: link.media, loaded: [...new Set(families)] };
+    });
+    if (r.err) throw new Error(r.err);
+    /* Left on "print" means the onload never fired and the whole page is in
+       fallback type. */
+    if (r.media !== 'all') throw new Error(`the font stylesheet is still media="${r.media}" — the swap to "all" did not run`);
+    for (const want of ['Barlow Condensed', 'IBM Plex Mono', 'Inter'])
+      if (!r.loaded.includes(want)) throw new Error(`${want} never loaded (got: ${r.loaded.join(', ') || 'nothing'})`);
+    return `media="all", ${r.loaded.length} families resolved`;
+  });
+
+  await check('the proxy fallback still carries the page', async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+    try {
+      const p = await ctx.newPage();
+      const threw = [];
+      p.on('pageerror', e => threw.push(e.message.split(String.fromCharCode(10))[0]));
+
+      let tried = 0;
+      p.on('request', r => {
+        const u = r.url();
+        if (u.includes('corsproxy.io') || u.includes('api.codetabs.com')) tried++;
+      });
+
+      /* Crests are not what this is about, and loading a full board of them
+         through a second context while the main page is still refreshing was
+         enough to exhaust chromium's sockets — which surfaced as an
+         ERR_INSUFFICIENT_RESOURCES console error on the *main* page and failed
+         an unrelated check. Drop them. */
+      await p.route('**://static.lolesports.com/**', r => r.abort());
+      // the direct call only; the proxies are left reachable
+      await p.route('**://esports-api.lolesports.com/**', r => r.abort());
+      await p.goto(origin, { waitUntil: 'domcontentloaded', timeout: LOAD_MS });
+
+      /* Each transport gets NET_TIMEOUT (10s) before the next is tried, so a
+         full walk of the chain is slow by design. Wait for the page to settle
+         either way rather than for a particular answer. */
+      const carried = await p.waitForSelector('#apiStatus .dot.ok', { timeout: LOAD_MS })
+        .then(() => true).catch(() => false);
+
+      if (threw.length) throw new Error(`the page threw on the fallback path: ${threw[0]}`);
+      if (!tried) throw new Error('the direct call was blocked and the page never tried a proxy — the fallback chain is not running');
+
+      if (carried) {
+        const via = await p.evaluate(() => { try { return localStorage.getItem('nexusdesk_transport'); } catch { return null; } });
+        return `direct blocked, ${tried} proxy request(s), page carried by transport ${via ?? '?'}`;
+      }
+      /* Tried and refused. Not this repo's bug, and not something an issue
+         could ask anybody to fix. */
+      return `direct blocked, ${tried} proxy request(s) made and none answered — the chain runs; both public proxies are refusing today`;
+    } finally { await ctx.close(); }
+  });
+
   /* First visit with the API down: nothing cached, nothing to fall back to.
      This is the case that used to claim it was "showing cached data" while
      rendering empty boards underneath. */

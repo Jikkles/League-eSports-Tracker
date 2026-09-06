@@ -24,7 +24,18 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHBhdGggZD0iTTMyIDQgTDU2LjMgMTggTDU2LjMgNDYgTDMyIDYwIEw3LjcgNDYgTDcuNyAxOCBaIiBmaWxsPSIjMDAwMDAwIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xNCAzMiBMMjIgMzIgTDI3IDEzIEwzNCA1MSBMMzkgMzIgTDUwIDMyIiBmaWxsPSJub25lIiBzdHJva2U9IiMwQkM2RTMiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- media="print" then swapped to "all" on load: this is the one render-blocking
+     request the page makes to somebody else's server, and until it answers
+     nothing paints at all. A slow Google Fonts round trip therefore held up the
+     whole first paint: with a 600ms delay on fonts.googleapis.com, median first
+     contentful paint over five cold loads was 800ms before this change and
+     124ms after it. The fonts still arrive and still swap in; they just stop
+     being something the first paint waits on. No <noscript> fallback — this
+     page is a script, so a browser that would need one has nothing to read
+     anyway. smoke.mjs checks the swap really happens, because a stylesheet
+     stuck on media="print" renders the whole page in fallback fonts and looks
+     like a restyle rather than a fault. -->
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 :root{
   /* lolesports.com palette: pure-black canvas, near-black surfaces, white type,
