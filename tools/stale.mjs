@@ -34,12 +34,14 @@
 
 import { writeFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { readDataConstants, extractConstants, extractFunctions, qualThruFn } from './constants.mjs';
+import { readDataConstants, extractConstants, extractFunctions, qualThruFn, apiCreds } from './constants.mjs';
 import { discoverTournament } from './golgg.mjs';
+import { heartbeatFindings } from './heartbeat.mjs';
 import { LEAGUES } from './drafts.mjs';
 
-const API = 'https://esports-api.lolesports.com/persisted/gw';
-const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
+/* Lifted from index.html rather than spelled again: the key is public but not
+   permanent, and a copy here would outlive a rotation. See apiCreds(). */
+const { API, API_KEY } = apiCreds();
 const HL = 'en-GB';
 const UA = 'LeagueEsportsTracker-stale/1.0 (+https://github.com/Jikkles/League-eSports-Tracker)';
 
@@ -95,7 +97,7 @@ if (C.missing.length) {
   console.error(`Could not read ${C.missing.join(', ')} from index.html — run node tools/check.mjs first.`);
   process.exit(1);
 }
-const { SEASON, REGIONS, EVENT, HONOURS, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF } = C;
+const { SEASON, REGIONS, EVENT, HONOURS, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
 const NOW = Date.now();
 const YEAR = new Date(NOW).getUTCFullYear();
 
@@ -551,8 +553,16 @@ try {
        'The rank check was skipped. check.mjs is the place to look if the script no longer parses.');
 }
 
-/* the league's whole schedule, back far enough to cover one tournament */
+/* the league's whole schedule, back far enough to cover one tournament.
+   Memoised on (id, since) because two checks now want overlapping windows of
+   the same feed, and each miss is up to ten paged requests. */
+const schedMemo = new Map();
 async function scheduleSince(id, since) {
+  const key = `${id}@${since}`;
+  if (!schedMemo.has(key)) schedMemo.set(key, scheduleSinceUncached(id, since));
+  return schedMemo.get(key);
+}
+async function scheduleSinceUncached(id, since) {
   const first = await apiJSON('/getSchedule', { leagueId: id });
   let events = first?.data?.schedule?.events || [];
   let token = first?.data?.schedule?.pages?.older;
@@ -714,6 +724,286 @@ for (const [slug, R] of Object.entries(REGIONS)) {
   }
 }
 
+/* ---- the bracket the league is actually playing --------------------------- */
+
+/* REGIONS[].defFormat names a wiring in FORMATS, and check.mjs proves the name
+ * resolves and that every w:/l: reference inside it lands somewhere. What
+ * neither of them asks is whether it is the bracket the league is playing this
+ * split — and that is the one thing about a format that goes out of date,
+ * because leagues change their playoff shape between seasons and the page keeps
+ * drawing last year's.
+ *
+ * Riot publishes the whole bracket before it is played (see tools/qual.mjs on
+ * why that is true), so the count is available the day the split starts rather
+ * than after the final. Matching by size alone is coarse — two different eight
+ * -match brackets would both pass — but a size mismatch is unambiguous, needs
+ * no name matching, and is the shape of the failure that actually happens.
+ * `smoke.mjs`'s "fill from results" ratio is the finer-grained version of the
+ * same question and stays where it is; this is the one a scheduled job can ask.
+ *
+ * The largest stage is the bracket. A tournament also files its regular season
+ * (no matches), its play-in and, in the LPL, a regional qualifier — all real
+ * stages, none of them the thing defFormat describes.
+ */
+for (const [slug, R] of Object.entries(REGIONS)) {
+  const tours = (toursBySlug[slug] || [])
+    .filter(t => new Date(Date.parse(t.endDate)).getUTCFullYear() === YEAR)
+    .sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate));
+  const cur = tours[0];
+  const wiring = FORMATS?.[R.defFormat];
+  if (!cur || !wiring) continue;
+
+  let standings = null;
+  try { standings = (await apiJSON('/getStandingsV3', { tournamentId: cur.id }))?.data?.standings; }
+  catch { /* the rank check above already notes an unreachable feed */ }
+  if (!Array.isArray(standings)) continue;
+
+  let best = null;
+  for (const st of standings.flatMap(x => x.stages || [])) {
+    let n = 0;
+    for (const sec of st.sections || []) for (const col of sec.columns || [])
+      for (const cell of col.cells || []) n += (cell.matches || []).length;
+    if (!best || n > best.n) best = { n, name: st.slug || st.name || '?' };
+  }
+  if (!best || !best.n) continue;   // between splits: nothing published yet
+
+  if (best.n !== wiring.matches.length) {
+    stale(R.name, `the ${YEAR} bracket has ${best.n} matches (\`${cur.slug}\` · ${best.name}) but REGIONS.${slug}.defFormat points at \`${R.defFormat}\`, which wires ${wiring.matches.length}.`,
+          `The league has changed its playoff shape. Add a FORMATS entry matching the published bracket and point defFormat at it — the simulator is currently drawing a bracket the league is not playing.`);
+  } else {
+    fine(R.name, `playoff bracket — \`${R.defFormat}\` wires ${wiring.matches.length}, and the feed publishes ${best.n}`);
+  }
+}
+
+/* ---- HONOURS scorelines against the feed ---------------------------------- */
+
+/* The coverage check above counts trophies. This one reads the brackets.
+ *
+ * HONOURS carries 124 hand-typed bracket matches, 119 of them with a scoreline,
+ * and until now nothing checked a single one of them against reality: check.mjs
+ * validates that a row has an integer col/row and somebody who won, which is a
+ * question about shape. A 3-1 typed where the series was 3-2 renders perfectly,
+ * reads plausibly, and lives forever.
+ *
+ * Matching is by the two teams rather than by any name a tournament goes under,
+ * for the reason the coverage check gives: Riot says `lck_split_3_2026`, the
+ * board says "LCK Summer", and nothing bridges those. Who played whom does not
+ * need bridging.
+ *
+ * The comparison is deliberately narrow, because the cost of a false positive
+ * here is a session spent disproving it. Three things have to line up before a
+ * hand-typed series is judged at all, and the first draft of this check had
+ * only the first of them:
+ *
+ *   - the same two teams, and the same series length. A Bo5 is only ever
+ *     compared against Bo5s, so a regular-season 2-0 cannot be mistaken for
+ *     the playoff Bo5 being asked about.
+ *
+ *   - inside the tournament's own dates. Without this the check confidently
+ *     reported the Esports World Cup's third-place Bo3 as wrong by quoting two
+ *     LCK regular-season Bo3s between the same pair, three months earlier.
+ *     Team and format alone are nowhere near enough of a key.
+ *
+ *   - exactly one candidate. Two meetings of the same pair, same length, same
+ *     window and the check cannot tell which one the board is transcribing —
+ *     so it says nothing rather than guessing. A double elimination sends the
+ *     same two teams back at each other regularly; this is the same problem
+ *     simFillFrom() solves with a queue, and here there is no order to queue on.
+ *
+ * And then a fourth, at the level of the whole honour, because the three above
+ * still were not enough. The KeSPA Cup is not in any of the four league feeds,
+ * but it is played in the same weeks as the LCK's summer split, so two of its
+ * Bo3s found a unique same-pair Bo3 in the window — LCK regular-season games,
+ * reported with total confidence as wrong KeSPA scorelines.
+ *
+ * What separates the two cases cleanly is how much of the bracket lands. An
+ * honour whose games really are in the feed lands nearly all of them and agrees
+ * with nearly all of what it lands; a collision lands two of thirteen and
+ * agrees with none. Measured over the current board: the nine league
+ * tournaments locate 5 to 14 scorelines each and agree with 62 of 62, while
+ * First Stand, MSI and the Esports World Cup locate nothing at all and the
+ * KeSPA Cup locates two and agrees with neither. So an honour is only believed
+ * when it lands at least MIN_LOCATED scorelines and agrees with most of them,
+ * and the disagreements inside a believed honour are the findings.
+ *
+ * The trade that buys: a bracket where most of the scorelines are wrong is
+ * dismissed as the wrong tournament rather than reported. That is the right way
+ * round — half a bracket disagreeing with the feed is far more likely to mean
+ * this check has found the wrong games than that somebody typed six scores
+ * wrong — and one or two typos, which is the realistic failure, still reports.
+ *
+ * Anything that fails those is skipped in silence rather than reported: the
+ * honours board covers internationals and invitationals this page never
+ * fetches, and "I could not find it" is not a finding.
+ */
+{
+  /* The page's own name matching, lifted rather than reinvented — HONOURS says
+     "Gen.G" where every feed says "Gen.G Esports", and findLogo() in index.html
+     is what already bridges that gap for the crests. Same alias table, same
+     substring fallback. */
+  const alias = extractConstants(C.src, ['LOGO_ALIAS']).values.LOGO_ALIAS || {};
+  const canon = (name, pool) => {
+    const key = nk(name);
+    if (pool.has(key)) return key;
+    if (alias[key] && pool.has(alias[key])) return alias[key];
+    if (key.length >= 4) for (const k of pool) if (k.length >= 4 && (key.includes(k) || k.includes(key))) return k;
+    return null;
+  };
+
+  /* The tournament's own dates, read off the honour's `d.dates` string. It is
+     prose meant for a reader — "20 Jul – 18 Aug 2026 · Mondays and Tuesdays" —
+     but it is consistent prose, and the alternative is matching an honour to a
+     tournament by name, which the coverage check above explains does not work.
+     An entry whose window will not parse is skipped, not guessed at. */
+  const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  function windowOf(text) {
+    if (!text) return null;
+    const year = /(20\d\d)/.exec(String(text));
+    if (!year) return null;
+    /* only the part before the first '·' — the tail is commentary, and "Playoffs
+       23 May – 7 Jun" would otherwise widen nothing but confuse the read */
+    const head = String(text).split('·')[0].replace(/[‐-―]/g, ' - ');
+    const days = [];
+    const rx = /(?:(\d{1,2})\s*-\s*)?(\d{1,2})?\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s*(\d{1,2})?/gi;
+    let m;
+    while ((m = rx.exec(head))) {
+      const mon = MONTHS[(m[3] || m[4] || '').toLowerCase().slice(0, 3)];
+      if (mon === undefined) continue;
+      const named = [m[1], m[2], m[5]].filter(Boolean);
+      /* a bare month ("Apr – 14 Jun") means the whole of it */
+      if (named.length) for (const d of named) days.push(Date.UTC(+year[1], mon, +d));
+      else { days.push(Date.UTC(+year[1], mon, 1)); days.push(Date.UTC(+year[1], mon, 28)); }
+    }
+    if (!days.length) return null;
+    /* a few days either side: the honour's prose rounds, and a series can slip */
+    return [Math.min(...days) - 3 * 864e5, Math.max(...days) + 3 * 864e5];
+  }
+
+  /* Every completed series this season, indexed by the pair who played it. */
+  const pool = new Set();
+  const meetings = new Map();     // "a|b" (sorted) -> [{ names, wins, bo, when, block }]
+  let feedFailed = 0;
+
+  for (const [slug] of Object.entries(REGIONS)) {
+    const id = leagueIds[slug] || LEAGUES[slug]?.id;
+    if (!id) continue;
+    let events;
+    try { events = await scheduleSince(id, Date.UTC(YEAR, 0, 1)); }
+    catch { feedFailed++; continue; }
+    for (const e of events) {
+      if (e.state !== 'completed' || e.type !== 'match') continue;
+      if (new Date(Date.parse(e.startTime)).getUTCFullYear() !== YEAR) continue;
+      const ts = e.match?.teams || [];
+      if (ts.length !== 2) continue;
+      const wins = ts.map(t => t.result?.gameWins);
+      if (!wins.every(n => Number.isInteger(n))) continue;
+      const keys = ts.map(t => nk(t.name));
+      keys.forEach(k => pool.add(k));
+      const pair = [...keys].sort().join('|');
+      if (!meetings.has(pair)) meetings.set(pair, []);
+      meetings.get(pair).push({
+        keys, wins,
+        bo: Math.max(...wins),
+        at: Date.parse(e.startTime),
+        when: String(e.startTime).slice(0, 10),
+        block: e.blockName || '',
+      });
+    }
+  }
+
+  if (feedFailed === Object.keys(REGIONS).length || !meetings.size) {
+    note('HONOURS', 'Could not read enough schedule history to check the recorded scorelines.',
+         'Nothing on the page is broken by this; the check needs the API and will run again tomorrow.');
+  } else {
+    let checked = 0, unresolved = 0;
+    const wrong = [];
+
+    let noWindow = 0;
+    /* how much of a bracket has to land before its disagreements are believed */
+    const MIN_LOCATED = 4;
+    const MIN_AGREEMENT = 0.6;
+
+    for (const h of HONOURS) {
+      if (!h.done) continue;
+      const win = windowOf(h.d?.dates);
+      if (!win) { noWindow++; continue; }
+
+      const located = [];          // { agrees, where, said, quote }
+      let total = 0;
+
+      for (const b of h.d?.brackets || []) {
+        for (const m of b.matches || []) {
+          if (typeof m.sa !== 'number' || typeof m.sb !== 'number') continue;
+          if (m.sa === m.sb) continue;                    // no winner to check
+          total++;
+          const ka = canon(m.a, pool), kb = canon(m.b, pool);
+          if (!ka || !kb || ka === kb) continue;
+
+          const seen = meetings.get([ka, kb].sort().join('|')) || [];
+          const need = Math.max(m.sa, m.sb);              // series-win target
+          const same = seen.filter(x => x.bo === need && x.at >= win[0] && x.at <= win[1]);
+          /* nothing found, or more than one thing found: either way this check
+             cannot say which series the board means. Say nothing. */
+          if (same.length !== 1) continue;
+
+          const i = same[0].keys.indexOf(ka);
+          const fa = same[0].wins[i], fb = same[0].wins[1 - i];
+          located.push({
+            agrees: fa === m.sa && fb === m.sb,
+            where: `${h.ev} · ${b.title || 'bracket'} · ${m.g || 'match'}`,
+            said: `${m.a} ${m.sa}-${m.sb} ${m.b}`,
+            quote: [`${same[0].when} · ${same[0].block || 'match'} · ${m.a} ${fa}-${fb} ${m.b}`],
+          });
+        }
+      }
+
+      const agreed = located.filter(x => x.agrees).length;
+      /* Too little of the bracket landed, or too little of what landed agrees:
+         this is a tournament the four league feeds do not carry, and the few
+         hits are coincidences between the same two teams. */
+      if (located.length < MIN_LOCATED || agreed / located.length < MIN_AGREEMENT) {
+        unresolved += total;
+        continue;
+      }
+      checked += located.length;
+      /* The rest of a believed bracket is still unchecked — a series played at
+         a venue the league feed does not carry, say — and counting it here is
+         what makes the summary's two numbers add up to the board. */
+      unresolved += total - located.length;
+      for (const x of located) if (!x.agrees) wrong.push(x);
+    }
+
+    if (wrong.length) {
+      for (const w of wrong)
+        stale('HONOURS', `${w.where} records ${w.said}, which is not what the feed says.`,
+              'Correct the scoreline in HONOURS. The feed is authoritative on a result; the board is a transcription of it.',
+              w.quote);
+    } else {
+      fine('HONOURS', `${checked} recorded scoreline${checked === 1 ? '' : 's'} agree with the feed`
+        + (unresolved || noWindow
+            ? ` (${unresolved} could not be pinned to one series in the four leagues' schedules${
+                noWindow ? `, ${noWindow} honour${noWindow === 1 ? '' : 's'} with no parseable date window` : ''}, so unchecked)`
+            : ''));
+    }
+  }
+}
+
+/* ---- is the automation still running? ------------------------------------ */
+
+/* Everything above asks whether the data is still true. This asks whether the
+   jobs that keep it true are still firing — a workflow GitHub has dropped or
+   disabled leaves every other check in this repo perfectly green while nothing
+   at all is happening. See tools/heartbeat.mjs for why that is a real risk
+   here rather than a hypothetical one.
+
+   It rides along in this report rather than opening a second issue: a person
+   reading "the tracker's automation needs attention" wants one place to look,
+   and this runs daily on the same schedule anyway. --skip-heartbeat is for
+   running the data checks offline, and for heartbeat's own tests. */
+if (!process.argv.includes('--skip-heartbeat')) {
+  for (const f of await heartbeatFindings()) findings.push(f);
+}
+
 /* ---- report -------------------------------------------------------------- */
 
 const stales = findings.filter(f => f.level === 'STALE');
@@ -734,8 +1024,17 @@ if (reportPath) {
      newline inside one ends the row. */
   const rows = list => list.map(f => `| \`${f.area}\` | ${f.what} | ${
     [f.fix, ...(f.evidence || []).map(e => `\`${e}\``)].join('<br>')} |`);
+  /* Two kinds of finding land in one issue now, and the opening line has to be
+     true of whichever is actually present — an automation outage described as
+     "the baked-in data has drifted" sends the reader to the wrong file. */
+  const auto = findings.some(f => f.area === 'automation' && f.level !== 'ok');
+  const data = findings.some(f => f.area !== 'automation' && f.level !== 'ok');
   const lines = [
-    `The baked-in data in [index.html](../blob/main/index.html) has drifted from what the live sources say.`,
+    data && auto
+      ? `The baked-in data in [index.html](../blob/main/index.html) has drifted, **and** some of the automation that keeps it current is not running.`
+      : auto
+        ? `Some of the automation that keeps [index.html](../blob/main/index.html) current is not running.`
+        : `The baked-in data in [index.html](../blob/main/index.html) has drifted from what the live sources say.`,
     ``,
     `These constants describe a season that moves every week, and nothing about the page breaks visibly when they go out of date — it keeps rendering the old answer. **Checked ${stamp}.**`,
     ``,
