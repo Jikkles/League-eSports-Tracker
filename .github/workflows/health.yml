@@ -16,6 +16,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: write   # only used to post the page-weight comment on a PR
 
 jobs:
   check:
@@ -30,3 +31,71 @@ jobs:
 
       - name: Check index.html
         run: node tools/check.mjs
+
+      # check.mjs owns the budget and fails past the ceiling, which is right for
+      # a cliff and useless for a slope: the page is 88% of the way through its
+      # budget and got there two KB at a time. This puts the delta next to the
+      # diff that caused it, while it is still a proposal. It never fails.
+      - name: Page weight
+        id: weight
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # An explicit refspec, because actions/checkout leaves a remote
+            # configured for the one ref it fetched — a bare `git fetch origin
+            # main` lands in FETCH_HEAD and never creates origin/main, so the
+            # `git show` below would silently find nothing and the comment would
+            # quietly lose its baseline.
+            BASE='${{ github.base_ref }}'
+            git fetch --no-tags --depth=1 origin "+refs/heads/$BASE:refs/remotes/origin/$BASE" || true
+            git show "origin/$BASE:index.html" > /tmp/base-index.html 2>/dev/null || true
+          fi
+          if [ -s /tmp/base-index.html ]; then
+            node tools/size.mjs --baseline /tmp/base-index.html --markdown weight.md | tee weight.txt
+          else
+            node tools/size.mjs --markdown weight.md | tee weight.txt
+          fi
+          {
+            echo '## Page weight'
+            echo '```'
+            cat weight.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Skipped for a fork's PR, whose token cannot write comments — the step
+      # summary above still carries the numbers.
+      - name: Comment the weight on the PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          MARKER='<!-- page-weight -->'
+          echo "$MARKER" >> weight.md
+          # one comment per PR, edited in place as the branch moves
+          id=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq 'map(select(.body | contains("<!-- page-weight -->"))) | .[0].id // empty')
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$id" -F body=@weight.md >/dev/null
+            echo "updated comment $id"
+          else
+            gh api -X POST "repos/${{ github.repository }}/issues/$PR/comments" -F body=@weight.md >/dev/null
+            echo "posted a new comment"
+          fi
+
+      # stale.yml carries the same watchdog daily, but there is a circularity in
+      # that: if GitHub disables the schedules for inactivity, the job that
+      # would tell you is one of the ones that stopped. This runs on push, which
+      # is the one event that cannot be dropped, so any push surfaces a dead
+      # schedule. Informational — a workflow GitHub throttled overnight is not
+      # a reason to fail the commit in front of you.
+      - name: Is the automation still running?
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '## Automation heartbeat'
+            echo '```'
+            node tools/heartbeat.mjs || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
