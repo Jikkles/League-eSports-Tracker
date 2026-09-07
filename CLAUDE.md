@@ -986,7 +986,8 @@ These run without anyone asking:
 - `.github/workflows/deployed.yml` — `tools/deployed.mjs` after each push to `main`,
   after each generator, and daily at 08:45 UTC
 - `.github/workflows/research.yml` — weekly data-refresh PR, Mondays at 09:00 UTC
-  (**inert until an `ANTHROPIC_API_KEY` secret exists**; it skips with a note rather than failing)
+  (**inert until an `ANTHROPIC_API_KEY` secret exists**; it skips with a note rather than failing,
+  and stays that way on purpose — see **Rules that are not about the code**)
 - `.github/dependabot.yml` — monthly action bumps, minor/patch grouped into one PR
 - GitHub Pages rebuild on push to `main`
 
@@ -1174,6 +1175,48 @@ rotates or a payload moves, the page renders empty tables rather than erroring, 
 tells you. On failure it opens a single `api-canary`-labelled issue, updates it in place on
 subsequent runs, and closes it once the API recovers. An empty `getLive` (nothing on air)
 and a league sitting between splits are treated as normal, not failures.
+
+## Rules that are not about the code
+
+Two standing instructions from Tom that no amount of reading `index.html` will
+tell you. They are written down here rather than left in a session's memory,
+because **Claude Code's memory is per-machine**: it lives under
+`~/.claude/projects/…/memory/` on the laptop, so a session started from a
+phone, from claude.ai, or in a cloud runner has never seen a word of it. This
+file is checked in, so it goes wherever the repo goes, which makes it the only
+place a rule survives a change of device. **If an instruction is meant to hold
+in every session, it belongs in this file** — memory is a convenience copy of
+it, never the record.
+
+- **Every project of Tom's has to be free to run.** Stated 2026-09-04, as a
+  constraint rather than a preference: no pay-as-you-go API key, no paid tier,
+  no metered CI. It is why this repo is public — Actions minutes are unlimited
+  there, which is what makes everything in `.github/workflows/` cost nothing —
+  why
+  every job is plain node against public endpoints, and why `research.yml` sits
+  inert. That one needs an `ANTHROPIC_API_KEY`, which is billed separately from
+  a Claude subscription and has no free tier, so don't propose enabling it. Nor
+  delete it: it costs nothing sitting there and it records what the free
+  substitutes took over, `stale.yml` quoting the completed games behind a stale
+  qualification place and `qual.yml` deriving what a bracket settles with no
+  model in the loop. Where a paid option is genuinely better, name the free
+  fallback in the same breath and let him choose.
+- **Fix the class, not the instance.** When something breaks, say what the
+  *shape* of the bug is in one line — "a checker reading half of a two-source
+  constant" — and sweep for every other place that shape can live before
+  patching anything: the sibling tools, the other callers, the other row
+  shapes, the other tabs. Fix them together; where the duplication is what let
+  the copies drift, remove the duplication so the shape cannot recur. Then
+  report what the sweep covered, including what was checked and found clean, so
+  the scope is visible rather than assumed. **Why it is a rule and not just
+  good practice:** on 2026-09-06 a red CI run traced to `smoke.mjs` validating
+  a rendered board against half the data that drew it. That file was fixed,
+  verified and reported done — while the same bug was already live in
+  `stale.mjs`, days from opening a false issue, with a third drifted copy in
+  `check.mjs`. The instance-only fix looked complete and was not; it took Tom
+  asking a second time to get the actual one. The merge rule under **Generated
+  data**, and `qualThru()` being lifted rather than re-typed, are that sweep's
+  result.
 
 ## Workflow
 
