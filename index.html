@@ -1588,6 +1588,15 @@ const REGIONS = {
         yt:'https://www.youtube.com/@LCS/live', twitch:'https://www.twitch.tv/lcs', vods:'https://www.youtube.com/@LCS/videos',
         wiki:'https://lol.fandom.com/wiki/LCS/2026_Season', liqui:'https://liquipedia.net/leagueoflegends/LCS/2026/Summer',
         splitLabel:'Summer 2026', defaultGames:7, defFormat:'de6b',
+        /* LCS Rulebook v2.0 §2.5.2: ties in the round robin go straight from
+           match wins to head-to-head, then head-to-head game score — there is
+           no overall game-win-% step, unlike LCK/LPL (RACE_RANK_DEFAULT), which
+           is what let FlyQuest (3-4, won the head-to-head 2-0) sit below
+           Shopify Rebellion (3-4, worse head-to-head, better overall game
+           win%) in the page's own table while the feed had them the other way
+           round. SoV/WSoV/Victory Time/Coinflip follow in the rulebook but
+           aren't implemented — ties survive h2hGamePct as a shared band. */
+        rank:['wins','h2h','h2hGamePct'],
         cuts:[{after:6, kind:'po'}] }    // single round robin of 8, top 6 -> playoffs
 };
 
