@@ -85,7 +85,9 @@ async function api(path, params) {
   for (const [k, v] of Object.entries(params || {})) url.searchParams.set(k, v);
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const r = await fetch(url, { headers: { 'x-api-key': API_KEY, 'User-Agent': UA } });
+      // a deadline, like every other tool here: without one a stalled socket
+      // holds the run until the workflow's own timeout rather than retrying
+      const r = await fetch(url, { headers: { 'x-api-key': API_KEY, 'User-Agent': UA }, signal: AbortSignal.timeout(20000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return (await r.json()).data;
     } catch (e) {

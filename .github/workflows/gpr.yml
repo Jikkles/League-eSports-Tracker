@@ -32,7 +32,7 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -46,12 +46,20 @@ jobs:
 
       - name: Scrape the Global Power Rankings and patch index.html
         id: scrape
+        # One retry, ten minutes on, for the same reason as drafts.yml: an
+        # upstream that is unreachable for a few minutes should not cost a
+        # day's run and an issue. Nothing is written until the tool finishes.
         run: |
-          if node tools/gpr.mjs --top "${{ inputs.top || '10' }}" > gpr-log.txt 2>&1; then
-            echo "healthy=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "healthy=false" >> "$GITHUB_OUTPUT"
-          fi
+          : > gpr-log.txt
+          for attempt in 1 2; do
+            echo "--- attempt $attempt" >> gpr-log.txt
+            if node tools/gpr.mjs --top "${{ inputs.top || '10' }}" >> gpr-log.txt 2>&1; then
+              healthy=true; break
+            fi
+            healthy=false
+            if [ "$attempt" = 1 ]; then sleep 600; fi
+          done
+          echo "healthy=$healthy" >> "$GITHUB_OUTPUT"
           cat gpr-log.txt
           {
             echo '```'

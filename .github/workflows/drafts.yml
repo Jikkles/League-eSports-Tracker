@@ -47,12 +47,24 @@ jobs:
       # daily job should not delete on a hunch.
       - name: Scrape gol.gg and patch index.html
         id: scrape
+        # One retry, ten minutes on. gol.gg is a single OVH box with no CDN in
+        # front of it, and it drops off the runners' network for a few minutes
+        # at a time: on 17 and 19 September 2026 every connection timed out for
+        # 3+ minutes, while stale.yml reached it fine an hour later on both
+        # days. A daily job that gives up after 30 seconds of retries turns
+        # each of those blips into a lost day and an issue. The tool writes
+        # nothing until it has finished, so running it again is safe.
         run: |
-          if node tools/drafts.mjs ${{ inputs.prune && '--prune' || '' }} > drafts-log.txt 2>&1; then
-            echo "healthy=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "healthy=false" >> "$GITHUB_OUTPUT"
-          fi
+          : > drafts-log.txt
+          for attempt in 1 2; do
+            echo "--- attempt $attempt" >> drafts-log.txt
+            if node tools/drafts.mjs ${{ inputs.prune && '--prune' || '' }} >> drafts-log.txt 2>&1; then
+              healthy=true; break
+            fi
+            healthy=false
+            if [ "$attempt" = 1 ]; then sleep 600; fi
+          done
+          echo "healthy=$healthy" >> "$GITHUB_OUTPUT"
           cat drafts-log.txt
           {
             echo '```'
