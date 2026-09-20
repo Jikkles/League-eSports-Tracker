@@ -1804,11 +1804,27 @@ const EVENT = {
                {via:'LPL championship points',       on:'2026-08-13'},
                {via:'LPL Regional Finals winner',    on:'2026-09-17', at:{stage:'regional_qualifier', place:1}},
                {via:'LPL Regional Finals runner-up', on:'2026-09-19', at:{stage:'regional_qualifier', place:2}}],
-       /* The points place is theirs, but the champion's is still live: win the
-          Grand Finals and BLG take that seed instead, the points place passing
-          to the next team that has not already qualified. */
-       thru:[{team:'BILIBILI GAMING', via:'LPL championship points', seed:[1,2], on:'2026-08-13',
-              logo:'https://static.lolesports.com/teams/1682322954525_Bilibili_Gaming_logo_20211.png'}]},
+       /* All four written by hand, because the Regional Finals is a bracket
+          qual.mjs will not read: it hands out two places, so a team can leave
+          it by winning rather than by being knocked out, and a placement
+          cannot be got off the graph (see placesByMatch). Anyone's Legend
+          comes from the playoffs stage and is still the generator's.
+
+          Anyone's Legend won the Grand Finals on 13 Sept, which settled the
+          points place at second rather than first — the note this replaces had
+          that the other way round while it was still live. Top Esports beat
+          Invictus Gaming 3-1 in the upper final on 17 Sept for third; Invictus
+          Gaming then beat JD Gaming 3-1 in the lower final on 19 Sept for
+          fourth, and JD Gaming finished third in the bracket and are not at
+          Worlds. Top Esports carries no `logo` on purpose: the LPL is one of
+          the four leagues the page fetches, so findLogo() has their crest from
+          the season's fixtures, and a URL nobody has checked is worse than
+          none. */
+       thru:[{team:'BILIBILI GAMING', via:'LPL championship points', seed:2, on:'2026-08-13',
+              logo:'https://static.lolesports.com/teams/1682322954525_Bilibili_Gaming_logo_20211.png'},
+             {team:'Top Esports', via:'LPL Regional Finals winner', seed:3, on:'2026-09-17'},
+             {team:'Invictus Gaming', via:'LPL Regional Finals runner-up', seed:4, on:'2026-09-19',
+              logo:'https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png'}]},
 
       /* Three places out of a six-team double elimination, and the bracket
          hands them out one round earlier than the calendar suggests: the two
