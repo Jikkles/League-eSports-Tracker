@@ -200,7 +200,30 @@ function placesByMatch(matches) {
   const sure = new Map();
   for (const [id, p] of place) if ((d.get(id) ?? 0) > dpMax) sure.set(id, p);
 
-  return { place: sure, finalId, total };
+  /* Everything above assumes the bracket has ONE way out: the deepest
+     elimination is the final, its winner first and its loser second, and
+     exactly one team is never eliminated. A bracket handing out more than one
+     qualifying place breaks that, because a team can leave by winning rather
+     than by running out of opponents — and a match whose WINNER slot nobody
+     consumes is exactly that exit.
+
+     The LPL's 2026 Regional Finals is the case: Top Esports beat Invictus
+     Gaming in the upper final and left with the third seed, then Invictus
+     Gaming beat JD Gaming in the lower final for the fourth. Two exits. Read
+     as a single ladder it makes the lower final the final, so the tool called
+     Invictus Gaming the winner of the whole thing and JD Gaming the runner-up,
+     while Top Esports — whose win fed no later match — looked like a result
+     the feed had not finished filing, and was dropped. That put a team on the
+     Worlds board who had not qualified.
+
+     Which of the exits carries which place is a rulebook question, not a graph
+     one, so this does not guess: past one exit it quotes nothing and the board
+     falls back to the hand-written `thru`. Same trade as the decisionPoint
+     guard above, and the same reason. */
+  const exits = matches.filter(m => !consumed.has(`${m.id}:1`));
+  if (exits.length > 1) return { place: new Map(), finalId: null, total, exits: exits.length };
+
+  return { place: sure, finalId, total, exits: exits.length };
 }
 
 /* Where a team can still finish, from where the bracket has them now. Losing at
@@ -298,6 +321,16 @@ async function analyse(region, leagues, teamLogos) {
     if (!stage) { note(region.rg, `stage "${slug}" is not in ${found.tournament.slug} yet`); continue; }
     const matches = stageMatches(stage);
     if (!matches.length) { note(region.rg, `stage "${slug}" carries no matches yet`); continue; }
+
+    /* A bracket with more than one way out cannot be read as a placement
+       ladder — see placesByMatch. Saying so is the point: a stage that goes
+       quiet with no reason printed looks like a stage nobody has played. */
+    const shape = placesByMatch(matches);
+    if (shape.exits > 1) {
+      note(region.rg, `stage "${slug}" has ${shape.exits} ways out of the bracket, so a placement cannot be read off it — `
+                    + `those places stay with EVENT.qual's hand-written \`thru\``);
+      continue;
+    }
 
     /* The places this stage hands out, as named by the routes pointing at it,
        keyed by the placement the BRACKET calls them. A team is through once
