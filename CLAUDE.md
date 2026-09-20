@@ -566,7 +566,12 @@ Worlds Updates* post on lolesports.com; and the bracket from the API.
   — a team still drawn across a range of seeds after every place *in that
   range* has been settled is STALE too, because a full region's counts stay
   perfectly happy while the board goes on saying it does not know something the
-  league decided days ago.
+  league decided days ago. **An `on` is a day, not a moment**, and has not
+  passed until the day is over — the same reading `evtQual()` gives it when it
+  formats one. Compared bare against the clock it goes overdue at midnight UTC,
+  which called the LEC's three seeds stale on the morning of 20 September with
+  the final still to be played that evening; the block's own closing note had
+  always promised "the day after".
 - **A stale place names the game that settled it.** The board itself cannot be
   fetched, but the *results* behind it can: `getSchedule` serves the LCP and the
   CBLOL as happily as the four leagues with a season on the page, so `stale.mjs`
@@ -904,6 +909,32 @@ place in a team's range is settled.
   Note the LCK files its playoff bracket under `regional_championship`, not
   `playoffs` — the slugs are per league and worth checking against the feed
   rather than assuming.
+- **Taking an `at` off a route is how you tell the tool to stop guessing**, and
+  the LPL's two Regional Finals places are off it for a reason worth reading
+  before putting them back. `placesByMatch()` reads a bracket as **one ladder**:
+  the deepest elimination is the final, its winner first and its loser second.
+  The LPL's Regional Finals hands out two places, so a team leaves it by
+  *winning* rather than by running out of opponents — Top Esports beat Invictus
+  Gaming in the upper final and left with the third seed, then Invictus Gaming
+  beat JD Gaming in the lower final for the fourth. Read as one ladder the
+  lower final *is* the final, so the tool called Invictus Gaming the winner of
+  the whole bracket and JD Gaming the runner-up, while Top Esports — whose win
+  fed no later match — hit `outlook()`'s "a win with no next match filed is the
+  feed lagging" branch and was dropped. **It put a team on the Worlds board who
+  is not going to Worlds**, and every other check stayed green: the region had
+  four teams for four places, so `stale.mjs`'s arithmetic was perfectly happy.
+- **"More than one way out" is not the test, and it is worth knowing why the
+  obvious fix was tried and reverted.** A match whose winner slot nobody
+  consumes is an exit, and counting those separates nothing: the LCK draws four
+  places out of one bracket and so has a third-place decider, a second exit of
+  its own, and its ladder is *right*. Declining on two exits cost the LCK three
+  correct answers (Gen.G #1, Hanwha Life #2, T1 #3) and was backed out. Until
+  there is a signal that tells a two-exit bracket the tool reads correctly from
+  one it does not, the places come off `at` and are researched by hand. **The
+  general shape: a tool that is right about three leagues and silently wrong
+  about the fourth is more dangerous than one that declines, and a structural
+  guard you cannot test against all four real brackets is a second guess rather
+  than a fix.**
 - **`at.place` and a seed are two different numbers, and `qual.mjs` has to turn
   one into the other.** `at.place` is where a team finishes *inside that stage* —
   what the bracket walk computes, and the only thing it can compute. A seed is

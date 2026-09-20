@@ -1786,28 +1786,46 @@ const EVENT = {
               logo:'https://static.lolesports.com/teams/1673260049703_DPlusKIALOGO11.png'}]},
 
       {rg:'China', lg:'LPL', slug:'lpl', color:'var(--lpl)', feed:{league:'lpl'},
-       /* The points place is the one route on this board that is not a bracket
-          placement at all, so it carries no `at` and qual.mjs leaves it alone. */
+       /* Three of these four carry no `at`, which is the mechanism for a place
+          qual.mjs must not guess at rather than an omission.
+
+          The points place is not a bracket placement at all — it is a season
+          standing — and never was.
+
+          The two Regional Finals places were, and had to be taken off it. That
+          bracket hands out two places, so a team leaves it by winning rather
+          than by running out of opponents: Top Esports beat Invictus Gaming in
+          the upper final and left with the third seed, then Invictus Gaming
+          beat JD Gaming in the lower final for the fourth. placesByMatch()
+          reads a bracket as one ladder — deepest elimination is the final, its
+          winner first — so it made the LOWER final the final, called Invictus
+          Gaming the winner of the whole thing and JD Gaming the runner-up, and
+          dropped Top Esports entirely because a win feeding no later match
+          looks like the feed lagging a result. It put a team on the Worlds
+          board who is not going to Worlds.
+
+          "More than one way out" is not the test that separates this from a
+          bracket the tool reads correctly: the LCK's draws four places out of
+          one bracket and has a third-place decider, a second exit of its own,
+          and its ladder is right. Until there is a signal that tells those two
+          apart, these places are researched and written below — which is what
+          the hand-written half is for. */
        routes:[{via:'LPL Grand Finals champion',     on:'2026-09-13', at:{stage:'playoffs', place:1}},
                {via:'LPL championship points',       on:'2026-08-13'},
-               {via:'LPL Regional Finals winner',    on:'2026-09-17', at:{stage:'regional_qualifier', place:1}},
-               {via:'LPL Regional Finals runner-up', on:'2026-09-19', at:{stage:'regional_qualifier', place:2}}],
-       /* All four written by hand, because the Regional Finals is a bracket
-          qual.mjs will not read: it hands out two places, so a team can leave
-          it by winning rather than by being knocked out, and a placement
-          cannot be got off the graph (see placesByMatch). Anyone's Legend
-          comes from the playoffs stage and is still the generator's.
+               {via:'LPL Regional Finals winner',    on:'2026-09-17'},
+               {via:'LPL Regional Finals runner-up', on:'2026-09-19'}],
+       /* Anyone's Legend won the Grand Finals on 13 Sept and is the generator's
+          — the playoffs stage reads correctly. The other three are researched,
+          for the reason above.
 
-          Anyone's Legend won the Grand Finals on 13 Sept, which settled the
-          points place at second rather than first — the note this replaces had
-          that the other way round while it was still live. Top Esports beat
+          That win settled the points place at second rather than first: the
+          note this replaces said the champion's seed was still live and BLG
+          might take it, which stopped being true on 13 Sept. Top Esports beat
           Invictus Gaming 3-1 in the upper final on 17 Sept for third; Invictus
-          Gaming then beat JD Gaming 3-1 in the lower final on 19 Sept for
-          fourth, and JD Gaming finished third in the bracket and are not at
-          Worlds. Top Esports carries no `logo` on purpose: the LPL is one of
-          the four leagues the page fetches, so findLogo() has their crest from
-          the season's fixtures, and a URL nobody has checked is worse than
-          none. */
+          Gaming beat JD Gaming 3-1 in the lower final on 19 Sept for fourth.
+          Top Esports carries no `logo` on purpose: the LPL is one of the four
+          leagues the page fetches, so findLogo() has their crest from the
+          season's fixtures, and a URL nobody has checked is worse than none. */
        thru:[{team:'BILIBILI GAMING', via:'LPL championship points', seed:2, on:'2026-08-13',
               logo:'https://static.lolesports.com/teams/1682322954525_Bilibili_Gaming_logo_20211.png'},
              {team:'Top Esports', via:'LPL Regional Finals winner', seed:3, on:'2026-09-17'},
