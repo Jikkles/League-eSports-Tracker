@@ -216,6 +216,15 @@ try {
 if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
   const SOON_DAYS = 7;
   const day = iso => new Date(iso).toLocaleDateString('en-GB', {day:'numeric', month:'short', timeZone:'UTC'});
+
+  /* A route's `on` is a DAY, not a moment — the same reading evtQual() gives it
+     on the page — so it has not passed until the day is over. Comparing the
+     bare parse against `now` makes a place overdue from midnight UTC, which
+     called the LEC's three seeds stale on the morning of 20 September with the
+     final still to be played that evening. The note at the foot of this block
+     already promised the other behaviour: "this check will start calling them
+     stale the day after". Now it does. */
+  const passed = iso => Date.parse(iso) + 86400e3 <= NOW;
   let filled = 0, places = 0, soon = [];
 
   /* The board cannot be fetched — Riot publishes no qualification feed, which
@@ -273,7 +282,7 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
     /* Dates rather than routes: which place a team ends up holding is often
        drawn later than the place is won, so the honest question is how many
        of this region's places should be settled by now. */
-    const due = routes.filter(x => Date.parse(x.on) < NOW);
+    const due = routes.filter(x => passed(x.on));
     if (merge && due.length > thru.length) {
       const last = due.map(x => x.on).sort().pop();
       stale('EVENT.qual', `${r.rg}: ${due.length} of its ${routes.length} places were settled by ${day(last)}, but only ${thru.length} team${thru.length === 1 ? ' is' : 's are'} on the board.`,
@@ -295,7 +304,7 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
     };
     const undrawn = thru.filter(t => {
       const seats = seedsOf(t);
-      return seats.length > 1 && seats.every(n => routes[n - 1] && Date.parse(routes[n - 1].on) < NOW);
+      return seats.length > 1 && seats.every(n => routes[n - 1] && passed(routes[n - 1].on));
     });
     if (undrawn.length) {
       const dates = undrawn.flatMap(t => seedsOf(t).map(n => Date.parse(routes[n - 1].on)));
