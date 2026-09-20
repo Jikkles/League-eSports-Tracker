@@ -29,9 +29,13 @@ inputs:
     required: false
     default: ''
   color:
-    description: Hex colour for the label.
+    # Quote it at the call site. Unquoted, Actions' YAML reads a hex colour that
+    # happens to look like a number as one: `5319E7` arrived here as
+    # 53190000000 and the label call 422'd. See the guard in the step below for
+    # why that took the whole report down with it.
+    description: Hex colour for the label, as a quoted 6-digit hex string.
     required: false
-    default: B60205
+    default: 'B60205'
   description:
     description: Label description, shown in the repo's label list.
     required: false
@@ -64,7 +68,29 @@ runs:
           printf '%s\n' "$BODY" > "$file"
         fi
 
-        gh label create "$LABEL" --color "$COLOR" --description "$DESCRIPTION" --force
+        # The label is decoration; the issue is the signal. This step used to be
+        # able to die on the decoration and take the signal with it, which is the
+        # worst failure this action has: the run goes red, no issue opens, and
+        # the red run is the thing nobody is watching because the issue was
+        # supposed to be the thing they watched.
+        #
+        # It happened. `color: 5319E7` unquoted in deployed.yml is scientific
+        # notation to Actions' YAML parser, so COLOR arrived as 53190000000, the
+        # label API answered 422 Label.color is invalid, and `set -e` ended the
+        # step before a single `gh issue` command ran. deploy-stale could not
+        # open an issue at all, and had not been able to for as long as the
+        # colour had been there — invisible because deployed.mjs normally passes.
+        #
+        # So: a colour that is not six hex digits falls back to the default
+        # rather than being sent, and the label call cannot fail the step at all.
+        # A wrong colour is a wrong colour. A missing issue is a missing outage.
+        if ! printf '%s' "$COLOR" | grep -Eq '^[0-9A-Fa-f]{6}$'; then
+          echo "::warning::label colour '$COLOR' is not 6 hex digits — using B60205." \
+               "Quote it at the call site: Actions' YAML reads 5319E7 as a number."
+          COLOR=B60205
+        fi
+        gh label create "$LABEL" --color "$COLOR" --description "$DESCRIPTION" --force \
+          || echo "::warning::could not create or update the '$LABEL' label; continuing to the issue itself"
 
         existing=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
         if [ -n "$existing" ]; then

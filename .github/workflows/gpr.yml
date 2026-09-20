@@ -145,7 +145,7 @@ jobs:
           label: gpr-failing
           title: 'Power rankings: the lolesports GPR mirror is failing'
           body-file: gpr-report.md
-          color: FBCA04
+          color: 'FBCA04'
           description: Raised automatically when the daily Global Power Rankings scrape cannot complete
           token: ${{ github.token }}
 

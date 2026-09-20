@@ -149,7 +149,7 @@ jobs:
           label: drafts-failing
           title: 'Drafts: the gol.gg refresh is failing'
           body-file: drafts-report.md
-          color: FBCA04
+          color: 'FBCA04'
           description: Raised automatically when the daily pick/ban scrape cannot complete
           token: ${{ github.token }}
 

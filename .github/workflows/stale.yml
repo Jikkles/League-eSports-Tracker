@@ -68,7 +68,7 @@ jobs:
           label: ${{ env.LABEL }}
           title: ${{ env.TITLE }}
           body-file: stale-report.md
-          color: D93F0B
+          color: 'D93F0B'
           description: Raised automatically when index.html's baked-in data no longer matches the live sources
           token: ${{ github.token }}
 
