@@ -67,15 +67,67 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # The block is rewritten wholesale, so a bad write is a broken page. Check
+      # before committing, not after.
+      #
+      # A check that fails here is as much a failed refresh as an unreachable
+      # source — the block has been rewritten in the working copy and it is not
+      # fit to push — so it goes through the same report rather than straight to
+      # a red run. On its own it used to fail the job with no issue behind it
+      # and nothing but an Actions email to say so; see qual.yml, where exactly
+      # that went unread for a week.
+      - name: Check the page still parses
+        id: verify
+        if: steps.scrape.outputs.healthy == 'true'
+        run: |
+          if node tools/check.mjs > check-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat check-log.txt
+          {
+            echo "--- tools/check.mjs"
+            cat check-log.txt
+          } >> gpr-log.txt
+          {
+            echo '```'
+            cat check-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # One verdict for the two ways this job can fail, because the issue below
+      # takes one flag. A skipped verify step reports an empty string, which is
+      # the scrape having failed first.
+      - name: Settle the verdict
+        id: verdict
+        env:
+          SCRAPE: ${{ steps.scrape.outputs.healthy }}
+          VERIFY: ${{ steps.verify.outputs.healthy }}
+        run: |
+          if [ "$SCRAPE" = true ] && [ "$VERIFY" = true ]; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Write the report
-        if: steps.scrape.outputs.healthy == 'false'
+        if: steps.verdict.outputs.healthy == 'false'
+        env:
+          SCRAPE: ${{ steps.scrape.outputs.healthy }}
         run: |
           {
-            echo "The daily power-rankings refresh failed, so the board on the home tab of [index.html](../blob/main/index.html) is frozen at whatever it last mirrored."
-            echo
-            echo "Nothing on the page is broken — it renders the rankings it already has, with the \`as of\` date to say how old they are. lolesports.com being briefly unreachable is the usual cause and clears on its own."
-            echo
-            echo "If it does not clear, the likely cause is the one this scrape cannot survive: lolesports.com is a Next.js app and the board is read out of the Apollo payload its HTML ships inline. A redesign that moves or renames that payload shows up here as \`No teamGPR payload\`, and \`sliceJSONArray\` in [tools/gpr.mjs](../blob/main/tools/gpr.mjs) is what needs re-pointing."
+            if [ "$SCRAPE" != true ]; then
+              echo "The daily power-rankings refresh failed, so the board on the home tab of [index.html](../blob/main/index.html) is frozen at whatever it last mirrored."
+              echo
+              echo "Nothing on the page is broken — it renders the rankings it already has, with the \`as of\` date to say how old they are. lolesports.com being briefly unreachable is the usual cause and clears on its own."
+              echo
+              echo "If it does not clear, the likely cause is the one this scrape cannot survive: lolesports.com is a Next.js app and the board is read out of the Apollo payload its HTML ships inline. A redesign that moves or renames that payload shows up here as \`No teamGPR payload\`, and \`sliceJSONArray\` in [tools/gpr.mjs](../blob/main/tools/gpr.mjs) is what needs re-pointing."
+            else
+              echo "\`tools/gpr.mjs\` ran, but the board it wrote does not pass \`tools/check.mjs\`, so nothing has been committed and the live page is still serving the last board that did."
+              echo
+              echo "This is the half that does not clear on its own: the scrape succeeded, so lolesports.com is up and answering, and what it handed back is a board \`check.mjs\` will not accept. \`check.mjs\`'s message below names the field."
+            fi
             echo
             echo '```'
             cat gpr-log.txt
@@ -89,7 +141,7 @@ jobs:
       - name: Report
         uses: ./.github/actions/report-issue
         with:
-          healthy: ${{ steps.scrape.outputs.healthy }}
+          healthy: ${{ steps.verdict.outputs.healthy }}
           label: gpr-failing
           title: 'Power rankings: the lolesports GPR mirror is failing'
           body-file: gpr-report.md
@@ -97,16 +149,25 @@ jobs:
           description: Raised automatically when the daily Global Power Rankings scrape cannot complete
           token: ${{ github.token }}
 
-      - name: Stop here if the scrape failed
-        if: steps.scrape.outputs.healthy == 'false'
+      # Only where somebody is standing there waiting for the answer. A red
+      # scheduled run mails whoever last touched this file, once per run, for as
+      # long as the fault lasts — which trains the reader to bin all of them
+      # including the first. The issue above is the signal, the same rule
+      # stale.yml and links.yml already state. A dispatch stays red, because the
+      # person who clicked it is watching the tab.
+      - name: Stop here if the run failed
+        if: steps.verdict.outputs.healthy == 'false' && github.event_name != 'schedule'
         run: exit 1
 
-      # The block is rewritten wholesale, so a bad write is a broken page. Check
-      # before committing, not after.
-      - name: Check the page still parses
-        run: node tools/check.mjs
+      - name: Summarise
+        if: steps.verdict.outputs.healthy == 'false'
+        run: echo "The refresh did not land — see the [gpr-failing](../issues?q=label%3Agpr-failing) issue." >> "$GITHUB_STEP_SUMMARY"
 
+      # Nothing below this line may run on a failed refresh, and until now
+      # nothing had to say so: the exit above stopped the job outright. It no
+      # longer does on a schedule, so the guard has to be here.
       - name: Commit if anything changed
+        if: steps.verdict.outputs.healthy == 'true'
         run: |
           if git diff --quiet -- index.html; then
             echo "board unchanged; nothing to commit"

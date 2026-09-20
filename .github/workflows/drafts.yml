@@ -72,13 +72,66 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # tools/check.mjs supersedes the hand-rolled parse check that used to live
+      # here: it validates the rewritten DRAFTS block as JSON, not just as syntax,
+      # which is the failure mode a bad write actually produces.
+      #
+      # A check that fails here is as much a failed refresh as an unreachable
+      # source — the block has been rewritten in the working copy and it is not
+      # fit to push — so it goes through the same report rather than straight to
+      # a red run. On its own it used to fail the job with no issue behind it
+      # and nothing but an Actions email to say so; see qual.yml, where exactly
+      # that went unread for a week.
+      - name: Check the page still parses
+        id: verify
+        if: steps.scrape.outputs.healthy == 'true'
+        run: |
+          if node tools/check.mjs > check-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat check-log.txt
+          {
+            echo "--- tools/check.mjs"
+            cat check-log.txt
+          } >> drafts-log.txt
+          {
+            echo '```'
+            cat check-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # One verdict for the two ways this job can fail, because the issue below
+      # takes one flag. A skipped verify step reports an empty string, which is
+      # the scrape having failed first.
+      - name: Settle the verdict
+        id: verdict
+        env:
+          SCRAPE: ${{ steps.scrape.outputs.healthy }}
+          VERIFY: ${{ steps.verify.outputs.healthy }}
+        run: |
+          if [ "$SCRAPE" = true ] && [ "$VERIFY" = true ]; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Write the report
-        if: steps.scrape.outputs.healthy == 'false'
+        if: steps.verdict.outputs.healthy == 'false'
+        env:
+          SCRAPE: ${{ steps.scrape.outputs.healthy }}
         run: |
           {
-            echo "The daily drafts refresh failed, so [index.html](../blob/main/index.html) is no longer picking up new picks/bans."
-            echo
-            echo "Nothing on the page is broken — it renders what it already has, and simply carries no draft for games played since. gol.gg being briefly unreachable is the usual cause and clears on its own."
+            if [ "$SCRAPE" != true ]; then
+              echo "The daily drafts refresh failed, so [index.html](../blob/main/index.html) is no longer picking up new picks/bans."
+              echo
+              echo "Nothing on the page is broken — it renders what it already has, and simply carries no draft for games played since. gol.gg being briefly unreachable is the usual cause and clears on its own."
+            else
+              echo "\`tools/drafts.mjs\` ran, but the file it wrote does not pass \`tools/check.mjs\`, so nothing has been committed and the live page is unaffected."
+              echo
+              echo "A scrape that parses and a file that checks out are two different questions, and this is the second one failing: the DRAFTS block was rewritten and the result is not fit to push. The likeliest causes are the block having grown past the size ceiling and gol.gg having started serving a shape the parser reads as JSON but the page cannot use. \`check.mjs\`'s message below says which."
+            fi
             echo
             echo '```'
             cat drafts-log.txt
@@ -92,7 +145,7 @@ jobs:
       - name: Report
         uses: ./.github/actions/report-issue
         with:
-          healthy: ${{ steps.scrape.outputs.healthy }}
+          healthy: ${{ steps.verdict.outputs.healthy }}
           label: drafts-failing
           title: 'Drafts: the gol.gg refresh is failing'
           body-file: drafts-report.md
@@ -100,17 +153,25 @@ jobs:
           description: Raised automatically when the daily pick/ban scrape cannot complete
           token: ${{ github.token }}
 
-      - name: Stop here if the scrape failed
-        if: steps.scrape.outputs.healthy == 'false'
+      # Only where somebody is standing there waiting for the answer. A red
+      # scheduled run mails whoever last touched this file, once per run, for as
+      # long as the fault lasts — which trains the reader to bin all of them
+      # including the first. The issue above is the signal, the same rule
+      # stale.yml and links.yml already state. A dispatch stays red, because the
+      # person who clicked it is watching the tab.
+      - name: Stop here if the run failed
+        if: steps.verdict.outputs.healthy == 'false' && github.event_name != 'schedule'
         run: exit 1
 
-      # tools/check.mjs supersedes the hand-rolled parse check that used to live
-      # here: it validates the rewritten DRAFTS block as JSON, not just as syntax,
-      # which is the failure mode a bad write actually produces.
-      - name: Check the page still parses
-        run: node tools/check.mjs
+      - name: Summarise
+        if: steps.verdict.outputs.healthy == 'false'
+        run: echo "The refresh did not land — see the [drafts-failing](../issues?q=label%3Adrafts-failing) issue." >> "$GITHUB_STEP_SUMMARY"
 
+      # Nothing below this line may run on a failed refresh, and until now
+      # nothing had to say so: the exit above stopped the job outright. It no
+      # longer does on a schedule, so the guard has to be here.
       - name: Commit if anything changed
+        if: steps.verdict.outputs.healthy == 'true'
         run: |
           # drafts.mjs records what gol.gg currently calls each split, and
           # updates that record itself when the name moves — so it is part of

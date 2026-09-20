@@ -193,6 +193,29 @@ jobs:
           description: Raised automatically when the daily browser run cannot render index.html
           token: ${{ github.token }}
 
+      # Only where somebody is standing there waiting for the answer. A red
+      # scheduled run mails whoever last touched this file, once per run and
+      # every run until the fault is fixed, which trains the reader to bin all
+      # of them including the first. The issue above is the signal for a run
+      # nobody is watching — the rule stale.yml and links.yml already state, and
+      # the same reason they give: a permanently red badge is a badge nobody
+      # reads. A push, a PR or a dispatch still goes red, because there is
+      # somebody there for the red X to be an answer to.
+      #
+      # The two halves line up exactly: the run that reports through the issue
+      # is the run that does not go red, and the run that goes red is the one
+      # with a person already looking at it.
       - name: Fail the run if the page did not render
-        if: steps.smoke.outputs.healthy == 'false'
+        if: >-
+          steps.smoke.outputs.healthy == 'false'
+          && github.event_name != 'schedule'
+          && github.event_name != 'workflow_run'
         run: exit 1
+
+      # The exact complement of the step above, and gated the same way the Report
+      # step is: on a push or a PR there is no issue to point anybody at.
+      - name: Summarise
+        if: >-
+          steps.smoke.outputs.healthy == 'false'
+          && (github.event_name == 'schedule' || github.event_name == 'workflow_run')
+        run: echo "The page did not render — see the [smoke-failing](../issues?q=label%3Asmoke-failing) issue." >> "$GITHUB_STEP_SUMMARY"

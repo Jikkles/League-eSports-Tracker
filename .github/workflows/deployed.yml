@@ -150,6 +150,25 @@ jobs:
           description: Raised automatically when the deployed Pages site does not match main
           token: ${{ github.token }}
 
+      # Only where somebody is standing there waiting for the answer. A red
+      # scheduled run mails whoever last touched this file, once per run and
+      # every run until the fault is fixed, which trains the reader to bin all
+      # of them including the first. The issue above is the signal for a run
+      # nobody is watching — the rule stale.yml and links.yml already state, and
+      # the same reason they give: a permanently red badge is a badge nobody
+      # reads. A push, a PR or a dispatch still goes red, because there is
+      # somebody there for the red X to be an answer to.
+      #
+      # workflow_run is the unattended one here as well as schedule: it fires
+      # after a generator pushes, and a generator's push raises no push event of
+      # its own, so there is nobody at either end of it.
       - name: Fail the run if the deploy has not landed
-        if: steps.probe.outputs.healthy == 'false'
+        if: >-
+          steps.probe.outputs.healthy == 'false'
+          && github.event_name != 'schedule'
+          && github.event_name != 'workflow_run'
         run: exit 1
+
+      - name: Summarise
+        if: steps.probe.outputs.healthy == 'false'
+        run: echo "The live site is not serving this build — see the [${{ env.LABEL }}](../issues?q=label%3A${{ env.LABEL }}) issue." >> "$GITHUB_STEP_SUMMARY"
