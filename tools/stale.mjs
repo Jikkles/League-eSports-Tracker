@@ -327,6 +327,61 @@ if (EVENT && EVENT.qual && Array.isArray(EVENT.qual.regions)) {
 const apiTeamNames = new Set();
 const toursBySlug = {};
 
+/* The tournaments a league's TABLE is ranked over: `cur` plus the
+   REGIONS[].tableSpans - 1 that precede it. The LCK plays one four-round
+   season and Riot files it as two tournaments, each carrying only its own
+   records, while the Legend/Rise ordinals rank all 26 games — so anything
+   here comparing itself against those ordinals has to see the whole season
+   first. index.html does this in fetchStandings(); this is the same walk
+   against the raw payload.
+
+   It lives up here, with a Map of records rather than a count, because two
+   checks want it and they wanted different halves of it: the games-per-team
+   check needs games played, and the ranking check needs wins and losses
+   apart. It was written twice, and the second copy is the one that never got
+   written — the ranking check simply ranked the latest tournament and held
+   the result against a whole-season ordinal, which is a disagreement no
+   rulebook could resolve. Memoised because both callers ask for the same
+   region. */
+const spanMemo = new Map();
+async function spannedBack(slug, R, cur) {
+  const key = `${slug}@${cur?.id}`;
+  if (spanMemo.has(key)) return spanMemo.get(key);
+  const out = { by: new Map(), start: cur?.startDate || '', short: 0, count: 1 };
+  const want = R.tableSpans || 1;
+  if (want > 1 && cur) {
+    let earlier = cur;
+    const allTours = toursBySlug[slug] || [];
+    for (let back = 1; back < want; back++) {
+      const prev = allTours.filter(t => Date.parse(t.startDate) < Date.parse(earlier.startDate))
+                           .sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate))[0];
+      if (!prev) break;
+      let ps = null;
+      try { ps = (await apiJSON('/getStandingsV3', { tournamentId: prev.id }))?.data?.standings; }
+      catch { try { ps = (await apiJSON('/getStandings', { tournamentId: prev.id }))?.data?.standings; } catch {} }
+      if (!ps) break;
+      let pst = null, pn = 0;
+      for (const x of ps) for (const st of x.stages || []) {
+        const n = new Set((st.sections || []).flatMap(sec =>
+          (sec.rankings || []).flatMap(rk => (rk.teams || []).map(t => t.id || t.name)))).size;
+        if (n > pn) { pn = n; pst = st; }
+      }
+      if (!pst) break;
+      for (const sec of pst.sections || []) for (const rk of sec.rankings || [])
+        for (const t of rk.teams || []) {
+          const k = nk(t.name), had = out.by.get(k) || { w: 0, l: 0 };
+          out.by.set(k, { w: had.w + (t.record?.wins | 0), l: had.l + (t.record?.losses | 0) });
+        }
+      out.start = prev.startDate || out.start;
+      out.count++;
+      earlier = prev;
+    }
+    out.short = want - out.count;
+  }
+  spanMemo.set(key, out);
+  return out;
+}
+
 for (const [slug, R] of Object.entries(REGIONS)) {
   const id = leagueIds[slug] || LEAGUES[slug]?.id;
   if (!id) { note(R.name, 'The API returned no league with this slug.', 'Check api-canary output.'); continue; }
@@ -429,37 +484,11 @@ for (const [slug, R] of Object.entries(REGIONS)) {
          one tournament (the LCK's four rounds). This payload only holds the
          latest one, so the games already played in the earlier tournaments
          have to be added back before the count means anything. */
-  const spanned = [];
-  if ((R.tableSpans || 1) > 1) {
-    let earlier = cur;
-    const allTours = toursBySlug[slug] || [];
-    for (let back = 1; back < R.tableSpans; back++) {
-      const prev = allTours.filter(t => Date.parse(t.startDate) < Date.parse(earlier.startDate))
-                        .sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate))[0];
-      if (!prev) break;
-      let ps = null;
-      try { ps = (await apiJSON('/getStandingsV3', { tournamentId: prev.id }))?.data?.standings; }
-      catch { try { ps = (await apiJSON('/getStandings', { tournamentId: prev.id }))?.data?.standings; } catch {} }
-      if (!ps) break;
-      let pst = null, pn = 0;
-      for (const x of ps) for (const st of x.stages || []) {
-        const n = new Set((st.sections || []).flatMap(sec =>
-          (sec.rankings || []).flatMap(rk => (rk.teams || []).map(t => t.id || t.name)))).size;
-        if (n > pn) { pn = n; pst = st; }
-      }
-      if (!pst) break;
-      const by = {};
-      for (const sec of pst.sections || []) for (const rk of sec.rankings || [])
-        for (const t of rk.teams || [])
-          by[nk(t.name)] = (t.record ? (t.record.wins || 0) + (t.record.losses || 0) : 0);
-      spanned.push(by);
-      earlier = prev;
-    }
-    if (spanned.length < R.tableSpans - 1)
-      note(R.name, `tableSpans is ${R.tableSpans} but only ${spanned.length + 1} tournament table(s) could be read.`,
-           `The page falls back to ranking on the games it can see. Check REGIONS.${slug}.tableSpans still matches how the league files its season.`);
-  }
-  const carried = name => spanned.reduce((sum, by) => sum + (by[nk(name)] || 0), 0);
+  const span = await spannedBack(slug, R, cur);
+  if (span.short)
+    note(R.name, `tableSpans is ${R.tableSpans} but only ${span.count} tournament table(s) could be read.`,
+         `The page falls back to ranking on the games it can see. Check REGIONS.${slug}.tableSpans still matches how the league files its season.`);
+  const carried = name => { const r = span.by.get(nk(name)); return r ? r.w + r.l : 0; };
 
   const gamesFor = gname => {
     if (R.groupGames) {
@@ -484,7 +513,7 @@ for (const [slug, R] of Object.entries(REGIONS)) {
     const shown = R.groupGames
       ? Object.entries(R.groupGames).map(([g, n]) => `${g} ${n}`).join(', ')
       : String(R.defaultGames);
-    fine(R.name, `games per team (${shown}) holds${spanned.length ? ` across ${spanned.length + 1} tournaments` : ''}`);
+    fine(R.name, `games per team (${shown}) holds${span.count > 1 ? ` across ${span.count} tournaments` : ''}`);
   }
 
   // group names, matched exactly the way the renderer matches them
@@ -566,7 +595,13 @@ async function scheduleSinceUncached(id, since) {
   const first = await apiJSON('/getSchedule', { leagueId: id });
   let events = first?.data?.schedule?.events || [];
   let token = first?.data?.schedule?.pages?.older;
-  for (let page = 0; page < 10 && token; page++) {
+  /* The loop stops as soon as it has reached `since`, so the cap only bites on
+     a window nothing asked for. It is 20 rather than 10 because the rank check
+     now pages back over a whole spanned season (the LCK's four rounds, not its
+     last two) and running out of pages there is not a harmless truncation: the
+     reconstruction guard below would find fewer wins than the record says and
+     skip the section, quietly retiring the check instead of failing it. */
+  for (let page = 0; page < 20 && token; page++) {
     const oldest = events.reduce((m, e) => Math.min(m, Date.parse(e.startTime) || Infinity), Infinity);
     if (oldest <= since) break;
     const prev = await apiJSON('/getSchedule', { leagueId: id, pageToken: token });
@@ -597,22 +632,38 @@ if (engine) for (const [slug, R] of Object.entries(REGIONS)) {
   }
   if (!stage) continue;
 
+  /* The window is the whole season wherever the league's table spans more than
+     one tournament, which is the same widening tableEvents() does on the page.
+     Ranking the latest tournament alone and holding it against an ordinal the
+     league computed over all four rounds is not a test of the rule — it is two
+     different questions, and the LCK answered them differently every day: DN
+     SOOPers went 5-3 in Rounds 3-4 and still finished last in Rise, having gone
+     1-17 before it, so this reported the league's own published table as proof
+     that index.html had drifted. */
+  const rspan = await spannedBack(slug, R, tour);
+  const from = Date.parse(rspan.start || tour.startDate);
   let events;
-  try { events = await scheduleSince(leagueIds[slug] || LEAGUES[slug]?.id, Date.parse(tour.startDate)); }
+  try { events = await scheduleSince(leagueIds[slug] || LEAGUES[slug]?.id, from); }
   catch (e) { note(R.name, `Could not read the schedule for \`${tour.slug}\` (${e.message}).`,
                    'The rank check needs it; nothing on the page is broken by this.'); continue; }
   const window = events
     .filter(e => { const t = Date.parse(e.startTime);
-                   return t >= Date.parse(tour.startDate) - 864e5 && t <= Date.parse(tour.endDate) + 864e5; })
+                   return t >= from - 864e5 && t <= Date.parse(tour.endDate) + 864e5; })
     .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
 
   const chain = (R.rank || engine.RACE_RANK_DEFAULT).filter(k => k !== 'wins');
   let checked = 0, wrong = null;
   for (const sec of stage.sections || []) {
     const rows = [];
-    for (const rk of sec.rankings || []) for (const t of rk.teams || [])
+    for (const rk of sec.rankings || []) for (const t of rk.teams || []) {
+      /* The payload holds this tournament's record; the ordinal beside it is
+         the league's, over every tournament the table spans. Add the earlier
+         ones in so the two describe the same season — exactly what
+         fetchStandings() does before anything on the page reads them. */
+      const had = rspan.by.get(nk(t.name)) || { w: 0, l: 0 };
       rows.push({ name: t.name, k: nk(t.name), ord: rk.ordinal,
-                  w: t.record?.wins | 0, l: t.record?.losses | 0 });
+                  w: (t.record?.wins | 0) + had.w, l: (t.record?.losses | 0) + had.l });
+    }
     if (rows.length < 3) continue;
     const idx = {};
     rows.forEach((t, i) => { t.i = i; idx[t.k] = i; });
@@ -659,7 +710,8 @@ if (engine) for (const [slug, R] of Object.entries(REGIONS)) {
           + `\n        page:      ${wrong.got}\n        published: ${wrong.want}`,
           `Either the league changed its rules or the ordering code drifted. REGIONS.${slug}.rank lists the metrics in order (wins, gamePct, h2h, h2hGamePct, sov, sovGames); the LEC's are in its rulebook under Standings and Tiebreakers.`);
   else if (checked)
-    fine(R.name, `ranking rule reproduces the published \`${tour.slug}\` table`);
+    fine(R.name, `ranking rule reproduces the published \`${tour.slug}\` table`
+         + (rspan.count > 1 ? ` (over ${rspan.count} tournaments)` : ''));
 }
 
 /* ---- gol.gg tournament names (what drafts.mjs scrapes) ------------------- */
