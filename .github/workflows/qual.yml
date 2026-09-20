@@ -149,7 +149,7 @@ jobs:
           label: qual-failing
           title: 'Qualification board: the bracket read is failing'
           body-file: qual-report.md
-          color: FBCA04
+          color: 'FBCA04'
           description: Raised automatically when the qualification refresh cannot complete
           token: ${{ github.token }}
 

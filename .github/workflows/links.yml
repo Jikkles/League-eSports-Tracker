@@ -60,7 +60,7 @@ jobs:
           label: ${{ env.LABEL }}
           title: ${{ env.TITLE }}
           body-file: links-report.md
-          color: D93F0B
+          color: 'D93F0B'
           description: Raised automatically when a link baked into index.html stops resolving
           token: ${{ github.token }}
 

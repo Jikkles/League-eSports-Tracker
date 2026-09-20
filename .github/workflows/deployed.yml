@@ -146,7 +146,7 @@ jobs:
           label: ${{ env.LABEL }}
           title: ${{ env.TITLE }}
           body-file: deployed-report.md
-          color: 5319E7
+          color: '5319E7'
           description: Raised automatically when the deployed Pages site does not match main
           token: ${{ github.token }}
 
