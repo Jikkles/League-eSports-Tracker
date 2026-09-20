@@ -904,6 +904,22 @@ place in a team's range is settled.
   Note the LCK files its playoff bracket under `regional_championship`, not
   `playoffs` — the slugs are per league and worth checking against the feed
   rather than assuming.
+- **`at.place` and a seed are two different numbers, and `qual.mjs` has to turn
+  one into the other.** `at.place` is where a team finishes *inside that stage* —
+  what the bracket walk computes, and the only thing it can compute. A seed is
+  the index into `routes`, which is what `seed` means to the board, to
+  `qualThru()`, to `check.mjs` and to `stale.mjs`. They are the same number only
+  where a region's places all come out of one bracket in order, which is true of
+  the LCK, the LEC and the LCP — and false of the LPL, whose last two places are
+  the winner and runner-up of a *separate* Regional Finals: bracket placements 1
+  and 2, region seeds 3 and 4. Emitting the bracket's number there put Invictus
+  Gaming in the champion's slot beside the team that had actually won it, and the
+  tool wrote a board `check.mjs` rejects on every run for a week. The mapping is
+  a `Map` from `at.place` back to the route, and the route carries the seed.
+  **The general shape is worth keeping in mind anywhere in this repo: two
+  numberings, one word.** It is the same trap as the `tableSpans` mismatch in the
+  race panel, and it reads perfectly in both directions until a league stops
+  being the easy case.
 - **The two halves of the board merge at render time**, in `qualThru()`. The
   hand-written `thru` wins on every field except the seed range, where the
   narrower answer wins — and only the machine's can be narrower, because it may
@@ -1164,6 +1180,40 @@ and a recovery needs no cleanup. Each check owns a label: `api-canary`, `stale-d
 `smoke-failing`, `drafts-failing`, `gpr-failing`, `qual-failing`, `deploy-stale`, `links-dead`. Scheduled jobs report through it;
 push and PR runs deliberately don't, because a red check is already in front of whoever
 caused it.
+
+**And a job that has reported does not also go red.** The two halves of that rule
+line up exactly: a run nobody is watching opens the issue and finishes green, a
+run somebody started — a push, a PR, a manual dispatch — skips the issue and
+fails, because the red X is the answer they are standing there waiting for. It
+is the rule `stale.yml` and `links.yml` were already written to, for the reason
+they give in place: *a permanently red badge is a badge nobody reads*. The rest
+of them now follow it, and the argument is stronger than tidiness. GitHub mails
+the workflow's last editor on every failed scheduled run, so a fault that lasts
+a week is one issue and — on `qual.yml`, twelve runs a day — eighty-odd
+identical emails, which is how a person learns to delete the mail that would
+have told them about the next one. **The issue is the signal. The mail is
+noise, and the noise is what buries the signal.**
+
+Two things that rule is not. It is not permission to swallow a failure: nothing
+goes quiet that did not open an issue first, and the three generators gate their
+commit on the verdict rather than on the job having stopped, because the `exit 1`
+that used to stop them no longer runs on a schedule. And it does not cover the
+push race at the end of a generator, which still fails the run outright: a
+rebase that conflicts inside the generated blocks means something is wrong that
+a person has to look at, there is no issue behind it, and it has never yet
+happened — a red run is the right amount of noise for that.
+
+**A generator's `check.mjs` is part of its report, not a step after it.** All
+three rewrite a block and then check the file before committing, and that check
+failing is as much a failed refresh as an unreachable source — the block has
+been rewritten in the working copy and it is not fit to push. It used to fail
+the job on its own, *after* the report step had already run and closed the issue
+as healthy, so the run went red with nothing behind it but an email. On
+2026-09-19 `qual.mjs` started deriving an LPL seed the constant says is
+impossible and that is exactly what happened: green tool, failing check, closed
+issue, a red run every two hours and no issue to read. The check now feeds the
+same `healthy` flag the tool does, and the report names which of the two failed,
+because they want completely different things done about them.
 
 The weekly research job opens a **pull request and never pushes to `main`** — the "never
 invent scores/points/formats" rule above is only enforceable if a human reads the diff.

@@ -67,21 +67,77 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # The block is rewritten wholesale and it makes a claim about a team, so a
+      # bad write is worse than a broken page. Check before committing.
+      #
+      # A check that fails here is as much a failed refresh as an unreachable
+      # API — the block has been rewritten in the working copy and it is not fit
+      # to push — so it goes through the same report rather than straight to a
+      # red run. It did not, and the gap cost a week of silent failures: on
+      # 19 September 2026 qual.mjs started deriving an LPL seed that `EVENT.qual`
+      # says is impossible, and because the tool itself succeeded, every run
+      # from then on closed the issue, failed at this step and left nothing
+      # behind but an Actions email — every two hours, with no issue to read.
+      - name: Check the page still parses and the board still adds up
+        id: verify
+        if: steps.qual.outputs.healthy == 'true'
+        run: |
+          if node tools/check.mjs > check-log.txt 2>&1; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat check-log.txt
+          {
+            echo "--- tools/check.mjs"
+            cat check-log.txt
+          } >> qual-log.txt
+          {
+            echo '```'
+            cat check-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # One verdict for the two ways this job can fail, because the issue below
+      # takes one flag. A skipped verify step reports an empty string, which is
+      # the refresh having failed first.
+      - name: Settle the verdict
+        id: verdict
+        env:
+          REFRESH: ${{ steps.qual.outputs.healthy }}
+          VERIFY: ${{ steps.verify.outputs.healthy }}
+        run: |
+          if [ "$REFRESH" = true ] && [ "$VERIFY" = true ]; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Write the report
-        if: steps.qual.outputs.healthy == 'false'
+        if: steps.verdict.outputs.healthy == 'false'
+        env:
+          REFRESH: ${{ steps.qual.outputs.healthy }}
         run: |
           {
-            echo "The qualification refresh failed, so the board on the Worlds tab of [index.html](../blob/main/index.html) is frozen at whatever it last worked out."
-            echo
-            echo "Nothing on the page is broken — it draws the teams it already has, and the hand-written half of \`EVENT.qual\` is untouched either way. The usual cause is the lolesports API being briefly unreachable, which clears on its own; the [api-canary](../issues?q=label%3Aapi-canary) issue is the place to check if it does not."
-            echo
-            echo "The failure this one cannot survive is a change in how Riot files a bracket. \`qual.mjs\` finds each region's stage by the slug in \`EVENT.qual.regions[].routes[].at.stage\`, and a stage that has been renamed or a season filed under a new tournament reads as *stage \"…\" is not in … yet*. That is a one-line fix to the constant, not to the tool."
+            if [ "$REFRESH" != true ]; then
+              echo "The qualification refresh failed, so the board on the Worlds tab of [index.html](../blob/main/index.html) is frozen at whatever it last worked out."
+              echo
+              echo "Nothing on the page is broken — it draws the teams it already has, and the hand-written half of \`EVENT.qual\` is untouched either way. The usual cause is the lolesports API being briefly unreachable, which clears on its own; the [api-canary](../issues?q=label%3Aapi-canary) issue is the place to check if it does not."
+              echo
+              echo "The failure this one cannot survive is a change in how Riot files a bracket. \`qual.mjs\` finds each region's stage by the slug in \`EVENT.qual.regions[].routes[].at.stage\`, and a stage that has been renamed or a season filed under a new tournament reads as *stage \"…\" is not in … yet*. That is a one-line fix to the constant, not to the tool."
+            else
+              echo "\`tools/qual.mjs\` ran, but the board it wrote does not pass \`tools/check.mjs\`, so nothing has been committed and the live page is still serving the last board that did."
+              echo
+              echo "This is the half worth reading closely, because it does not clear on its own: the tool is deriving something \`EVENT.qual\` says is impossible, and it will derive the same thing on every run until one of the two is changed. \`check.mjs\`'s message below names the region, the team and the seed."
+              echo
+              echo "Two answers, and which one is right is a question about the rules rather than about the run. Either the bracket really does settle that place and the routes in \`EVENT.qual\` are wrong, or the routes are right and \`qual.mjs\` is reading the bracket wrong — remember that \`routes[].at.place\` is a placement *inside a stage* while a seed is an index into \`routes\`, and that the two only coincide where a region's places all come out of one bracket in order."
+            fi
             echo
             echo '```'
             cat qual-log.txt
             echo '```'
             echo
-            echo "Reproduce locally with \`node tools/qual.mjs --dry-run\`."
+            echo "Reproduce locally with \`node tools/qual.mjs --dry-run\` and \`node tools/check.mjs\`."
             echo
             echo "<sub>Posted by [qual.yml](../blob/main/.github/workflows/qual.yml). Updated in place on each run, and closed automatically once a run succeeds.</sub>"
           } > qual-report.md
@@ -89,7 +145,7 @@ jobs:
       - name: Report
         uses: ./.github/actions/report-issue
         with:
-          healthy: ${{ steps.qual.outputs.healthy }}
+          healthy: ${{ steps.verdict.outputs.healthy }}
           label: qual-failing
           title: 'Qualification board: the bracket read is failing'
           body-file: qual-report.md
@@ -97,16 +153,26 @@ jobs:
           description: Raised automatically when the qualification refresh cannot complete
           token: ${{ github.token }}
 
+      # Only where somebody is standing there waiting for the answer. A red
+      # scheduled run mails whoever last touched this file, once per run, and
+      # this one runs twelve times a day — so a fault that lasts a week is one
+      # issue and eighty-odd emails, which trains the reader to bin all of them
+      # including the first. The issue above is the signal, the same rule
+      # stale.yml and links.yml already state. A dispatch stays red, because the
+      # person who clicked it is watching the tab.
       - name: Stop here if the run failed
-        if: steps.qual.outputs.healthy == 'false'
+        if: steps.verdict.outputs.healthy == 'false' && github.event_name != 'schedule'
         run: exit 1
 
-      # The block is rewritten wholesale and it makes a claim about a team, so a
-      # bad write is worse than a broken page. Check before committing.
-      - name: Check the page still parses and the board still adds up
-        run: node tools/check.mjs
+      - name: Summarise
+        if: steps.verdict.outputs.healthy == 'false'
+        run: echo "The qualification refresh did not land — see the [qual-failing](../issues?q=label%3Aqual-failing) issue." >> "$GITHUB_STEP_SUMMARY"
 
+      # Nothing below this line may run on a failed refresh, and until now
+      # nothing had to say so: the exit above stopped the job outright. It no
+      # longer does on a schedule, so the guard has to be here.
       - name: Commit if anything changed
+        if: steps.verdict.outputs.healthy == 'true'
         run: |
           if git diff --quiet -- index.html; then
             echo "board unchanged; nothing to commit"

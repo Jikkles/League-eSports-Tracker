@@ -299,24 +299,53 @@ async function analyse(region, leagues, teamLogos) {
     const matches = stageMatches(stage);
     if (!matches.length) { note(region.rg, `stage "${slug}" carries no matches yet`); continue; }
 
-    /* The places this stage hands out, as named by the routes pointing at it. A
-       team is through once every place still open to them is one of these. */
-    const qualifying = new Set(group.map(r => r.at.place));
-    const cut = Math.max(...qualifying);
+    /* The places this stage hands out, as named by the routes pointing at it,
+       keyed by the placement the BRACKET calls them. A team is through once
+       every place still open to them is one of these.
+
+       `at.place` and `place` are two different numbers and mixing them up is
+       the bug this map exists to prevent. `at.place` is where a team finishes
+       *inside this stage* — what `placesByMatch()` computes and what `outlook()`
+       returns. `place` is the region's own seed, the index into `routes`, which
+       is what `seed` means everywhere else: to the board, to `qualThru()`, to
+       check.mjs and to stale.mjs. They coincide only where a region's places
+       all come out of one bracket in order, which is true of the LCK, the LEC
+       and the LCP and false of the LPL — whose last two places are the winner
+       and runner-up of a *separate* Regional Finals, bracket placements 1 and 2
+       but seeds 3 and 4. Emitting the bracket's number there put Invictus Gaming
+       in the champion's slot next to the team that actually won it, and every
+       run since has written a board check.mjs rejects. */
+    const byPlace = new Map(group.map(r => [r.at.place, r]));
+    const cut = Math.max(...byPlace.keys());
     const names = new Set();
     for (const m of matches) for (const s of m.slots) if (s.name) names.add(s.name);
 
     for (const team of names) {
       const o = outlook(matches, team);
       if (!o || o.hi > cut) continue;
-      const seed = [];
-      for (let p = o.lo; p <= o.hi; p++) if (qualifying.has(p)) seed.push(p);
-      if (!seed.length) continue;
+      const won = [];
+      for (let p = o.lo; p <= o.hi; p++) { const r = byPlace.get(p); if (r) won.push(r); }
+      if (!won.length) continue;
+      /* Out of the bracket's numbering and into the region's, which is the only
+         one the board speaks. */
+      const seed = won.map(r => r.place).sort((a, b) => a - b);
+      /* A team can only be placed on a route once the bracket has left them
+         exactly one, which is the same condition the seed being a single number
+         already states. */
+      const via = won.length === 1 ? won[0].via : null;
+      /* Two stages can both send a team through — a region whose second bracket
+         is a second chance at the same tournament. The routes are in seed order
+         and so are their groups, so the first answer is the better seed; taking
+         it rather than the last one stops a fallback route overwriting a place
+         the team has already won outright. */
+      if (out.has(team)) {
+        note(region.rg, `${team} qualifies through more than one stage — keeping #${band(out.get(team).seed)}`);
+        continue;
+      }
       const played = matches.filter(m => m.state === 'completed' && m.slots.some(s => s.name === team));
       const last = played[played.length - 1];
       const on = (last && SCHED.get(schedKey(last.slots.map(s => s.name)))) || iso(Date.now());
-      const route = seed.length === 1 ? group.find(r => r.at.place === seed[0]) : null;
-      out.set(team, { team, seed, on, logo: teamLogos.get(nk(team)) || null, via: route?.via || null });
+      out.set(team, { team, seed, on, logo: teamLogos.get(nk(team)) || null, via });
     }
   }
   return [...out.values()];
