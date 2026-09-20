@@ -1630,7 +1630,7 @@ const REGIONS = {
    is overwritten rather than kept. Anything this cannot derive — a route taken
    outside a region’s own places, a crest the feed does not carry — belongs in
    EVENT.qual’s `thru`, which wins on every field except the seed range.
-   As of 2026-09-19. */
+   As of 2026-09-20. */
 const QUAL_AUTO = {
   lck: [
     {team:'Gen.G Esports', seed:[1], on:'2026-09-13', via:'LCK Season Playoffs champion',
@@ -1646,20 +1646,24 @@ const QUAL_AUTO = {
     {team:'Team Secret Whales', seed:[1], on:'2026-08-30', via:'LCP Split 3 champion',
      logo:'https://static.lolesports.com/teams/1774598000328_White_EyeText_600p.png'},
   ],
+  lcs: [
+    {team:'Cloud9 Kia', seed:[1,2,3], on:'2026-09-19',
+     logo:'https://static.lolesports.com/teams/1736924120254_C9Kia_IconBlue_Transparent_2000x2000.png'},
+  ],
   lec: [
     {team:'G2 Esports', seed:[1,2], on:'2026-09-06',
      logo:'https://static.lolesports.com/teams/G2-FullonDark.png'},
-    {team:'Karmine Corp', seed:[1,2,3], on:'2026-09-06',
+    {team:'Karmine Corp', seed:[3], on:'2026-09-19', via:'LEC Summer Playoffs third place',
      logo:'https://static.lolesports.com/teams/1704714951336_KC.png'},
-    {team:'Movistar KOI', seed:[1,2,3], on:'2026-09-18',
+    {team:'Movistar KOI', seed:[1,2], on:'2026-09-19',
      logo:'https://static.lolesports.com/teams/1734012609283_MKOI_FullColor_Blue.png'},
   ],
   lpl: [
     {team:'Anyone\'s Legend', seed:[1], on:'2026-09-13', via:'LPL Grand Finals champion',
      logo:'https://static.lolesports.com/teams/1641199582689_.png'},
-    {team:'Beijing JDG Esports', seed:[1,2], on:'2026-09-18',
+    {team:'Beijing JDG Esports', seed:[4], on:'2026-09-19', via:'LPL Regional Finals runner-up',
      logo:'https://static.lolesports.com/teams/1627457924722_29.png'},
-    {team:'Invictus Gaming', seed:[1,2], on:'2026-09-17',
+    {team:'Invictus Gaming', seed:[3], on:'2026-09-19', via:'LPL Regional Finals winner',
      logo:'https://static.lolesports.com/teams/1634762917340_300px-Invictus_Gaming_logo.png'},
   ],
 };
