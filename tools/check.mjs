@@ -870,8 +870,7 @@ if (m && !fails.length) {
         const r1 = (S.r1 || []).flat().sort().join(',');
         if (r1 !== '1,2,3,4') fail(`EVENT.swiss.r1 pairs pools ${r1 || 'none'}; it has to pair 1–4 each exactly once.`);
       }
-      for (const f of ['stage', 'playinStage'])
-        if (typeof S[f] !== 'string' || !S[f]) fail(`EVENT.swiss.${f} is not a stage slug.`);
+      if (typeof S.stage !== 'string' || !S.stage) fail('EVENT.swiss.stage is not a stage slug.');
     }
 
     /* -- GPR_PTS: the simulator's win chances, generated beside POWER_RANKINGS -- */

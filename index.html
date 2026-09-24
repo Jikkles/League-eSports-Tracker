@@ -632,38 +632,42 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
    panel must not let a viewer believe. */
 .evt-brk{margin-bottom:16px}
 .evt-swiss{margin-bottom:16px}
-.sw-pools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
-.sw-pool{display:flex;flex-direction:column;gap:6px;min-width:0}
-.sw-pt{display:flex;align-items:center;gap:8px;min-height:34px;padding:5px 9px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);font-size:13px;font-weight:600;min-width:0}
-.sw-pt.tbd{border-style:dashed}
-.sw-pt .tname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sw-pt .tname.tbd{color:var(--faint);font-weight:400}
-.sw-board{margin-top:10px;align-items:start}
-.sw-board .bcell{justify-content:flex-start;gap:8px}
-.sw-rd{font-family:var(--disp);font-weight:800;font-size:16px}
-.sw-m{position:relative}
-.sw-m .bslot{min-height:34px;padding:6px 9px;font-size:13px}
-.sw-pt .rm{margin-left:auto;background:none;border:none;color:var(--faint);font-family:var(--mono);font-size:13px;padding:2px 4px;cursor:pointer}
-.sw-pt .rm:hover{color:var(--loss)}
-.sw-pt.tbd[data-sw]{cursor:pointer}
-.sw-pt.armed{border-color:var(--cyan);background:rgba(11,198,227,.08)}
-.sw-pis{grid-template-columns:repeat(4,minmax(0,1fr))}
-.sw-m{overflow:visible}
-.sw-x{position:absolute;top:50%;right:-22px;transform:translateY(-50%);background:none;border:none;color:var(--faint);font-family:var(--mono);font-size:12px;cursor:pointer;opacity:.55;padding:4px}
-.sw-m:hover .sw-x,.sw-x:focus{opacity:1}
-.sw-x:hover{color:var(--loss)}
-.sw-free{display:flex;flex-wrap:wrap;gap:6px}
-.sw-free .chip,.sw-chips .chip{cursor:pointer;font-family:var(--body);color:var(--text)}
-.sw-free .chip.sel,.sw-chips .chip.sel{color:#001014}
+.sw-chips .chip{cursor:pointer;font-family:var(--body);color:var(--text)}
+.sw-chips .chip.sel{color:#001014}
+.sw-tag{font-family:var(--mono);font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--faint)}
+.chip.sel .sw-tag{color:#001014}
+.sw-del{color:var(--faint);font-family:var(--mono);font-size:11px;padding:0 2px;cursor:pointer}
+.sw-del:hover{color:var(--loss)}
 .sw-add{display:flex;gap:6px;margin-left:auto}
 .sw-add input{background:var(--panel2);border:1px solid var(--line2);color:var(--text);font-family:var(--body);font-size:12px;padding:4px 9px;border-radius:var(--radius);width:150px}
-.sw-sum{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin:12px 0}
-.sw-sum>div{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
-.sw-h{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);width:100%;margin:14px 0 8px}
-.sw-sum .sw-h{margin:0}
-.sw-res{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
-.sw-res b{font-family:var(--mono);font-weight:400;color:var(--dim)}
-@media (max-width:700px){.sw-pools{grid-template-columns:1fr 1fr}.sw-sum{grid-template-columns:1fr}.sw-pis{grid-template-columns:1fr 1fr}}
+.sw-grid{grid-template-columns:repeat(6,minmax(190px,1fr));gap:14px;align-items:center}
+.sw-col{display:flex;flex-direction:column;gap:12px;justify-content:center;min-width:0}
+.sw-box{background:var(--panel2);border:1px solid var(--line2);border-radius:var(--radius);overflow:hidden}
+.sw-bh{display:flex;align-items:center;gap:8px;padding:5px 9px;background:#1F1F1F;border-bottom:1px solid var(--line2);font-family:var(--mono);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim)}
+.sw-bh b{font-family:var(--disp);font-size:16px;letter-spacing:0;color:var(--text);text-transform:none}
+.sw-rp{margin-left:auto;background:none;border:none;color:var(--dim);font-size:14px;cursor:pointer;padding:0 2px}
+.sw-rp:hover{color:var(--cyan)}
+.sw-mt{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:4px;padding:5px 6px;border-bottom:1px solid var(--line)}
+.sw-mt:last-child{border-bottom:none}
+.sw-mt .vs{font-family:var(--mono);font-size:9px;color:var(--faint)}
+.sw-mt.rem{box-shadow:inset 3px 0 0 var(--loss)}
+.sw-tk{display:flex;align-items:center;gap:6px;min-width:0;min-height:30px;padding:3px 6px;border-radius:var(--radius);border:1px solid transparent;font-size:12.5px;font-weight:600}
+.sw-tk .tname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.sw-tk[role=button],.sw-tk[draggable=true]{cursor:pointer}
+.sw-tk[role=button]:hover{background:var(--hover)}
+.sw-tk.w{background:#FFFFFF;color:#000}
+.sw-tk.l{color:var(--faint)}
+.sw-tk.l img{opacity:.45}
+.sw-tk.played::after{content:'✓';margin-left:auto;font-size:10px;color:var(--win)}
+.sw-tk.empty{border:1px dashed var(--line2);color:var(--faint);font-weight:400;font-size:11px;justify-content:center}
+.sw-tk.drop{cursor:pointer}
+.sw-tk.armed,.sw-tk.over{border-color:var(--cyan);background:rgba(11,198,227,.10)}
+.sw-tk .sw-del{margin-left:auto}
+@media (hover:hover){.sw-tk .sw-del{display:none}.sw-tk:hover .sw-del{display:inline}}
+.sw-end .sw-ends{display:flex;flex-direction:column;gap:4px;padding:6px}
+.sw-end.q{border-color:rgba(49,196,111,.55)}
+.sw-end.q .sw-bh{background:rgba(49,196,111,.14);color:var(--win)}
+.sw-end.e .sw-bh{background:rgba(232,57,74,.12);color:var(--loss)}
 .evt-bracket{margin-top:4px}
 .evt-bracket .bslot{font-size:13.5px}
 .evt-bracket .bslot .tname.tbd{font-family:var(--mono);font-size:10.5px;letter-spacing:.2px;line-height:1.35;white-space:normal}
@@ -1764,13 +1768,13 @@ const EVENT = {
 
   /* The Swiss stage's rules, for the simulator. Riot publishes the stage's
      wiring — five rounds of 8/8/8/6/3 — but every slot in it is a
-     decisionPoint, because the pairings are drawn after each round. So the
-     rules the viewer's pairings are held to are written down here.
+     decisionPoint, because the pairings are drawn after each round. `stage`
+     is that stage's slug, which the simulator reads Riot's draws from.
 
      `pools` is the Round 1 draw, and names places rather than teams: 'lck:2'
-     is whoever EVENT.qual seeds second from Korea, read through qualSeeds(),
-     which is what 'Fill from qualification' places there when the viewer asks
-     it to; 'playin' is the seat the play-in winner takes. `playin` is the four places that play for that last seat.
+     is whoever EVENT.qual seeds second from Korea, read through qualSeeds();
+     'playin' is the seat the play-in winner takes, and `playin` the four
+     places that play for it. The simulator tags its team list with them.
      check.mjs holds the two lists to EVENT.qual: every place on the board in
      exactly one of them.
 
@@ -1782,7 +1786,7 @@ const EVENT = {
      and a match that can send a team through or out is a Bo3, the rest Bo1.
      Those three are on both wikis' format sections. */
   swiss:{
-    stage:'swiss', playinStage:'play_ins',
+    stage:'swiss',
     pools:[['lck:1','lpl:1','lcs:1','lec:1'],
            ['lcp:1','cblol-brazil:1','lck:2','lpl:2'],
            ['lcs:2','lec:2','lck:3','lpl:3'],
@@ -3312,15 +3316,14 @@ async function fetchEventBracket() {
     .flatMap(c => c.cells||[]).reduce((n, c) => n + (c.matches||[]).length, 0);
   const pick = stages.find(s => s.slug === EVENT.feed?.stage) || stages[0];
   if (!pick) return null;
-  /* The Swiss simulator reads two more stages the same way: the play-in, whose
-     winner takes the last Swiss seat, and the Swiss stage itself, whose real
-     pairings and results replace the simulated ones as they are played. */
+  /* The Swiss simulator reads one more stage the same way: the Swiss stage
+     itself, whose real draws and results take the viewer's board over as they
+     are published. */
   const bySlug = slug => { const s = stages.find(x => x.slug === slug); return s ? evtTrimStage(s) : null; };
   evtBracket = {
     tid,
     stage: evtTrimStage(pick),
     swiss: bySlug(EVENT.swiss?.stage),
-    playin: bySlug(EVENT.swiss?.playinStage),
     others: stages.filter(s => s !== pick).map(s => ({ name: s.name, n: countOf(s) })),
   };
   lsWrite(LS('evtBracket'), JSON.stringify(evtBracket));
@@ -5155,366 +5158,254 @@ function renderEventBracket() {
 
 /* -------- the Swiss stage simulator ----------------------------------------
 
-   Sixteen teams, five rounds, three wins through and three losses out, with a
-   four-team play-in in front of it for the last seat.
+   The Swiss stage drawn the way Riot draws it on air: one box per record —
+   0–0, then 1–0 and 0–1, out to the Qualified and Eliminated boxes — with
+   every team moving box to box as it wins and loses. Sixteen teams, three wins
+   through, three losses out, Bo3 wherever a team can go through or out.
 
-   The board is the viewer's until Riot's exists, and Riot's the moment it does.
-   Nothing on it is invented: a viewer places the teams, pairs them and picks
-   the winners — and a pairing nobody has drawn yet is only ever one the viewer
-   made. Once Riot publishes a round's draw, that round is Riot's (its teams,
-   its pairings, locked), and every result played replaces the viewer's pick
-   and moves the records on into the next round. The viewer's own pairings for
-   later rounds survive for as long as they are still legal on the records the
-   real results leave, and quietly drop out when they are not — so the board
-   never needs a "sync" button and can never show a pairing that cannot happen.
+   The viewer builds Round 1 and nothing else by hand: drag teams (or pick,
+   then click) into the eight 0–0 matches, then click winners. Everything after
+   that is worked out — a win sends a team to the next box right, a loss to the
+   one below — and the teams arriving in a box are paired in the order they
+   arrived, skipping any rematch. A viewer who wants a different pairing drags
+   one team onto another in the same box to swap them, or re-pairs the box.
 
-   The spoiler guard draws a hard line through that: with scores hidden, the
-   play-in's opening pairings and the Round 1 draw still arrive (a draw is not
-   a result), and nothing after them does — a Round 2 draw between two 1–0
-   teams is the Round 1 result by another name.
+   Nothing is invented. The team list is the qualification board's plus any
+   team the viewer types in — theorycrafting is the point — and no Round 1
+   matchup appears until somebody makes it.
 
-   Each side of a match shows the GPR model's chance of winning it (GPR_PTS),
-   as a hint for the viewer's pick and nothing more. */
-const swissState = Object.assign({ slots: [], pi: [], piw: {}, rounds: [], picks: {}, extra: [] }, lsJSON(LS('swiss'), {}));
-for (const k of ['slots', 'pi', 'rounds', 'extra']) if (!Array.isArray(swissState[k])) swissState[k] = [];
-for (const k of ['piw', 'picks']) if (!swissState[k] || typeof swissState[k] !== 'object' || Array.isArray(swissState[k])) swissState[k] = {};
-delete swissState.seed;       // the first version's projected draw; nothing reads it now
+   Riot's data takes over as it arrives, with no button: the moment the Round
+   1 draw is published, the 0–0 box is Riot's; every later draw fixes that
+   box's pairings; every result replaces the viewer's pick. Under the spoiler
+   guard only the Round 1 draw comes in — a draw between two 1–0 teams is the
+   Round 1 result by another name — and the panel says what it is holding. */
+const SWISS_BOX = { '0-0': 8, '1-0': 4, '0-1': 4, '2-0': 2, '1-1': 4, '0-2': 2, '2-1': 3, '1-2': 3, '2-2': 3 };
+const SWISS_END = { '3-0': 2, '3-1': 3, '3-2': 3, '0-3': 2, '1-3': 3, '2-3': 3 };
+const SWISS_ROUNDS = [['0-0'], ['1-0', '0-1'], ['2-0', '1-1', '0-2'], ['2-1', '1-2'], ['2-2']];
+const SWISS_COLS = [['0-0'], ['1-0', '0-1'], ['2-0', '1-1', '0-2'], ['3-0', '2-1', '1-2', '0-3'], ['3-1', '2-2', '1-3'], ['3-2', '2-3']];
+const swissState = Object.assign({ r1: [], order: {}, win: {}, extra: [] }, lsJSON(LS('swiss'), {}));
+for (const k of ['r1', 'extra']) if (!Array.isArray(swissState[k])) swissState[k] = [];
+for (const k of ['order', 'win']) if (!swissState[k] || typeof swissState[k] !== 'object' || Array.isArray(swissState[k])) swissState[k] = {};
+/* earlier versions' state — pools, a hand-paired round list, a play-in */
+for (const k of ['slots', 'pi', 'piw', 'rounds', 'picks', 'seed']) delete swissState[k];
 function swissSave() { lsWrite(LS('swiss'), JSON.stringify(swissState)); }
 let swissSel = null, swissMsg = '';
 const swissKey = (a, b) => [nk(a), nk(b)].sort().join('|');
 const swissNamed = t => !!(t && t.name && t.name !== 'TBD');
-const swissPinIdx = () => EVENT.swiss.pools.flat().indexOf('playin');
-/* A place in EVENT.swiss ('lck:2') as a team, or as its own label while the
-   qualification board has not seeded anybody into it. */
-function swissPlace(ref) {
-  const [slug, n] = ref.split(':');
-  const r = EVENT.qual.regions.find(x => x.slug === slug);
-  const t = r && qualThru(r).find(t => { const s = qualSeeds(r, t); return s.length === 1 && s[0] === +n; });
-  return { name: t ? t.team : `${r ? r.lg : slug.toUpperCase()} #${n}`, set: !!t };
-}
 
-/* A team's GPR score, for the win chance printed beside each side of a match —
-   a hint, never a pick. A team GPR does not rank gets no number. */
+/* A team's GPR score, for the win chance in each team's tooltip — a hint,
+   never a pick. A team GPR does not rank gets none. */
 let swissPtsK = null;
 function swissPts(name) {
   if (!swissPtsK) swissPtsK = new Map(Object.entries(GPR_PTS).map(([n, p]) => [nk(n), p]));
   return swissPtsK.get(nk(name)) ?? null;
 }
 
-/* The play-in's four-team double elimination, written out in the order Riot's
-   feed lists its six matches (smoke.mjs holds the two to each other): slot 1
-   of an origin is that match's winner, slot 2 its loser. */
-const SWISS_PI = { cols: [
-  { cells: [{ matches: [{ sid: 'a', teams: [{}, {}] }, { sid: 'b', teams: [{}, {}] }] }] },
-  { cells: [{ matches: [{ sid: 'c', teams: [{ org: { type: 'match', sid: 'a', slot: 1 } }, { org: { type: 'match', sid: 'b', slot: 1 } }] }] },
-            { matches: [{ sid: 'd', teams: [{ org: { type: 'match', sid: 'a', slot: 2 } }, { org: { type: 'match', sid: 'b', slot: 2 } }] }] }] },
-  { cells: [{ matches: [{ sid: 'e', teams: [{ org: { type: 'match', sid: 'c', slot: 2 } }, { org: { type: 'match', sid: 'd', slot: 1 } }] }] }] },
-  { cells: [{ matches: [{ sid: 'f', teams: [{ org: { type: 'match', sid: 'c', slot: 1 } }, { org: { type: 'match', sid: 'e', slot: 1 } }] }] }] },
-] };
-
-/* "Draw the rest for me", Round 1: every way to pair two pools with nobody
-   meeting their own region, one chosen at random. Falls back to any pairing if
-   the pools admit no legal one. */
-function swissPerms(n) {
-  if (n <= 1) return [[0]];
+/* Every team a viewer can drag in: the qualification board's, tagged with the
+   Round 1 pool EVENT.swiss puts them in (or PI for the play-in), then the
+   viewer's own. */
+function swissKnown() {
+  const tags = new Map(EVENT.swiss.pools.flatMap((p, i) => p.map(r => [r, 'Pool ' + (i + 1)]))
+    .concat(EVENT.swiss.playin.map(r => [r, 'Play-in'])));
   const out = [];
-  for (const p of swissPerms(n - 1)) for (let i = 0; i <= p.length; i++) out.push([...p.slice(0, i), n - 1, ...p.slice(i)]);
+  for (const r of EVENT.qual.regions) for (const t of qualThru(r)) {
+    if (out.some(x => nk(x.name) === nk(t.team))) continue;
+    const s = qualSeeds(r, t);
+    out.push({ name: t.team, tag: s.length === 1 ? tags.get(r.slug + ':' + s[0]) || '' : r.lg });
+  }
+  for (const n of swissState.extra) if (!out.some(x => nk(x.name) === nk(n))) out.push({ name: n, tag: 'yours', own: true });
   return out;
 }
-function swissR1(A, B, rng) {
-  const all = swissPerms(B.length);
-  const ok = all.filter(p => p.every((j, i) => A[i].rg !== B[j].rg || !A[i].rg));
-  const use = ok.length ? ok : all;
-  const p = use[Math.floor(rng() * use.length)];
-  return A.map((a, i) => [a, B[p[i]]]);
-}
-/* Later rounds: a same-record group paired with no rematch. Shuffle, then pair
-   the first team with the first opponent it has not met, backtracking when
-   that strands somebody; null when no rematch-free pairing exists, which the
-   rules do not say how to settle, so the viewer is left to. */
-function swissPair(group, met, rng) {
-  const g = group.slice();
-  for (let i = g.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [g[i], g[j]] = [g[j], g[i]]; }
+
+/* Pair a box's teams in arrival order, skipping rematches where it can. */
+function swissAutoPair(list, met) {
   const go = rest => {
-    if (!rest.length) return [];
+    if (rest.length < 2) return rest.length ? null : [];
     const [a, ...tail] = rest;
     for (let i = 0; i < tail.length; i++) {
-      if (met.has(a.k + '|' + tail[i].k)) continue;
+      if (met(a, tail[i])) continue;
       const sub = go(tail.filter((_, j) => j !== i));
-      if (sub) return [[a, tail[i]], ...sub];
+      if (sub) return [a, tail[i], ...sub];
     }
     return null;
   };
-  return go(g) || [];
+  return (list.length % 2 === 0 && go(list)) || list;
 }
 
-/* Every team a viewer can place: whoever the qualification board has through,
-   then anybody they typed in themselves — a team still playing for a place is
-   a guess the viewer is allowed to make and the page is not. */
-function swissKnown() {
-  const out = [];
-  for (const r of EVENT.qual.regions) for (const t of qualThru(r))
-    if (!out.some(x => nk(x.name) === nk(t.team))) out.push({ name: t.team, rg: r.slug });
-  for (const n of swissState.extra) if (!out.some(x => nk(x.name) === nk(n))) out.push({ name: n, rg: '' });
-  return out;
-}
-const swissRgOf = n => swissKnown().find(t => nk(t.name) === nk(n))?.rg || '';
-
-/* The board as it stands: Riot's where Riot has published, the viewer's
-   everywhere else, each round built on the records the one before it left.
-   A viewer's pairing that the real results have made impossible (a team no
-   longer on that record, a rematch, a team already out) is left out rather
-   than drawn — it stays saved, and comes back if the viewer changes the pick
-   that broke it. */
-function swissEff() {
+/* The whole board, rebuilt from scratch on every render: Round 1 from Riot's
+   draw or the viewer's, every later box from the results before it. */
+function swissBoard() {
   const S = swissState, guard = spoilFree;
-  /* The play-in, off Riot's feed once its opening pairings are named. The feed
-     lists the six matches in the same order SWISS_PI writes them out, which
-     smoke.mjs checks against the feed's own wiring. */
-  const fm = (evtBracket?.playin?.cols || []).flatMap(c => c.cells.flatMap(x => x.matches));
-  const realPi = fm.length === 6 && fm[0].teams.concat(fm[1].teams).every(swissNamed);
-  const pi = realPi ? fm[0].teams.concat(fm[1].teams).map(t => t.name) : S.pi.slice(0, 4);
-  const piM = [], res = {};
-  let n = 0, j = 0;
-  for (const col of SWISS_PI.cols) for (const cell of col.cells) for (const m of cell.matches) {
-    const f = realPi ? fm[j] : null; j++;
-    const two = m.teams.map(x => x.org ? (res[x.org.sid] ? res[x.org.sid][x.org.slot === 2 ? 1 : 0] : null) : (pi[n++] || null));
-    const pl = f && !guard ? f.teams.findIndex(t => t.win) : -1;
-    let w = pl >= 0 ? f.teams[pl].name : S.piw[m.sid];
-    w = two[0] && two[1] && w ? two.find(x => nk(x) === nk(w)) || null : null;
-    piM.push({ sid: m.sid, a: two[0], b: two[1], w, played: pl >= 0 });
-    res[m.sid] = w ? [w, nk(two[0]) === nk(w) ? two[1] : two[0]] : null;
-  }
-  const piWin = res.f ? res.f[0] : null;
+  const fr = (evtBracket?.swiss?.cols || []).map(c => c.cells.flatMap(x => x.matches).filter(m => m.teams.every(swissNamed)));
+  const realR1 = (fr[0] || []).length === 8;
+  let held = guard && (fr.some((ms, k) => k && ms.length) || fr.flat().some(m => m.teams.some(t => t.win)));
+  const rec = new Map(), boxes = {}, arrive = {};
+  const met = (a, b) => !!rec.get(nk(a))?.met.has(nk(b));
+  const r1 = realR1 ? fr[0].flatMap(m => m.teams.map(t => t.name)) : Array.from({ length: 16 }, (_, i) => S.r1[i] || null);
+  for (const x of r1) if (x) rec.set(nk(x), { name: x, w: 0, l: 0, met: new Set() });
 
-  /* The sixteen: the viewer's pools, the play-in seat held by whoever won it. */
-  const slots = S.slots.slice(0, 16);
-  slots[swissPinIdx()] = piWin;
-  const pool = new Map();
-  slots.forEach((x, i) => x && pool.set(nk(x), (i >> 2) + 1));
-
-  const fr = (evtBracket?.swiss?.cols || []).map(c => c.cells.flatMap(x => x.matches));
-  let rec = new Map(slots.filter(Boolean).map(x => [nk(x), { name: x, w: 0, l: 0 }]));
-  let open = rec.size === 16;
-  const met = new Set(), rounds = [];
-  let held = guard && fm.some(m => m.teams.some(t => t.win));
-  for (let k = 0; k < 5; k++) {
-    const rf = fr[k] || [];
-    const drawn = rf.length && rf.every(m => m.teams.every(swissNamed));
-    if (drawn && k && guard) held = true;
-    const real = drawn && (!k || !guard);
-    if (real && !k) {
-      /* Riot's Round 1 is the field, whoever the viewer had placed. */
-      rec = new Map(rf.flatMap(m => m.teams.map(t => [nk(t.name), { name: t.name, w: 0, l: 0 }])));
-      open = true;
+  SWISS_ROUNDS.forEach((keys, k) => {
+    for (const key of keys) {
+      let slots;
+      if (!k) slots = r1;
+      else {
+        const here = arrive[key] || [];
+        /* Riot's pairings for this box, where it has drawn them. */
+        const drawn = guard ? [] : (fr[k] || []).filter(m => m.teams.every(t => here.some(x => nk(x) === nk(t.name))));
+        const taken = new Set(drawn.flatMap(m => m.teams.map(t => nk(t.name))));
+        let rest = here.filter(x => !taken.has(nk(x)));
+        const saved = S.order[key];
+        rest = saved
+          ? saved.map(n => rest.find(x => nk(x) === nk(n))).filter(Boolean).concat(rest.filter(x => !saved.some(n => nk(n) === nk(x))))
+          : swissAutoPair(rest, met);
+        slots = drawn.flatMap(m => m.teams.map(t => t.name)).concat(rest);
+        boxes[key + ':drawn'] = drawn.length;
+      }
+      while (slots.length < SWISS_BOX[key] * 2) slots.push(null);
+      const ms = [];
+      for (let i = 0; i < slots.length; i += 2) {
+        const a = slots[i], b = slots[i + 1];
+        const m = { a, b, key: a && b ? swissKey(a, b) : '', w: null, played: false, real: false, rematch: !!(a && b && met(a, b)) };
+        if (a && b) {
+          const f = (fr[k] || []).find(f => swissKey(f.teams[0].name, f.teams[1].name) === m.key);
+          m.real = !!f && (!k || !guard);
+          const won = f && !guard ? f.teams.findIndex(t => t.win) : -1;
+          if (won >= 0) { m.w = f.teams[won].name; m.played = true; }
+          else if (S.win[m.key]) m.w = [a, b].find(x => nk(x) === nk(S.win[m.key])) || null;
+        }
+        ms.push(m);
+      }
+      boxes[key] = { key, slots, ms, real: !k ? realR1 : ms.some(m => m.real) };
     }
-    const live = open ? [...rec.values()].filter(r => r.w < 3 && r.l < 3).map(r => ({ ...r })) : [];
-    let ms = [];
-    if (real) {
-      ms = rf.map(m => {
-        const [a, b] = m.teams.map(t => t.name), key = swissKey(a, b);
-        const pl = guard ? -1 : m.teams.findIndex(t => t.win);
-        if (m.teams.some(t => t.win) && guard) held = true;
-        const w = pl >= 0 ? m.teams[pl].name : S.picks[key];
-        return { a, b, key, real: true, played: pl >= 0, w: w ? [a, b].find(x => nk(x) === nk(w)) || null : null };
-      });
-    } else if (open) {
-      const seen = new Set(), at = new Map(live.map(r => [nk(r.name), r]));
-      ms = (S.rounds[k] || []).map((m, i) => ({ ...m, i, key: swissKey(m.a, m.b) })).filter(m => {
-        const A = at.get(nk(m.a)), B = at.get(nk(m.b));
-        const ok = A && B && A !== B && !seen.has(nk(m.a)) && !seen.has(nk(m.b))
-          && A.w === B.w && A.l === B.l && !met.has(m.key);
-        if (ok) { seen.add(nk(m.a)); seen.add(nk(m.b)); }
-        return ok;
-      }).map(m => ({ ...m, w: m.w ? [m.a, m.b].find(x => nk(x) === nk(m.w)) || null : null }));
-    }
-    rounds.push({ ms, live, open, real });
-    for (const m of ms) {
-      met.add(m.key);
+    /* Then the round's results move everyone on. */
+    for (const key of keys) for (const m of boxes[key].ms) {
+      if (!m.a || !m.b) continue;
+      const A = rec.get(nk(m.a)), B = rec.get(nk(m.b));
+      A.met.add(nk(m.b)); B.met.add(nk(m.a));
       if (!m.w) continue;
-      rec.get(nk(m.w)).w++;
-      rec.get(nk(nk(m.w) === nk(m.a) ? m.b : m.a)).l++;
+      const [W, L] = nk(m.w) === nk(m.a) ? [A, B] : [B, A];
+      W.w++; L.l++;
+      for (const T of [W, L]) (arrive[T.w + '-' + T.l] = arrive[T.w + '-' + T.l] || []).push(T.name);
     }
-    open = open && ms.length * 2 === live.length && ms.every(m => m.w);
-  }
-  return { pi, piM, piWin, realPi, slots, pool, rounds, rec, met, held };
-}
-
-/* Whether two teams may meet in round k, and if not, why — in words, because
-   the viewer clicked for it and deserves the reason. */
-function swissCanPair(E, k, a, b) {
-  const R = E.rounds[k], A = R.live.find(r => nk(r.name) === nk(a)), B = R.live.find(r => nk(r.name) === nk(b));
-  if (!A || !B || A === B) return 'Pick two different teams from this round.';
-  if (A.w !== B.w || A.l !== B.l) return `${a} is ${A.w}–${A.l} and ${b} is ${B.w}–${B.l}; only teams on the same record meet.`;
-  for (let j = 0; j < k; j++) if (E.rounds[j].ms.some(m => m.key === swissKey(a, b))) return `${a} and ${b} already met in Round ${j + 1}; there are no rematches.`;
-  if (!k) {
-    const pa = E.pool.get(nk(a)), pb = E.pool.get(nk(b));
-    if (!EVENT.swiss.r1.some(p => [pa, pb].sort().join() === p.slice().sort().join()))
-      return `Round 1 is ${EVENT.swiss.r1.map(p => `Pool ${p[0]} v Pool ${p[1]}`).join(', ')}.`;
-    const ra = swissRgOf(a), rb = swissRgOf(b);
-    if (ra && ra === rb) return 'Nobody meets a team from their own region in Round 1.';
-  }
-  return '';
-}
-
-/* The rest of a round, drawn by the rules — only when the viewer asks. */
-function swissDrawRest(E, k) {
-  const R = E.rounds[k], used = new Set(R.ms.flatMap(m => [nk(m.a), nk(m.b)]));
-  const left = R.live.filter(r => !used.has(nk(r.name))).map(r => ({ name: r.name, k: nk(r.name), rg: swissRgOf(r.name), pool: E.pool.get(nk(r.name)), rec: r.w + '-' + r.l }));
-  const met = new Set([...E.met].flatMap(x => { const [p, q] = x.split('|'); return [p + '|' + q, q + '|' + p]; }));
-  let pairs = [];
-  if (!k) for (const [x, y] of EVENT.swiss.r1) {
-    const A = left.filter(t => t.pool === x), B = left.filter(t => t.pool === y);
-    if (A.length === B.length) pairs = pairs.concat(swissR1(A, B, Math.random));
-  } else {
-    const by = new Map();
-    for (const t of left) { if (!by.has(t.rec)) by.set(t.rec, []); by.get(t.rec).push(t); }
-    for (const g of by.values()) if (g.length % 2 === 0) pairs = pairs.concat(swissPair(g, met, Math.random));
-  }
-  const row = (swissState.rounds[k] = swissState.rounds[k] || []);
-  for (const [a, b] of pairs) row.push({ a: a.name, b: b.name, w: null });
-  return pairs.length;
+  });
+  return { boxes, arrive, realR1, held, rec };
 }
 
 function renderSwiss() {
   const box = $('#evtSwissBody');
   if (!box || !EVENT.swiss) return;
-  const S = swissState, E = swissEff();
-  const used = new Set(E.pi.concat(E.slots).filter(Boolean).map(nk));
-  const sel = swissSel;
-  const short = x => esc(raceShort(x));
-  const team = (x, full) => `${logoHTML(x)}<span class="tname">${full ? esc(x) : short(x)}</span>`;
+  const S = swissState, B = swissBoard(), sel = swissSel;
+  const placed = new Set(B.boxes['0-0'].slots.filter(Boolean).map(nk));
+  const known = swissKnown();
   const pct = (a, b, bo) => {
     const ra = swissPts(a), rb = swissPts(b);
     return ra == null || rb == null ? null : seriesProb(1 / (1 + Math.pow(10, (rb - ra) / 400)), bo);
   };
 
-  /* A place to put a team: filled, it names the team and can be emptied;
-     empty, it takes whichever team is selected. */
-  const place = (where, x, label, locked) => x
-    ? `<div class="sw-pt on">${team(x, true)}${locked ? '' : `<button class="rm" type="button" data-sw="out" data-at="${where}" aria-label="Remove ${esc(x)}">✕</button>`}</div>`
-    : `<div class="sw-pt tbd${sel?.t && !locked ? ' armed' : ''}"${locked ? '' : ` data-sw="in" data-at="${where}" role="button" tabindex="0"`}>`
-      + `<span class="tname tbd">${esc(label)}</span></div>`;
+  const chips = known.filter(t => !placed.has(nk(t.name))).map(t =>
+    `<button type="button" class="chip${sel && nk(sel) === nk(t.name) ? ' sel' : ''}" draggable="true" data-sw="pick" data-n="${esc(t.name)}">`
+    + `${logoHTML(t.name)}<span>${esc(t.name)}</span>${t.tag ? `<span class="sw-tag">${esc(t.tag)}</span>` : ''}`
+    + (t.own ? `<span class="sw-del" data-sw="del" data-n="${esc(t.name)}" role="button" aria-label="Remove ${esc(t.name)}">✕</span>` : '') + '</button>').join('');
 
-  const chips = swissKnown().filter(t => !used.has(nk(t.name))).map(t =>
-    `<button type="button" class="chip${sel?.t && nk(sel.t) === nk(t.name) ? ' sel' : ''}" data-sw="pick" data-n="${esc(t.name)}">${logoHTML(t.name)}<span>${esc(t.name)}</span></button>`).join('');
-
-  /* A match: both sides clickable to pick the winner unless it has been
-     played, in which case it says so and cannot be changed. */
-  const match = (m, attrs, bo) => {
-    const p = m.a && m.b ? pct(m.a, m.b, bo) : null;
-    return `<div class="bmatch sw-m">` + [m.a, m.b].map((x, i) => {
-      if (!x) return `<div class="bslot"><span class="tbd">TBD</span></div>`;
-      const pp = p == null ? null : i ? 1 - p : p;
-      const can = m.a && m.b && !m.played;
-      return `<div class="bslot${can ? ' clickable' : ''}${m.w ? (nk(m.w) === nk(x) ? ' winner' : ' eliminated') : ''}"`
-        + (can ? ` ${attrs} data-n="${esc(x)}" role="button" tabindex="0" title="Pick ${esc(x)} to win"` : m.played ? ' title="Played"' : '')
-        + `>${team(x)}${m.played ? '<span class="prob">✓</span>' : pp == null ? '' : `<span class="prob${pp >= .5 ? ' fav' : ''}">${Math.round(pp * 100)}%</span>`}</div>`;
-    }).join('') + (attrs.includes('data-sw="win"') && !m.real ? `<button class="sw-x" type="button" data-sw="unpair" ${attrs.replace('data-sw="win"', '')} aria-label="Undo this pairing">✕</button>` : '') + '</div>';
+  /* One team in one match. In Round 1 an empty one takes a team; everywhere a
+     full match's teams are clicked to pick the winner, and dragged onto one
+     another within a box to swap pairings. */
+  const tok = (key, i, m, x, bo) => {
+    const r1 = key === '0-0';
+    if (!x) return `<div class="sw-tk empty${r1 && !B.realR1 ? ' drop' + (sel ? ' armed' : '') : ''}"${r1 && !B.realR1
+      ? ` data-sw="in" data-box="0-0" data-i="${i}" role="button" tabindex="0" aria-label="Round 1 place ${i + 1}"` : ''}>${r1 && !B.realR1 ? 'Drop a team' : ''}</div>`;
+    const other = i % 2 ? m.a : m.b;
+    const p = other ? pct(x, other, bo) : null;
+    const locked = m.played;
+    const drag = !m.real && !(r1 && B.realR1);
+    const cls = m.w ? (nk(m.w) === nk(x) ? ' w' : ' l') : '';
+    return `<div class="sw-tk${cls}${m.played ? ' played' : ''}"${drag ? ' draggable="true"' : ''} data-sw="${other && !locked ? 'win' : 'tk'}"`
+      + ` data-box="${key}" data-i="${i}" data-n="${esc(x)}" data-key="${esc(m.key)}"${other && !locked ? ' role="button" tabindex="0"' : ''}`
+      + ` title="${esc(x)}${m.played ? ' — played' : p == null ? '' : ` — ${Math.round(p * 100)}% to win (GPR)`}${drag ? ' · drag onto another team in this box to swap' : ''}">`
+      + `${logoHTML(x)}<span class="tname">${esc(raceShort(x))}</span>`
+      + (r1 && !B.realR1 ? `<span class="sw-del" data-sw="out" data-i="${i}" role="button" aria-label="Take ${esc(x)} out">✕</span>` : '') + '</div>';
   };
-
-  /* -- the play-in -- */
-  const piCols = [[0, 1], [2, 3], [4], [5]].map(ix => `<div class="bcell">${ix.map(i => {
-    const m = E.piM[i];
-    return `<span class="bgroup-label">${esc(['Upper semifinal', 'Upper semifinal', 'Upper final', 'Lower semifinal', 'Lower final', 'Final'][i])}</span>`
-      + match(m, `data-sw="piw" data-m="${m.sid}"`, 5);
-  }).join('')}</div>`).join('');
-  const piIn = [0, 1, 2, 3].map(i => place('p' + i, E.pi[i], 'Play-in team', E.realPi)).join('');
-
-  /* -- the pools -- */
-  const pin = swissPinIdx();
-  const pools = EVENT.swiss.pools.map((p, i) => `<div class="sw-pool"><span class="bgroup-label">Pool ${i + 1}</span>${
-    p.map((_, j) => { const at = i * 4 + j;
-      return at === pin ? place('', E.slots[at], 'Play-in winner', true) : place('s' + at, E.slots[at], 'Place a team', false);
-    }).join('')}</div>`).join('');
-
-  /* -- the five rounds -- */
-  const cols = E.rounds.map((R, k) => {
-    let html = `<span class="sw-rd">Round ${k + 1}${R.real ? ' <span class="race-chip live" title="Riot has drawn this round">Riot’s draw</span>' : ''}</span>`;
-    if (!R.open) return `<div class="bcell">${html}<div class="race-hint">${k ? `Opens when every Round ${k} match has a winner.` : 'Opens when all sixteen places are filled.'}</div></div>`;
-    const used = new Set(R.ms.flatMap(m => [nk(m.a), nk(m.b)]));
-    const recs = [...new Set(R.live.map(r => r.w + '–' + r.l))].sort().reverse();
-    for (const rc of recs) {
-      const [w, l] = rc.split('–').map(Number), bo = w === 2 || l === 2 ? 3 : 1;
-      html += `<span class="bgroup-label">${rc}${bo === 3 ? ' · Bo3' : ''}</span>`;
-      for (const m of R.ms) {
-        const A = R.live.find(r => nk(r.name) === nk(m.a));
-        if (A && A.w + '–' + A.l === rc)
-          html += match(m, m.real ? `data-sw="pk" data-key="${esc(m.key)}"` : `data-sw="win" data-k="${k}" data-i="${m.i}"`, bo);
-      }
-      const free = R.live.filter(r => r.w + '–' + r.l === rc && !used.has(nk(r.name)));
-      if (free.length) html += `<div class="sw-free">${free.map(r =>
-        `<button type="button" class="chip${sel?.k === k && nk(sel.n) === nk(r.name) ? ' sel' : ''}" data-sw="pair" data-k="${k}" data-n="${esc(r.name)}">${logoHTML(r.name)}<span>${short(r.name)}</span></button>`).join('')}</div>`;
-    }
-    if (!R.real && R.ms.length * 2 < R.live.length)
-      html += `<button class="btn small" type="button" data-sw="draw" data-k="${k}">Draw the rest for me</button>`;
-    return `<div class="bcell">${html}</div>`;
-  }).join('');
-
-  const fin = [...E.rec.values()];
-  const line = list => list.map(r => `<span class="sw-res">${logoHTML(r.name)}${short(r.name)} <b>${r.w}–${r.l}</b></span>`).join('') || '<span class="race-hint">nobody yet</span>';
+  const recBox = key => {
+    const b = B.boxes[key], [w, l] = key.split('-').map(Number), bo = w === 2 || l === 2 ? 3 : 1;
+    const full = b.ms.filter(m => m.a && m.b && !m.real).length;
+    return `<div class="sw-box" data-box="${key}"><div class="sw-bh"><b>${w}–${l}</b><span>${bo === 3 ? 'Bo3' : 'Bo1'}</span>`
+      + (b.real ? '<span class="race-chip live" title="Riot has drawn this box">Riot</span>' : '')
+      + (key !== '0-0' && full > 1 ? `<button class="sw-rp" type="button" data-sw="repair" data-box="${key}" title="Pair this box differently">↻</button>` : '')
+      + '</div>' + b.ms.map((m, j) => `<div class="sw-mt${m.rematch ? ' rem' : ''}"${m.rematch ? ' title="These two have already met — Riot does not allow a rematch"' : ''}>`
+        + tok(key, 2 * j, m, m.a, bo) + '<span class="vs">vs</span>' + tok(key, 2 * j + 1, m, m.b, bo) + '</div>').join('') + '</div>';
+  };
+  const endBox = key => {
+    const [w] = key.split('-').map(Number), q = w === 3, list = B.arrive[key] || [];
+    const cells = Array.from({ length: SWISS_END[key] }, (_, i) => list[i]
+      ? `<span class="sw-tk">${logoHTML(list[i])}<span class="tname">${esc(raceShort(list[i]))}</span></span>` : '<span class="sw-tk empty"></span>').join('');
+    return `<div class="sw-box sw-end ${q ? 'q' : 'e'}"><div class="sw-bh"><b>${q ? 'Qualified' : 'Eliminated'}</b><span>${key.replace('-', '–')}</span></div><div class="sw-ends">${cells}</div></div>`;
+  };
+  const cols = SWISS_COLS.map(keys => `<div class="sw-col">${keys.map(k => SWISS_BOX[k] ? recBox(k) : endBox(k)).join('')}</div>`).join('');
 
   box.innerHTML = `
     <div class="sim-toolbar">
-      <button class="btn small" type="button" data-sw="fill">Fill from qualification</button>
+      <button class="btn small" type="button" data-sw="clear"${Object.keys(S.win).length ? '' : ' disabled'}>Clear winners</button>
       <button class="btn small" type="button" data-sw="reset">Reset</button>
-      <span class="race-hint">${swissMsg ? `<span class="sim-msg">${esc(swissMsg)}</span>` : 'Pick a team, then click an empty place. Click two teams on the same record to pair them, then click the winner.'}</span>
+      <span class="race-hint">${swissMsg ? `<span class="sim-msg">${esc(swissMsg)}</span>` : B.realR1
+        ? 'Riot has drawn Round 1. Click a team to pick it to win; results fill in as they are played.'
+        : 'Drag teams into the 0–0 matches (or pick one, then click a place), then click the winners.'}</span>
     </div>
-    <div class="pool sw-chips">${chips || '<span class="pool-hint">Every team is placed.</span>'}
-      <form class="sw-add" data-sw="add"><input name="n" placeholder="Add a team…" aria-label="Add a team" maxlength="40"><button class="btn small" type="submit">Add</button></form></div>
-    <div class="sw-h">Play-in · 4 teams, double elimination, Bo5 — the winner takes the last Swiss seat${E.realPi ? ' · <span class="race-chip live">Riot’s draw</span>' : ''}</div>
-    <div class="sw-pools sw-pis">${piIn}</div>
-    <div class="bracket sw-board sw-piboard" style="grid-template-columns:repeat(4, minmax(${BCOL_MIN}px,1fr))">${piCols}</div>
-    <div class="sw-h">Swiss stage · Round 1 pools</div>
-    <div class="sw-pools">${pools}</div>
-    <div class="race-note">Round 1 pairs Pool 1 with Pool 4 and Pool 2 with Pool 3, and nobody meets their own
-      region — the rule from 2024 and 2025, expected again (Riot has not published the 2026 wording). After that,
-      teams on the same record meet, never twice, and a match that can put a team through or out is a Bo3.</div>
-    <div class="bracket sw-board sw-rounds" style="grid-template-columns:repeat(5, minmax(${BCOL_MIN}px,1fr))">${cols}</div>
-    <div class="sw-sum"><div><span class="sw-h">Through</span>${line(fin.filter(r => r.w === 3).sort((a, b) => a.l - b.l))}</div>
-      <div><span class="sw-h">Out</span>${line(fin.filter(r => r.l === 3).sort((a, b) => b.w - a.w))}</div></div>
-    ${E.held ? '<div class="race-note">Scores are hidden, so Riot’s results and later draws are not filled in — turn the switch off to bring them in.</div>' : ''}`;
+    ${B.realR1 ? '' : `<div class="pool sw-chips">${chips || '<span class="pool-hint">Every team is in Round 1.</span>'}
+      <form class="sw-add" data-sw="add"><input name="n" placeholder="Add a team…" aria-label="Add a team" maxlength="40"><button class="btn small" type="submit">Add</button></form></div>`}
+    <div class="bracket sw-grid">${cols}</div>
+    <div class="race-note">Pools are Riot's Round 1 draw pots: Pool 1 meets Pool 4 and Pool 2 meets Pool 3, never inside a
+      region — the rule from 2024 and 2025, expected again (Riot has not published the 2026 wording). After Round 1,
+      teams on the same record meet and nobody meets twice; a pairing that repeats one is marked in red.
+      ${B.held ? '<br>Scores are hidden, so Riot’s results and later draws are not filled in — turn the switch off to bring them in.' : ''}</div>`;
   const sub = $('#evtSwissSub');
-  if (sub) sub.textContent = `${[...E.rec.values()].filter(r => r.w === 3).length} of 8 through · pick your own, Riot’s fill in as they happen`;
+  if (sub) sub.textContent = `${Object.keys(SWISS_END).filter(k => k[0] === '3').reduce((n, k) => n + (B.arrive[k] || []).length, 0)} of 8 qualified`;
 }
 
+/* ---- the controls: click, keyboard, drag ---- */
+function swissPlace(i, name) {
+  const r1 = swissState.r1;
+  const from = r1.findIndex(x => x && nk(x) === nk(name));
+  if (from >= 0) r1[from] = r1[i] || null;     // dragged from another place: the two swap
+  r1[i] = name;
+}
+function swissSwap(key, i, j) {
+  const slots = swissBoard().boxes[key]?.slots;
+  if (!slots || !slots[i]) return;
+  if (key === '0-0') { swissPlace(j, slots[i]); return; }
+  if (!slots[j]) return;
+  const s = slots.filter(Boolean);
+  const a = s.indexOf(slots[i]), b = s.indexOf(slots[j]);
+  [s[a], s[b]] = [s[b], s[a]];
+  swissState.order[key] = s;
+}
+function swissDone() { swissSave(); renderSwiss(); }
 document.addEventListener('click', e => {
   const b = e.target.closest('#evtSwissBody [data-sw]');
   if (!b || b.tagName === 'FORM') return;
-  const S = swissState, d = b.dataset, E = swissEff();
+  const S = swissState, d = b.dataset;
   swissMsg = '';
-  const at = d.at || '', arr = at[0] === 'p' ? S.pi : S.slots, i = +at.slice(1);
-  /* A team is in one place at a time: putting it somewhere moves it. */
-  const clear = x => [S.slots, S.pi].forEach(l => l.forEach((y, j) => { if (y && nk(y) === nk(x)) l[j] = null; }));
-  if (d.sw === 'pick') swissSel = swissSel?.t && nk(swissSel.t) === nk(d.n) ? null : { t: d.n };
-  else if (d.sw === 'in') { if (swissSel?.t) { clear(swissSel.t); arr[i] = swissSel.t; swissSel = null; } else swissMsg = 'Pick a team from the list first.'; }
-  else if (d.sw === 'out') arr[i] = null;
-  else if (d.sw === 'piw') S.piw[d.m] = S.piw[d.m] && nk(S.piw[d.m]) === nk(d.n) ? null : d.n;
-  else if (d.sw === 'win') { const m = S.rounds[+d.k]?.[+d.i]; if (m) m.w = m.w && nk(m.w) === nk(d.n) ? null : d.n; }
-  else if (d.sw === 'pk') S.picks[d.key] = S.picks[d.key] && nk(S.picks[d.key]) === nk(d.n) ? null : d.n;
-  else if (d.sw === 'unpair') S.rounds[+d.k]?.splice(+d.i, 1);
-  else if (d.sw === 'pair') {
-    const k = +d.k;
-    if (swissSel?.k === k && nk(swissSel.n) !== nk(d.n)) {
-      const why = swissCanPair(E, k, swissSel.n, d.n);
-      if (why) swissMsg = why;
-      else (S.rounds[k] = S.rounds[k] || []).push({ a: swissSel.n, b: d.n, w: null });
-      swissSel = why ? swissSel : null;
-    } else swissSel = swissSel?.k === k && nk(swissSel.n) === nk(d.n) ? null : { k, n: d.n };
+  if (d.sw === 'del') { S.extra = S.extra.filter(x => nk(x) !== nk(d.n)); if (swissSel && nk(swissSel) === nk(d.n)) swissSel = null; }
+  else if (d.sw === 'pick') swissSel = swissSel && nk(swissSel) === nk(d.n) ? null : d.n;
+  else if (d.sw === 'out') S.r1[+d.i] = null;
+  else if (d.sw === 'in' || (swissSel && d.box === '0-0' && (d.sw === 'win' || d.sw === 'tk'))) {
+    if (swissSel) { swissPlace(+d.i, swissSel); swissSel = null; }
+    else swissMsg = 'Pick a team from the list first, or drag one in.';
   }
-  else if (d.sw === 'draw') { const n = swissDrawRest(E, +d.k); swissMsg = n ? `Drew ${n} match${n === 1 ? '' : 'es'} by the rules.` : 'No legal draw for the teams left — pair them yourself.'; }
-  else if (d.sw === 'fill') {
-    let n = 0;
-    EVENT.swiss.pools.flat().forEach((ref, j) => { if (ref === 'playin') return; const p = swissPlace(ref); if (p.set) { clear(p.name); S.slots[j] = p.name; n++; } });
-    EVENT.swiss.playin.forEach((ref, j) => { const p = swissPlace(ref); if (p.set) { clear(p.name); S.pi[j] = p.name; n++; } });
-    swissMsg = `Placed the ${n} teams the qualification board has seeded.`;
+  else if (d.sw === 'win') S.win[d.key] = S.win[d.key] && nk(S.win[d.key]) === nk(d.n) ? null : d.n;
+  else if (d.sw === 'repair') {
+    const B = swissBoard(), here = B.boxes[d.box].slots.filter(Boolean);
+    const met = new Set([...B.rec.values()].flatMap(r => [...r.met].map(o => nk(r.name) + '|' + o)));
+    for (let t = 0; t < 20; t++) {
+      const sh = here.slice().sort(() => Math.random() - .5);
+      const p = swissAutoPair(sh, (a, c) => met.has(nk(a) + '|' + nk(c)));
+      if (p.join() !== here.join() || t === 19) { S.order[d.box] = p; break; }
+    }
   }
-  else if (d.sw === 'reset') { Object.assign(S, { slots: [], pi: [], piw: {}, rounds: [], picks: {} }); swissSel = null; }
-  swissSave();
-  renderSwiss();
+  else if (d.sw === 'clear') S.win = {};
+  else if (d.sw === 'reset') { Object.assign(S, { r1: [], order: {}, win: {} }); swissSel = null; }
+  else return;
+  swissDone();
 });
-/* The places and the match sides are divs acting as buttons, so they answer
-   the keys a button does. */
 document.addEventListener('keydown', e => {
   const b = (e.key === 'Enter' || e.key === ' ') && e.target.closest?.('#evtSwissBody [data-sw][role="button"]');
   if (b) { e.preventDefault(); b.click(); }
@@ -5524,9 +5415,33 @@ document.addEventListener('submit', e => {
   if (!f) return;
   e.preventDefault();
   const n = f.elements.n.value.trim();
-  if (n && !swissKnown().some(t => nk(t.name) === nk(n))) { swissState.extra.push(n); swissSel = { t: n }; }
-  swissSave();
-  renderSwiss();
+  if (n && !swissKnown().some(t => nk(t.name) === nk(n))) { swissState.extra.push(n); swissSel = n; }
+  swissDone();
+});
+/* Drag: a team from the list onto a Round 1 place, a Round 1 team onto another
+   place, or any team onto another in the same box to swap them. */
+document.addEventListener('dragstart', e => {
+  const t = e.target.closest?.('#evtSwissBody [draggable="true"]');
+  if (!t) return;
+  e.dataTransfer.setData('text/plain', JSON.stringify({ n: t.dataset.n, box: t.dataset.box || '', i: t.dataset.i ?? '' }));
+  e.dataTransfer.effectAllowed = 'move';
+});
+document.addEventListener('dragover', e => {
+  const t = e.target.closest?.('#evtSwissBody .sw-tk[data-box]');
+  if (t) { e.preventDefault(); t.classList.add('over'); }
+});
+document.addEventListener('dragleave', e => e.target.closest?.('#evtSwissBody .sw-tk')?.classList.remove('over'));
+document.addEventListener('drop', e => {
+  const t = e.target.closest?.('#evtSwissBody .sw-tk[data-box]');
+  if (!t) return;
+  e.preventDefault();
+  let src; try { src = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+  const key = t.dataset.box, i = +t.dataset.i;
+  swissMsg = '';
+  if (!src.box && key === '0-0') swissPlace(i, src.n);
+  else if (src.box === key && src.i !== '') swissSwap(key, +src.i, i);
+  else swissMsg = src.box ? 'Teams only swap inside their own box — their record decides where they are.' : 'Teams go into Round 1; the rest of the board follows from the results.';
+  swissDone();
 });
 
 function buildEventPage() {
@@ -5643,12 +5558,13 @@ function buildEventPage() {
       <div id="evtBracketBody"><div class="loading">Loading the published bracket…</div></div>
     </div>
 
-    <!-- The viewer's own play-in and Swiss stage, below Riot's published
-         play-in bracket because the play-in is played first. The viewer places
-         the teams, makes the pairings and picks the winners; Riot's draws and
-         results replace theirs as they are published. renderSwiss() fills it. -->
+    <!-- The Swiss stage as Riot draws it on air, one box per record, below
+         Riot's published play-in bracket because the play-in is played first.
+         The viewer builds Round 1 and picks winners; the board moves everyone
+         on, and Riot's draws and results take it over as they are published.
+         renderSwiss() fills it. -->
     <div class="panel evt-swiss">
-      <div class="p-head"><div class="p-title">Play-In &amp; Swiss Simulator</div>
+      <div class="p-head"><div class="p-title">Swiss Stage Simulator</div>
         <span class="p-sub" id="evtSwissSub"></span></div>
       <div id="evtSwissBody"><div class="loading">Loading the simulator…</div></div>
     </div>
