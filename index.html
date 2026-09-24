@@ -631,6 +631,28 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
    a smaller size so a route never reads as a team name — the one thing this
    panel must not let a viewer believe. */
 .evt-brk{margin-bottom:16px}
+.evt-swiss{margin-bottom:16px}
+.sw-pools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.sw-pool{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sw-pt{display:flex;align-items:center;gap:8px;min-height:34px;padding:5px 9px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);font-size:13px;font-weight:600;min-width:0}
+.sw-pt.tbd{border-style:dashed}
+.sw-pt .tname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sw-pt .tname.tbd{color:var(--faint);font-weight:400}
+.sw-board{margin-top:10px;align-items:start}
+.sw-board .bcell{justify-content:flex-start;gap:8px}
+.sw-rd{font-family:var(--disp);font-weight:800;font-size:16px}
+.sw-m{position:relative}
+.sw-m .bslot{min-height:34px;padding:6px 9px;font-size:13px}
+.sw-m[data-how=model] .bslot.winner{background:transparent;box-shadow:inset 3px 0 0 var(--line2)}
+.sw-m[data-how=model] .bslot.eliminated{text-decoration:none;color:var(--dim)}
+.sw-as{color:var(--faint)}
+.sw-sum{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin:12px 0}
+.sw-sum>div{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.sw-h{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);width:100%}
+.sw-res{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.sw-res b{font-family:var(--mono);font-weight:400;color:var(--dim)}
+.sw-pi{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:3px}
+@media (max-width:700px){.sw-pools{grid-template-columns:1fr 1fr}.sw-sum{grid-template-columns:1fr}.sw-odds .sw-x{display:none}}
 .evt-bracket{margin-top:4px}
 .evt-bracket .bslot{font-size:13.5px}
 .evt-bracket .bslot .tname.tbd{font-family:var(--mono);font-size:10.5px;letter-spacing:.2px;line-height:1.35;white-space:normal}
@@ -1729,6 +1751,36 @@ const EVENT = {
      detail:'QF 3–6 Nov · SF 7–8 Nov · Final 14 Nov', sub:'8 TEAMS · SINGLE ELIM · BO5'},
   ],
 
+  /* The Swiss stage, as the simulator plays it. Riot publishes the stage's
+     wiring — five rounds of 8/8/8/6/3 — but every slot in it is a
+     decisionPoint, because the pairings are drawn after each round. So the
+     rules have to be written down, and they are here rather than in the code
+     that plays them.
+
+     `pools` is the Round 1 draw, and names places rather than teams: 'lck:2'
+     is whoever EVENT.qual seeds second from Korea, read through qualSeeds() —
+     so the pools fill themselves in as the board does, and 'playin' is the
+     play-in winner. `playin` is the four places that play for that last seat.
+     check.mjs holds the two lists to EVENT.qual: every place on the board in
+     exactly one of them.
+
+     The pools are Leaguepedia's (the tournament page's participants table).
+     `r1` — Pool 1 meets Pool 4, Pool 2 meets Pool 3, nobody meets their own
+     region — is Liquipedia's, the same rule shape Riot used in 2024 and 2025;
+     Riot has not published the 2026 wording, so treat it as expected rather
+     than announced. Rounds 2–5 draw teams on the same record with no rematch,
+     and a match that can send a team through or out is a Bo3, the rest Bo1.
+     Those three are on both wikis' format sections. */
+  swiss:{
+    stage:'swiss', playinStage:'play_ins',
+    pools:[['lck:1','lpl:1','lcs:1','lec:1'],
+           ['lcp:1','cblol-brazil:1','lck:2','lpl:2'],
+           ['lcs:2','lec:2','lck:3','lpl:3'],
+           ['lcp:2','lck:4','lpl:4','playin']],
+    r1:[[1,4],[2,3]],
+    playin:['lcs:3','lec:3','lcp:3','cblol-brazil:2'],
+  },
+
   /* Who is already going, and what decides the rest. Riot publishes no
      qualification feed, so this is researched and patched by hand like
      HONOURS — Leaguepedia's participants table, linked from the hero above,
@@ -2252,6 +2304,71 @@ const POWER_RANKINGS = [
   {t:'kt Rolster',          r:'LCK', pts:1381, wl:'20-18', move:0},
   {t:'Karmine Corp',        r:'LEC', pts:1375, wl:'33-13', move:-2}
 ];
+/* Points and home league for the first 58 ranked teams: what the
+   Worlds Swiss simulator rates a team by, and — through the league — how it
+   rates a place nobody has been seeded into yet (LCS #1 plays as the LCS's
+   best-rated team). Same /getTeams spelling as the board above, so the page
+   matches it with nk() like everything else. */
+const GPR_PTS = {
+  'Hanwha Life Esports':[1540,'LCK'],
+  'Gen.G Esports':[1519,'LCK'],
+  'BILIBILI GAMING':[1513,'LPL'],
+  'G2 Esports':[1475,'LEC'],
+  'T1':[1471,'LCK'],
+  'LYON':[1445,'LCS'],
+  'Dplus KIA':[1409,'LCK'],
+  'Anyone\'s Legend':[1409,'LPL'],
+  'kt Rolster':[1381,'LCK'],
+  'Karmine Corp':[1375,'LEC'],
+  'Team Secret Whales':[1372,'LCP'],
+  'TOP ESPORTS':[1364,'LPL'],
+  'Team Liquid Alienware':[1352,'LCS'],
+  'Shenzhen NINJAS IN PYJAMAS':[1350,'LPL'],
+  'Invictus Gaming':[1348,'LPL'],
+  'FlyQuest':[1344,'LCS'],
+  'Cloud9 Kia':[1339,'LCS'],
+  'Movistar KOI':[1317,'LEC'],
+  'CTBC Flying Oyster':[1317,'LCP'],
+  'WeiboGaming':[1315,'LPL'],
+  'Beijing JDG Esports':[1311,'LPL'],
+  'Xi\'an Team WE':[1283,'LPL'],
+  'GAM Esports':[1272,'LCP'],
+  'LGD GAMING':[1260,'LPL'],
+  'Team Vitality':[1257,'LEC'],
+  'BNK FEARX':[1254,'LCK'],
+  'Relove Deep Cross Gaming':[1254,'LCP'],
+  'MVK Esports':[1247,'LCP'],
+  'Suzhou LNG Esports':[1222,'LPL'],
+  'Fnatic':[1218,'LEC'],
+  'NONGSHIM RED FORCE':[1215,'LCK'],
+  'GIANTX':[1211,'LEC'],
+  'Sentinels':[1210,'LCS'],
+  'HANJIN BRION':[1209,'LCK'],
+  'Natus Vincere':[1205,'LEC'],
+  'THUNDER TALK GAMING':[1194,'LPL'],
+  'FURIA':[1194,'CBLOL'],
+  'Shopify Rebellion':[1182,'LCS'],
+  'LOUD':[1181,'CBLOL'],
+  'EDWARD GAMING':[1180,'LPL'],
+  'RED Kalunga':[1171,'CBLOL'],
+  'Fukuoka SoftBank HAWKS gaming':[1171,'LCP'],
+  'LOS':[1169,'CBLOL'],
+  'Disguised':[1164,'LCS'],
+  'KIWOOM DRX':[1163,'LCK'],
+  'Vivo Keyd Stars':[1146,'CBLOL'],
+  'Ground Zero Gaming':[1142,'LCP'],
+  'DN SOOPers':[1139,'LCK'],
+  'Shifters':[1135,'LEC'],
+  'Oh My God':[1133,'LPL'],
+  'paiN Gaming':[1124,'CBLOL'],
+  'Ultra Prime':[1124,'LPL'],
+  'SK Gaming':[1122,'LEC'],
+  'Dignitas':[1120,'LCS'],
+  'DetonatioN FocusMe':[1089,'LCP'],
+  'Team Heretics':[1087,'LEC'],
+  'Fluxo W7M':[1069,'CBLOL'],
+  'LEVIATÁN':[1050,'CBLOL']
+};
 /* GPR:end */
 
 /* DRAFTS:generated */
@@ -3187,9 +3304,22 @@ async function fetchEventBracket() {
     .flatMap(c => c.cells||[]).reduce((n, c) => n + (c.matches||[]).length, 0);
   const pick = stages.find(s => s.slug === EVENT.feed?.stage) || stages[0];
   if (!pick) return null;
+  /* The Swiss simulator reads two more stages the same way: the play-in, whose
+     winner takes the last Swiss seat, and the Swiss stage itself, whose real
+     pairings and results replace the simulated ones as they are played. */
+  const bySlug = slug => { const s = stages.find(x => x.slug === slug); return s ? evtTrimStage(s) : null; };
   evtBracket = {
     tid,
-    stage:{
+    stage: evtTrimStage(pick),
+    swiss: bySlug(EVENT.swiss?.stage),
+    playin: bySlug(EVENT.swiss?.playinStage),
+    others: stages.filter(s => s !== pick).map(s => ({ name: s.name, n: countOf(s) })),
+  };
+  lsWrite(LS('evtBracket'), JSON.stringify(evtBracket));
+  return evtBracket;
+}
+function evtTrimStage(pick) {
+  return {
       name: pick.name, slug: pick.slug,
       cols: (pick.sections||[]).flatMap(sec => sec.columns||[]).map(col => ({
         cells: (col.cells||[]).map(c => ({
@@ -3204,11 +3334,7 @@ async function fetchEventBracket() {
           })),
         })),
       })),
-    },
-    others: stages.filter(s => s !== pick).map(s => ({ name: s.name, n: countOf(s) })),
   };
-  lsWrite(LS('evtBracket'), JSON.stringify(evtBracket));
-  return evtBracket;
 }
 
 /* -------- official standings -------- */
@@ -4347,6 +4473,8 @@ document.addEventListener('click', e => {
   lsWrite(LS('spoilerFree'), JSON.stringify(spoilFree));
   syncSpoilToggles();
   applySpoil();
+  /* the simulator uses played results only while scores are shown */
+  try { renderSwiss(); } catch (err) { console.error('swiss failed', err); }
 });
 
 /* -------- recent games \u2014 same row rhythm as Next Up, score instead of VS -------- */
@@ -4692,6 +4820,19 @@ function qualThru(r) {
   return merged.concat(extra);
 }
 
+/* Which seeds are still open to a team. An explicit `seed` is the answer — a
+   number where the games have decided it, a list where they have narrowed it —
+   and where there is none the route the team named is the answer, because the
+   routes are the seed table. Shared by the qualification board and the Swiss
+   simulator, so "who is LCK #2" has one answer on the page rather than two
+   copies of the rule that can drift. */
+function qualSeeds(r, t) {
+  if (Number.isInteger(t.seed)) return [t.seed];
+  if (Array.isArray(t.seed) && t.seed.length) return [...t.seed].sort((a, b) => a - b);
+  const i = r.routes.findIndex(x => x.via === t.via);
+  return i >= 0 ? [i + 1] : [];
+}
+
 function evtQual() {
   const q = EVENT.qual;
   if (!q) return '';
@@ -4712,19 +4853,8 @@ function evtQual() {
        stale.mjs quotes it in a report that has no crest to lean on. */
     const short = via => via.startsWith(r.lg + ' ') ? via.slice(r.lg.length + 1) : via;
 
-    /* Which seeds are still open to a team. An explicit `seed` is the answer —
-       a number where the games have decided it, a list where they have narrowed
-       it — and where there is none the route the team named is the answer,
-       because the routes are the seed table. A team with neither is one the
-       board cannot place at all, and is filled in from the band below. */
-    const seedsOf = t => {
-      if (Number.isInteger(t.seed)) return [t.seed];
-      if (Array.isArray(t.seed) && t.seed.length) return [...t.seed].sort((a, b) => a - b);
-      const i = r.routes.findIndex(x => x.via === t.via);
-      return i >= 0 ? [i + 1] : [];
-    };
-
-    const thru = qualThru(r).map(t => ({ t, seeds: seedsOf(t) }));
+    /* A team qualSeeds() cannot place at all is filled in from the band below. */
+    const thru = qualThru(r).map(t => ({ t, seeds: qualSeeds(r, t) }));
     const done = thru.filter(x => x.seeds.length === 1);
     const open = thru.filter(x => x.seeds.length !== 1);
 
@@ -5015,6 +5145,341 @@ function renderEventBracket() {
     + (rest.length ? ' · then ' + rest.map(o => `${o.name} (${o.n})`).join(', ') : '');
 }
 
+/* -------- the Swiss stage simulator ----------------------------------------
+
+   Sixteen teams, five rounds, three wins through and three losses out. The
+   feed can wire every other stage on this tab in advance; it cannot wire this
+   one, because its pairings are drawn after each round — so the draw is played
+   here by the rules in EVENT.swiss, and replaced by Riot's own pairings and
+   results round by round as they are published.
+
+   One engine, swissRun(), plays one whole stage, and everything on the panel
+   is built from it: the pick board is one run with a fixed seed and the
+   viewer's picks, the odds are ten thousand runs with neither. Strength is the
+   GPR score (GPR_PTS, generated nightly) — Riot's own cross-region rating, and
+   the only number on this page that puts an LCP champion and Gen.G on one
+   scale. A place still to be settled is played as an average team of the
+   field, and the panel says which ones those are.
+
+   Sampled, so never certain: a 0 in ten thousand is "never seen", not
+   impossible. Only a result actually played is certain, and those rows say
+   so in words. */
+const SWISS_RUNS = 10000;
+const swissState = Object.assign({ seed: 1, picks: {} }, lsJSON(LS('swiss'), {}));
+function swissSave() { lsWrite(LS('swiss'), JSON.stringify(swissState)); }
+let swissOddsCache = null;
+
+/* A seeded generator, so the pick board draws the same pairings every time it
+   is redrawn until the viewer asks for a new draw. */
+function swissRng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* A place in EVENT.swiss ('lck:2') as a team, or as its own label while the
+   qualification board has not seeded anybody into it. */
+function swissPlace(ref) {
+  const [slug, n] = ref.split(':');
+  const r = EVENT.qual.regions.find(x => x.slug === slug);
+  const t = r && qualThru(r).find(t => { const s = qualSeeds(r, t); return s.length === 1 && s[0] === +n; });
+  return { name: t ? t.team : `${r ? r.lg : slug.toUpperCase()} #${n}`, rg: slug, set: !!t,
+           lg: t ? null : r?.lg, n: +n };
+}
+
+/* The field, and the played results the viewer has chosen to see. Under the
+   spoiler guard nothing played is used — not a result, not a pairing, not the
+   play-in winner — because a Round 2 draw between two 1–0 teams is the Round 1
+   result by another name.
+
+   Every team carries its key and its rating from here on: the odds play ten
+   thousand stages, and normalising a name inside that loop is most of the cost. */
+let swissPtsK = null, swissByLg = null;
+/* A place nobody has been seeded into yet is rated as its league's team of the
+   same rank by GPR — LCS #1 as the LCS's best-rated team, CBLOL #2 as Brazil's
+   second — and the panel names who it is standing in for. That is a guess
+   about strength, never about who qualifies. */
+function swissTeam(t) {
+  if (!swissPtsK) {
+    swissPtsK = new Map(); swissByLg = {};
+    for (const [n, [p, lg]] of Object.entries(GPR_PTS)) {
+      swissPtsK.set(nk(n), p);
+      (swissByLg[lg] = swissByLg[lg] || []).push([n, p]);
+    }
+    for (const lg in swissByLg) swissByLg[lg].sort((a, b) => b[1] - a[1]);
+  }
+  const k = nk(t.name);
+  let pts = swissPtsK.get(k) ?? null, as = null;
+  if (pts == null && t.lg) { const x = swissByLg[t.lg]?.[t.n - 1]; if (x) [as, pts] = x; }
+  return { ...t, k, pts, as, gpr: swissPtsK.has(k) };
+}
+function swissField() {
+  const S = EVENT.swiss;
+  const teams = [];
+  S.pools.forEach((pool, i) => pool.forEach(ref => {
+    if (ref !== 'playin') teams.push(swissTeam({ ...swissPlace(ref), pool: i + 1 }));
+  }));
+  const playin = S.playin.map(ref => swissTeam(swissPlace(ref)));
+  /* The median is only the last resort: a place whose league has fewer rated
+     teams than its seed number, or a team GPR does not rank at all. */
+  const pts = teams.concat(playin).map(t => t.pts).filter(p => p != null).sort((a, b) => a - b);
+  const avg = pts.length ? pts[pts.length >> 1] : 1300;
+  for (const t of teams.concat(playin)) if (t.pts == null) t.pts = avg;
+  const real = spoilFree ? null : evtBracket;
+  return { teams, playin, avg, swiss: real?.swiss || null, playinStage: real?.playin || null,
+           pin: S.pools.findIndex(p => p.includes('playin')) + 1 };
+}
+function swissP(a, b, bo) {
+  return seriesProb(1 / (1 + Math.pow(10, (b.pts - a.pts) / 400)), bo);
+}
+
+/* The play-in, walked off Riot's published wiring where there is one (slot 1
+   of an origin is the winner, slot 2 the loser) and off the same four-team
+   double elimination written out here where there is not. A team the wiring
+   has not placed yet is drawn into it at random. */
+const SWISS_PI = { cols: [
+  { cells: [{ matches: [{ sid: 'a', teams: [{}, {}] }, { sid: 'b', teams: [{}, {}] }] }] },
+  { cells: [{ matches: [{ sid: 'c', teams: [{ org: { type: 'match', sid: 'a', slot: 1 } }, { org: { type: 'match', sid: 'b', slot: 1 } }] }] },
+            { matches: [{ sid: 'd', teams: [{ org: { type: 'match', sid: 'a', slot: 2 } }, { org: { type: 'match', sid: 'b', slot: 2 } }] }] }] },
+  { cells: [{ matches: [{ sid: 'e', teams: [{ org: { type: 'match', sid: 'c', slot: 2 } }, { org: { type: 'match', sid: 'd', slot: 1 } }] }] }] },
+  { cells: [{ matches: [{ sid: 'f', teams: [{ org: { type: 'match', sid: 'c', slot: 1 } }, { org: { type: 'match', sid: 'e', slot: 1 } }] }] }] },
+] };
+function swissPlayin(F, rng) {
+  const st = F.playinStage?.cols?.length ? F.playinStage : SWISS_PI;
+  const byKey = new Map(F.playin.map(t => [t.k, t]));
+  const named = new Set(st.cols.flatMap(c => c.cells.flatMap(cl => cl.matches.flatMap(m =>
+    m.teams.filter(x => x.name && x.name !== 'TBD').map(x => nk(x.name))))));
+  const left = F.playin.filter(t => !named.has(t.k));
+  const res = {};
+  let last = null;
+  for (const col of st.cols) for (const cell of col.cells) for (const m of cell.matches) {
+    const two = m.teams.map(x => {
+      if (x.name && x.name !== 'TBD') return byKey.get(nk(x.name)) || { ...swissTeam({ name: x.name, rg: '' }), pts: F.avg };
+      if (x.org?.type === 'match' && res[x.org.sid]) return res[x.org.sid][x.org.slot === 2 ? 1 : 0];
+      return left.splice(Math.floor(rng() * left.length), 1)[0] || { ...swissTeam({ name: 'Play-in winner', rg: '' }), pts: F.avg };
+    });
+    const played = m.teams.findIndex(x => x.win);
+    const w = played >= 0 ? played : rng() < swissP(two[0], two[1], 5) ? 0 : 1;
+    res[m.sid] = last = [two[w], two[1 - w]];
+  }
+  return last[0];
+}
+
+/* The played Swiss rounds, as pairs of keys; w is -1 until a match is played. */
+function swissReal(F) {
+  return (F.swiss?.cols || []).map(col => col.cells.flatMap(c => c.matches)
+    .filter(m => m.teams.every(t => t.name && t.name !== 'TBD'))
+    .map(m => ({ a: nk(m.teams[0].name), b: nk(m.teams[1].name),
+                 w: m.teams[0].win ? 0 : m.teams[1].win ? 1 : -1 })));
+}
+
+/* Every way to pair two pools with nobody meeting their own region, one chosen
+   at random. That is uniform over the legal draws, which Riot's sequential
+   ball-drawing is not quite — close enough to model, not a claim about the
+   show. Falls back to any pairing if the pools admit no legal one. */
+function swissPerms(n) {
+  if (n <= 1) return [[0]];
+  const out = [];
+  for (const p of swissPerms(n - 1)) for (let i = 0; i <= p.length; i++) out.push([...p.slice(0, i), n - 1, ...p.slice(i)]);
+  return out;
+}
+function swissR1(A, B, rng) {
+  const all = swissPerms(B.length);
+  const ok = all.filter(p => p.every((j, i) => A[i].rg !== B[j].rg));
+  const use = ok.length ? ok : all;
+  const p = use[Math.floor(rng() * use.length)];
+  return A.map((a, i) => [a, B[p[i]]]);
+}
+/* A same-record group paired with no rematch: shuffle, then pair the first
+   team with the first opponent it has not met, backtracking when that strands
+   somebody. If no rematch-free pairing exists it takes any — the rules say
+   there are no rematches and do not say what happens when that cannot hold. */
+function swissPair(group, met, rng) {
+  const g = group.slice();
+  for (let i = g.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [g[i], g[j]] = [g[j], g[i]]; }
+  const go = rest => {
+    if (!rest.length) return [];
+    const [a, ...tail] = rest;
+    for (let i = 0; i < tail.length; i++) {
+      if (met.has(a.k + '|' + tail[i].k)) continue;
+      const sub = go(tail.filter((_, j) => j !== i));
+      if (sub) return [[a, tail[i]], ...sub];
+    }
+    return null;
+  };
+  return go(g) || g.reduce((o, t, i) => (i % 2 ? o[o.length - 1].push(t) : o.push([t]), o), []);
+}
+
+/* One whole Swiss stage. `picks` fixes a pairing's winner when that pairing
+   comes up; `fav` plays every other match to the favourite instead of rolling
+   for it, which is what the pick board wants — a projection, not a dice roll. */
+function swissRun(F, rng, picks, fav) {
+  const pw = swissPlayin(F, rng);
+  const teams = F.teams.concat([{ ...pw, pool: F.pin, playin: true }]);
+  const rec = new Map(teams.map(t => [t.k, { t, w: 0, l: 0 }]));
+  const met = new Set();
+  const real = swissReal(F);
+  const rounds = [];
+  for (let k = 0; k < 5; k++) {
+    const live = [...rec.values()].filter(r => r.w < 3 && r.l < 3);
+    let pairs;
+    const rr = real[k] || [];
+    /* Riot's own draw for a round, once it is complete and every team in it is
+       one the field knows; otherwise the rules draw it. */
+    if (rr.length * 2 === live.length && rr.every(m => rec.has(m.a) && rec.has(m.b)))
+      pairs = rr.map(m => [rec.get(m.a).t, rec.get(m.b).t, m.w]);
+    else if (!k)
+      pairs = EVENT.swiss.r1.flatMap(([x, y]) => swissR1(teams.filter(t => t.pool === x), teams.filter(t => t.pool === y), rng));
+    else {
+      const by = new Map();
+      for (const r of live) { const key = r.w + '-' + r.l; if (!by.has(key)) by.set(key, []); by.get(key).push(r.t); }
+      pairs = [...by.keys()].sort().reverse().flatMap(key => swissPair(by.get(key), met, rng));
+    }
+    rounds.push(pairs.map(([a, b, played]) => {
+      const A = rec.get(a.k), B = rec.get(b.k);
+      const before = A.w + '–' + A.l;         // both sides share it: they were drawn on it
+      const bo = A.w === 2 || A.l === 2 ? 3 : 1;
+      const p = swissP(a, b, bo);
+      const key = a.k < b.k ? a.k + '|' + b.k : b.k + '|' + a.k;
+      let w = played >= 0 ? played : -1, how = 'played';
+      if (w < 0 && picks && picks[key]) { w = picks[key] === a.k ? 0 : 1; how = 'pick'; }
+      if (w < 0) { w = fav ? (p >= .5 ? 0 : 1) : (rng() < p ? 0 : 1); how = fav ? 'model' : 'roll'; }
+      met.add(a.k + '|' + b.k); met.add(b.k + '|' + a.k);
+      (w ? B : A).w++; (w ? A : B).l++;
+      return { a, b, bo, p, w, how, rec: before, key };
+    }));
+  }
+  return { rounds, rec: [...rec.values()], pw };
+}
+
+/* Ten thousand stages, counted. Cached on what they depend on — the field and
+   what has been played — so a pick does not re-run them. */
+function swissOdds(F) {
+  const sig = JSON.stringify([F.teams.map(t => t.name), F.playin.map(t => t.name), swissReal(F),
+    (F.playinStage?.cols || []).flatMap(c => c.cells.flatMap(x => x.matches.map(m => m.teams.map(t => t.name + t.win))))]);
+  if (swissOddsCache?.sig === sig) return swissOddsCache;
+  const rng = swissRng(0x5eed);
+  const acc = new Map();
+  const A = k => acc.get(k) || (acc.set(k, { adv: 0, x30: 0, x03: 0, pi: 0 }), acc.get(k));
+  for (let i = 0; i < SWISS_RUNS; i++) {
+    const run = swissRun(F, rng, null, false);
+    A(run.pw.k).pi++;
+    for (const r of run.rec) {
+      const a = A(r.t.k);
+      if (r.w === 3) { a.adv++; if (!r.l) a.x30++; }
+      if (r.l === 3 && !r.w) a.x03++;
+    }
+  }
+  return swissOddsCache = { sig, acc };
+}
+
+function swissPct(n, played) {
+  if (played === 'in') return 'Through';
+  if (played === 'out') return 'Out';
+  if (!n) return '<span title="Not once in ' + SWISS_RUNS.toLocaleString() + ' simulated stages — sampled, so unlikely rather than impossible">never seen</span>';
+  if (n === SWISS_RUNS) return '<span title="Every simulated stage — sampled, so likely rather than certain">&gt;99.9%</span>';
+  const p = n / SWISS_RUNS * 100;
+  return (p < 0.1 ? '&lt;0.1' : p > 99.9 ? '&gt;99.9' : p.toFixed(p < 10 ? 1 : 0)) + '%';
+}
+
+function renderSwiss() {
+  const box = $('#evtSwissBody');
+  if (!box || !EVENT.swiss) return;
+  const F = swissField();
+  const run = swissRun(F, swissRng(swissState.seed), swissState.picks, true);
+  const odds = swissOdds(F);
+  const slot = (t, full) => `${logoHTML(t.name)}<span class="tname">${esc(full ? t.name : raceShort(t.name))}</span>`;
+  const unset = F.teams.concat(F.playin).filter(t => !t.set)
+    .map(t => t.name + (t.as ? ` (as ${t.as})` : ' (as the field median)'));
+  const PN = ['', 'Pool 1', 'Pool 2', 'Pool 3', 'Pool 4'];
+
+  const pools = EVENT.swiss.pools.map((p, i) => `<div class="sw-pool"><span class="bgroup-label">${PN[i + 1]}</span>${
+    p.map(ref => {
+      const t = ref === 'playin' ? { name: 'Play-in winner', set: false } : swissPlace(ref);
+      return `<div class="sw-pt${t.set ? '' : ' tbd'}">${t.set ? slot(t, true) : `<span class="tname tbd">${esc(t.name)}</span>`}</div>`;
+    }).join('')}</div>`).join('');
+
+  const cols = run.rounds.map((ms, k) => {
+    let html = '', lastRec = '';
+    for (const m of ms) {
+      if (m.rec !== lastRec) { html += `<span class="bgroup-label">${m.rec}${m.bo === 3 ? ' · Bo3' : ''}</span>`; lastRec = m.rec; }
+      html += `<div class="bmatch sw-m" data-how="${m.how}">` + [m.a, m.b].map((t, i) => {
+        const p = i ? 1 - m.p : m.p;
+        return `<div class="bslot${m.how === 'played' ? '' : ' clickable'}${m.w === i ? ' winner' : ' eliminated'}"`
+          + ` data-key="${esc(m.key)}" data-t="${esc(t.k)}"${m.how === 'played' ? ' title="Played"' : ''}>${slot(t)}`
+          + `<span class="prob${p >= .5 ? ' fav' : ''}">${m.how === 'played' ? '✓' : Math.round(p * 100) + '%'}</span></div>`;
+      }).join('') + '</div>';
+    }
+    return `<div class="bcell"><span class="sw-rd">Round ${k + 1}</span>${html}</div>`;
+  }).join('');
+
+  const done = run.rec.filter(r => r.w === 3).sort((a, b) => a.l - b.l);
+  const out = run.rec.filter(r => r.l === 3).sort((a, b) => b.w - a.w);
+  const line = list => list.map(r => `<span class="sw-res">${logoHTML(r.t.name)}${esc(raceShort(r.t.name))} <b>${r.w}–${r.l}</b></span>`).join('');
+
+  const rows = F.teams.concat(F.playin.map(t => ({ ...t, pool: 0 })))
+    .map(t => ({ t, a: odds.acc.get(t.k) || { adv: 0, x30: 0, x03: 0, pi: 0 } }))
+    .sort((x, y) => y.a.adv - x.a.adv || y.a.pi - x.a.pi);
+  const played = F.swiss ? swissReal(F) : [];
+  const fin = new Map();
+  { const r = new Map(); for (const rd of played) for (const m of rd) if (m.w >= 0) [m.a, m.b].forEach((n, i) => {
+      const x = r.get(nk(n)) || { w: 0, l: 0 }; i === m.w ? x.w++ : x.l++; r.set(nk(n), x);
+      if (x.w === 3) fin.set(nk(n), 'in'); if (x.l === 3) fin.set(nk(n), 'out'); }); }
+  const tbl = '<table class="tbl-race"><tr><th>Team</th><th class="num sw-x">Pool</th><th class="num sw-x" title="Global Power Rankings score — what the model rates each team by">GPR</th>'
+    + '<th>Knockouts</th><th class="num">3–0</th><th class="num">0–3</th></tr>'
+    + rows.map(({ t, a }) => {
+      const pin = !t.pool, f = fin.get(t.k);
+      const adv = a.adv / SWISS_RUNS;
+      return `<tr><td>${logoHTML(t.name)}${esc(t.name)}${t.set ? '' : ' <span class="race-chip">TBD</span>'}</td>`
+        + `<td class="num sw-x">${pin ? 'PI' : t.pool}</td><td class="num sw-x">${t.gpr ? t.pts : `<span class="sw-as" title="Not settled — rated as ${esc(t.as || 'the field median')}">${t.pts}*</span>`}</td>`
+        + `<td class="race-odds"><span class="race-num">${swissPct(a.adv, f)}</span>`
+        + `<span class="bar-wrap"><span class="bar" style="width:${Math.round(adv * 100)}%"></span></span>`
+        + (pin ? `<span class="sw-pi">wins play-in ${swissPct(a.pi)}</span>` : '') + '</td>'
+        + `<td class="num">${swissPct(a.x30)}</td><td class="num">${swissPct(a.x03)}</td></tr>`;
+    }).join('') + '</table>';
+
+  const npick = Object.keys(swissState.picks).length;
+  box.innerHTML = `
+    <div class="sw-pools">${pools}</div>
+    <div class="race-note">Round 1: Pool 1 v Pool 4, Pool 2 v Pool 3, nobody meets their own region — the
+      rule Riot used in 2024 and 2025, expected again; Riot has not published the 2026 wording. After that,
+      teams on the same record are drawn together with no rematches, and any match that can put a team
+      through or out is a Bo3.</div>
+    <div class="sim-toolbar">
+      <button class="btn small" type="button" data-sw="draw" title="Draw every round again">New draw</button>
+      <button class="btn small" type="button" data-sw="clear"${npick ? '' : ' disabled'}>Clear ${npick || ''} pick${npick === 1 ? '' : 's'}</button>
+      <span class="race-hint">Click a team to pick it. Unpicked matches go to the model's favourite, and every
+        later round is redrawn from the records that leaves.</span>
+    </div>
+    <div class="bracket sw-board" style="grid-template-columns:repeat(5, minmax(${BCOL_MIN}px,1fr))">${cols}</div>
+    <div class="sw-sum"><div><span class="sw-h">Through</span>${line(done)}</div><div><span class="sw-h">Out</span>${line(out)}</div></div>
+    <div class="race-tbl sw-odds">${tbl}</div>
+    <div class="race-note">Odds from ${SWISS_RUNS.toLocaleString()} simulated stages, each with its own draw and
+      play-in, rating teams by Global Power Rankings score; your picks do not change them.
+      ${unset.length ? `Not settled yet, so each is rated (*) as its league’s team of the same rank by GPR: ${esc(unset.join(', '))}.` : ''}
+      ${spoilFree ? 'Scores are hidden, so nothing already played is used — turn the switch off to include results.'
+        : F.swiss && played.some(r => r.length) ? 'Played results and Riot’s own draws are fixed in.' : ''}</div>`;
+  const sub = $('#evtSwissSub');
+  if (sub) sub.textContent = `${F.teams.filter(t => t.set).length} of 15 direct seats settled · play-in winner takes the 16th`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('#evtSwissBody [data-sw], #evtSwissBody .sw-m .bslot.clickable');
+  if (!b) return;
+  if (b.dataset.sw === 'draw') swissState.seed = (swissState.seed * 7919 + 13) % 2147483647 || 1;
+  else if (b.dataset.sw === 'clear') swissState.picks = {};
+  else {
+    const k = b.dataset.key;
+    if (swissState.picks[k] === b.dataset.t) delete swissState.picks[k];
+    else swissState.picks[k] = b.dataset.t;
+  }
+  swissSave();
+  renderSwiss();
+});
+
 function buildEventPage() {
   const page = $('#page-' + EVENT.slug);
   if (!page) return;                 // no section, no page — check.mjs catches that
@@ -5051,7 +5516,8 @@ function buildEventPage() {
       below are all real — Riot has published the dates, the three venues and the whole tournament
       wiring. What is missing is the one thing nobody has yet: a schedule. No fixture on this tournament
       has a kick-off time and the draw has not been made, so the boards read TBD until it is, and then
-      fill themselves. The four league tabs are unaffected.
+      fill themselves. The Swiss simulator plays that draw by the published rules in the meantime, and
+      hands each round over to Riot's own as it is made. The four league tabs are unaffected.
     </div>
 
     <div class="panel live-panel off" id="evtLivePanel">
@@ -5121,6 +5587,15 @@ function buildEventPage() {
          slowest-moving thing on the page — announced once and then unchanged
          for weeks — while the boards above it are the reason anyone opens the
          tab twice in a day. -->
+    <!-- The Swiss stage, played by the rules in EVENT.swiss: the Round 1 pools,
+         a board the viewer can pick through, and the odds from ten thousand
+         simulated stages. renderSwiss() fills it. -->
+    <div class="panel evt-swiss">
+      <div class="p-head"><div class="p-title">Swiss Stage Simulator</div>
+        <span class="p-sub" id="evtSwissSub"></span></div>
+      <div id="evtSwissBody"><div class="loading">Simulating…</div></div>
+    </div>
+
     <div class="panel evt-brk">
       <div class="p-head"><div class="p-title" id="evtBracketTitle">${esc(evtBracket?.stage?.name || EVENT.stages[0]?.name || 'Bracket')} Bracket</div>
         <span class="p-sub" id="evtBracketSub"></span></div>
@@ -7953,6 +8428,7 @@ async function refreshAll(deep=true) {
      tournament, not a fifth region, and a throw in either of these must not
      cost the home board its render. */
   try { renderEventBoard(); renderEventBracket(); } catch (e) { console.error('event board failed', e); }
+  try { renderSwiss(); } catch (e) { console.error('swiss failed', e); }
   // a refresh that failed must not stamp the clock as though the board were
   // current — that is what let an hour-old game sit there looking live
   $('#lastRefresh').textContent = ok ? 'updated ' + fmtHM(Date.now())
@@ -7969,6 +8445,7 @@ applySpoil();
    bracket does not change once it is announced, so there is nothing to wait for. */
 renderEventBoard();
 renderEventBracket();
+try { renderSwiss(); } catch (e) { console.error('swiss failed', e); }
 renderLeagueChrome();
 renderHome();
 renderTicker();

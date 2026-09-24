@@ -424,7 +424,7 @@ if (m && !fails.length) {
   }
 
   if (C) {
-    const { SEASON, REGIONS, EVENT, QUAL_AUTO, HONOURS, STORYLINES, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
+    const { SEASON, REGIONS, EVENT, QUAL_AUTO, HONOURS, STORYLINES, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF, GPR_PTS, FORMATS } = C;
 
     /* -- SEASON -------------------------------------------------------------
        The render code reads SEASON; the <title> carries its own literal,
@@ -836,6 +836,50 @@ if (m && !fails.length) {
           }
         }
       }
+    }
+
+    /* -- EVENT.swiss: the Swiss simulator's draw ------------------------------
+       The pools name places on the qualification board ('lck:2'), not teams,
+       so they can only go wrong by naming a place that is not there or by
+       leaving one out. Either renders a perfectly good-looking field of the
+       wrong sixteen: a misspelt slug plays as a placeholder all tournament, and
+       a place in no list is a team that silently never plays. So every place on
+       the board has to be in exactly one of the pools and the play-in, with
+       'playin' once, four pools of four, and a Round 1 rule that pairs each
+       pool exactly once. */
+    if (EVENT?.swiss) {
+      const S = EVENT.swiss, q = EVENT.qual;
+      if (!Array.isArray(S.pools) || S.pools.length !== 4 || S.pools.some(p => !Array.isArray(p) || p.length !== 4))
+        fail('EVENT.swiss.pools is not four pools of four.');
+      else if (!Array.isArray(S.playin) || !q?.regions) fail('EVENT.swiss.playin is missing, or there is no EVENT.qual to hold it to.');
+      else {
+        const refs = S.pools.flat().concat(S.playin);
+        const board = q.regions.flatMap(r => r.routes.map((_, i) => `${r.slug}:${i + 1}`));
+        const count = new Map();
+        for (const x of refs) count.set(x, (count.get(x) || 0) + 1);
+        if (count.get('playin') !== 1) fail(`EVENT.swiss names the play-in winner ${count.get('playin') || 0} times, not once.`);
+        for (const [x, n] of count) {
+          if (x === 'playin') continue;
+          if (!board.includes(x)) fail(`EVENT.swiss names "${x}", which is not a place on EVENT.qual's board.`,
+            'It would play all tournament as a placeholder. Places are <region slug>:<seed>.');
+          else if (n > 1) fail(`EVENT.swiss names "${x}" ${n} times.`);
+        }
+        for (const x of board) if (!count.has(x))
+          fail(`${x} is on the qualification board but in no Swiss pool and not in the play-in.`,
+               'That team would never play in the simulator.');
+        const r1 = (S.r1 || []).flat().sort().join(',');
+        if (r1 !== '1,2,3,4') fail(`EVENT.swiss.r1 pairs pools ${r1 || 'none'}; it has to pair 1–4 each exactly once.`);
+      }
+      for (const f of ['stage', 'playinStage'])
+        if (typeof S[f] !== 'string' || !S[f]) fail(`EVENT.swiss.${f} is not a stage slug.`);
+    }
+
+    /* -- GPR_PTS: the simulator's ratings, generated beside POWER_RANKINGS -- */
+    if (GPR_PTS !== undefined) {
+      const bad = Object.entries(GPR_PTS || {}).filter(([, v]) =>
+        !Array.isArray(v) || typeof v[0] !== 'number' || typeof v[1] !== 'string');
+      if (!GPR_PTS || !Object.keys(GPR_PTS).length) fail('GPR_PTS is empty.');
+      else if (bad.length) fail(`GPR_PTS has ${bad.length} entr${bad.length > 1 ? 'ies' : 'y'} that are not [points, league]: ${bad[0][0]}`);
     }
 
     /* -- POWER_RANKINGS ---------------------------------------------------- */

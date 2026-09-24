@@ -542,6 +542,73 @@ if (loaded) {
     return r.sub;
   });
 
+  /* The Swiss simulator is computed, not fetched, so a rule broken inside it
+     renders a perfectly plausible board — a team through on two wins, a
+     rematch, a Round 2 Bo3 — and throws nothing. So the rules are held here
+     against the page's own engine, over hundreds of random stages rather than
+     the one the board happens to show: eight through and eight out, exactly
+     two 3–0s and two 0–3s, no rematch, Bo3 exactly where a team can go
+     through or out, and Round 1 only between the pools EVENT.swiss pairs and
+     never inside a region. Then the odds, which must add up for the same
+     reason the race panel's must: every stage sends eight on. */
+  await check('event tab: Swiss simulator', async () => {
+    const r = await page.evaluate(() => {
+      if (typeof swissRun !== 'function' || !EVENT.swiss) return { err: 'the Swiss simulator is not on the page' };
+      const F = swissField();
+      if (F.teams.length !== 15) return { err: `${F.teams.length} direct Swiss places for 15` };
+      const pts = document.querySelectorAll('#evtSwissBody .sw-pt').length;
+      if (pts !== 16) return { err: `the pools drew ${pts} places for 16` };
+      const shape = [...document.querySelectorAll('#evtSwissBody .sw-board .bcell')]
+        .map(c => c.querySelectorAll('.sw-m').length).join('/');
+      if (shape !== '8/8/8/6/3') return { err: `the pick board drew rounds of ${shape}, not 8/8/8/6/3` };
+
+      const rng = swissRng(20261023), R1 = EVENT.swiss.r1.map(p => p.join('-'));
+      let rematch = 0;
+      for (let i = 0; i < 400; i++) {
+        const run = swissRun(F, rng, null, false);
+        const w3 = run.rec.filter(x => x.w === 3), l3 = run.rec.filter(x => x.l === 3);
+        if (w3.length !== 8 || l3.length !== 8) return { err: `a stage sent ${w3.length} through and ${l3.length} out` };
+        if (w3.filter(x => !x.l).length !== 2 || l3.filter(x => !x.w).length !== 2)
+          return { err: 'a stage did not produce exactly two 3–0s and two 0–3s' };
+        const met = new Set();
+        for (const [k, ms] of run.rounds.entries()) for (const m of ms) {
+          if (met.has(m.key)) rematch++;
+          met.add(m.key);
+          const [w, l] = m.rec.split('–').map(Number);
+          if ((m.bo === 3) !== (w === 2 || l === 2)) return { err: `a ${m.rec} match was drawn as a Bo${m.bo}` };
+          if (!k) {
+            const pp = [m.a.pool, m.b.pool].sort().join('-');
+            if (!R1.includes(pp)) return { err: `Round 1 paired Pool ${pp}` };
+            if (m.a.rg === m.b.rg) return { err: `Round 1 paired two ${m.a.rg} teams` };
+          }
+        }
+      }
+      /* The rules forbid rematches and do not say what happens when a group
+         cannot avoid one; the engine then allows it. That should be rare. */
+      if (rematch > 8) return { err: `${rematch} rematches in 400 stages` };
+
+      const O = swissOdds(F), N = SWISS_RUNS;
+      let adv = 0, x30 = 0, x03 = 0, pi = 0;
+      for (const a of O.acc.values()) { adv += a.adv; x30 += a.x30; x03 += a.x03; pi += a.pi; }
+      if (adv !== 8 * N || x30 !== 2 * N || x03 !== 2 * N || pi !== N)
+        return { err: `odds do not add up: ${adv / N} through, ${x30 / N} 3–0s, ${x03 / N} 0–3s, ${pi / N} play-in winners` };
+      return { rematch, unset: F.teams.filter(t => !t.set).length };
+    });
+    if (r.err) throw new Error(r.err);
+
+    /* A pick has to stick, and has to be the team that was clicked. */
+    const slot = await page.$('#evtSwissBody .sw-board .bcell:first-child .sw-m .bslot.eliminated');
+    if (!slot) throw new Error('no pickable team on the board');
+    const [key, t] = await slot.evaluate(s => [s.dataset.key, s.dataset.t]);
+    await slot.click();
+    const won = await page.$eval(`#evtSwissBody .bslot[data-key="${key}"][data-t="${t}"]`, s => s.classList.contains('winner'));
+    const saved = await page.evaluate(k => JSON.parse(localStorage.getItem('nexusdesk_swiss') || '{}').picks?.[k], key);
+    await page.click('#evtSwissBody [data-sw="clear"]');
+    if (!won) throw new Error('a picked team was not drawn as the winner');
+    if (saved !== t) throw new Error('a pick was not saved');
+    return `400 stages to the rules, odds sum to 8 through · ${r.unset} place(s) unsettled · ${r.rematch} forced rematch(es)`;
+  });
+
   await check('back to home', async () => {
     await page.click('.fchip[data-f=all]');
     await page.waitForSelector('#page-home.active', { timeout: STEP_MS });

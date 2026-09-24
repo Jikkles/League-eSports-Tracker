@@ -77,6 +77,13 @@ const arg = name => {
 };
 const DRY = process.argv.includes('--dry-run');
 const TOP = Number(arg('--top') || 10);
+/* How deep GPR_PTS goes. The board shows ten; the Worlds Swiss simulator needs
+   a strength for every team in a sixteen-team field, and about half of any
+   Worlds field sits outside the top ten — an LCP or CBLOL champion is nowhere
+   near it. GPR is Riot's own cross-region rating, which is exactly the number a
+   Gen.G v Team Secret Whales matchup wants, so the points go this deep rather
+   than the simulator inventing a strength for anyone below tenth. */
+const FIELD = Number(arg('--field') || 60);
 const YEAR_ARG = arg('--year');
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -180,7 +187,7 @@ const asOfLabel = iso => {
    only the quote and the backslash need escaping in a one-line literal. */
 const q = s => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 
-function renderBlock(rows, asOf) {
+function renderBlock(rows, asOf, field) {
   const wt = Math.max(...rows.map(r => q(r.t).length + 1));
   const wr = Math.max(...rows.map(r => q(r.r).length + 1));
   const ww = Math.max(...rows.map(r => q(r.wl).length + 1));
@@ -198,6 +205,14 @@ function renderBlock(rows, asOf) {
     'const POWER_RANKINGS = [',
     lines.join(',\n'),
     '];',
+    `/* Points and home league for the first ${field.length} ranked teams: what the`,
+    '   Worlds Swiss simulator rates a team by, and — through the league — how it',
+    "   rates a place nobody has been seeded into yet (LCS #1 plays as the LCS's",
+    '   best-rated team). Same /getTeams spelling as the board above, so the page',
+    '   matches it with nk() like everything else. */',
+    'const GPR_PTS = {',
+    field.map(r => `  ${q(r.t)}:[${r.pts},${q(r.r)}]`).join(',\n'),
+    '};',
     '/* GPR:end */',
   ].join('\n');
 }
@@ -234,7 +249,7 @@ async function main() {
   try { byId = await fetchTeams(); }
   catch (e) { console.log(`  /getTeams unavailable (${e.message}); using the GPR spellings`); }
 
-  const rows = ranked.slice(0, TOP).map(t => {
+  let rows = ranked.slice(0, Math.max(TOP, FIELD)).map(t => {
     const known = byId.get(String(t.team?.id));
     const name = known?.name || t.team?.name;
     if (!name) throw new Error(`Ranked team #${t.currentTeamGPR.rank} has no name.`);
@@ -264,6 +279,8 @@ async function main() {
 
   for (const r of rows)
     if (typeof r.pts !== 'number') throw new Error(`${r.t} has no gprScore.`);
+  const field = rows;
+  rows = rows.slice(0, TOP);
 
   const html = readFileSync(INDEX, 'utf8');
   const startMark = html.indexOf('/* GPR:generated */');
@@ -272,7 +289,7 @@ async function main() {
     throw new Error('The GPR:generated / GPR:end markers are missing from index.html.');
 
   const before = html.slice(startMark, endMark + '/* GPR:end */'.length);
-  const after = renderBlock(rows, asOfLabel(asOfISO));
+  const after = renderBlock(rows, asOfLabel(asOfISO), field);
 
   rows.forEach((r, i) => {
     const mv = r.move > 0 ? `+${r.move}` : String(r.move);

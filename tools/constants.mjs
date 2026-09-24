@@ -201,7 +201,7 @@ export function apiCreds(src) {
 /** The data constants every caller cares about, in one call. */
 export const DATA_CONSTANTS =
   ['SEASON', 'REGIONS', 'EVENT', 'QUAL_AUTO', 'HONOURS', 'STORYLINES', 'TICKER_NOTES',
-   'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'FORMATS'];
+   'POWER_RANKINGS', 'POWER_RANKINGS_ASOF', 'GPR_PTS', 'FORMATS'];
 
 export function readDataConstants() {
   const { html, src } = readIndex();
