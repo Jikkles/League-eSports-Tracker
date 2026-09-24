@@ -542,71 +542,135 @@ if (loaded) {
     return r.sub;
   });
 
-  /* The Swiss simulator is computed, not fetched, so a rule broken inside it
-     renders a perfectly plausible board — a team through on two wins, a
-     rematch, a Round 2 Bo3 — and throws nothing. So the rules are held here
-     against the page's own engine, over hundreds of random stages rather than
-     the one the board happens to show: eight through and eight out, exactly
-     two 3–0s and two 0–3s, no rematch, Bo3 exactly where a team can go
-     through or out, and Round 1 only between the pools EVENT.swiss pairs and
-     never inside a region. Then the odds, which must add up for the same
-     reason the race panel's must: every stage sends eight on. */
-  await check('event tab: Swiss simulator', async () => {
-    const r = await page.evaluate(() => {
-      if (typeof swissRun !== 'function' || !EVENT.swiss) return { err: 'the Swiss simulator is not on the page' };
-      const F = swissField();
-      if (F.teams.length !== 15) return { err: `${F.teams.length} direct Swiss places for 15` };
-      const pts = document.querySelectorAll('#evtSwissBody .sw-pt').length;
-      if (pts !== 16) return { err: `the pools drew ${pts} places for 16` };
-      const shape = [...document.querySelectorAll('#evtSwissBody .sw-board .bcell')]
-        .map(c => c.querySelectorAll('.sw-m').length).join('/');
-      if (shape !== '8/8/8/6/3') return { err: `the pick board drew rounds of ${shape}, not 8/8/8/6/3` };
+  /* The simulator is the viewer's board, and the two ways it can go wrong are
+     both silent. It can invent: a cold visit that shows pairings nobody has
+     drawn is the exact complaint that rebuilt it, and renders perfectly. And it
+     can break the rules on a board that still looks like a Swiss stage — a
+     team through on two wins, a rematch, a Round 2 match across records.
+     So this drives a whole tournament through the real buttons: place a team
+     by hand, play the play-in out, draw and pick all five rounds, and hold
+     the result to the rules — eight through and eight out, two 3–0s and two
+     0–3s, no rematch, Round 1 only between the pools EVENT.swiss pairs. It
+     also holds SWISS_PI to Riot's own play-in wiring, since the board reads
+     the feed's six matches by position. */
+  await check('event tab: Play-In & Swiss simulator', async () => {
+    const cold = await page.evaluate(() => {
+      if (typeof swissEff !== 'function' || !EVENT.swiss) return { err: 'the simulator is not on the page' };
+      const E = swissEff();
+      const invented = E.rounds.flatMap(R => R.real ? [] : R.ms).length + (E.realPi ? 0 : E.pi.filter(Boolean).length);
+      if (invented) return { err: `a cold visit shows ${invented} pairing(s) or place(s) nobody made` };
+      const places = document.querySelectorAll('#evtSwissBody .sw-pt').length;
+      if (places !== 20) return { err: `${places} places drawn for 16 Swiss and 4 play-in` };
+      /* SWISS_PI against the feed's wiring, match by match. */
+      const fm = (evtBracket?.playin?.cols || []).flatMap(c => c.cells.flatMap(x => x.matches));
+      const mine = SWISS_PI.cols.flatMap(c => c.cells.flatMap(x => x.matches));
+      let wired = 'no play-in published';
+      if (fm.length) {
+        if (fm.length !== mine.length) return { err: `Riot's play-in has ${fm.length} matches, SWISS_PI ${mine.length}` };
+        const at = new Map(fm.map((m, i) => [m.sid, i])), mat = new Map(mine.map((m, i) => [m.sid, i]));
+        for (let i = 0; i < fm.length; i++) for (let s = 0; s < 2; s++) {
+          const o = fm[i].teams[s]?.org, p = mine[i].teams[s].org;
+          const theirs = o?.type === 'match' ? at.get(o.sid) + ':' + o.slot : '-';
+          const ours = p ? mat.get(p.sid) + ':' + p.slot : '-';
+          if (theirs !== ours) return { err: `play-in match ${i + 1} slot ${s + 1}: Riot wires ${theirs}, SWISS_PI ${ours}` };
+        }
+        wired = 'SWISS_PI matches Riot’s wiring';
+      }
+      return { wired };
+    });
+    if (cold.err) throw new Error(cold.err);
 
-      const rng = swissRng(20261023), R1 = EVENT.swiss.r1.map(p => p.join('-'));
-      let rematch = 0;
-      for (let i = 0; i < 400; i++) {
-        const run = swissRun(F, rng, null, false);
-        const w3 = run.rec.filter(x => x.w === 3), l3 = run.rec.filter(x => x.l === 3);
-        if (w3.length !== 8 || l3.length !== 8) return { err: `a stage sent ${w3.length} through and ${l3.length} out` };
-        if (w3.filter(x => !x.l).length !== 2 || l3.filter(x => !x.w).length !== 2)
-          return { err: 'a stage did not produce exactly two 3–0s and two 0–3s' };
-        const met = new Set();
-        for (const [k, ms] of run.rounds.entries()) for (const m of ms) {
-          if (met.has(m.key)) rematch++;
-          met.add(m.key);
-          const [w, l] = m.rec.split('–').map(Number);
-          if ((m.bo === 3) !== (w === 2 || l === 2)) return { err: `a ${m.rec} match was drawn as a Bo${m.bo}` };
-          if (!k) {
-            const pp = [m.a.pool, m.b.pool].sort().join('-');
-            if (!R1.includes(pp)) return { err: `Round 1 paired Pool ${pp}` };
-            if (m.a.rg === m.b.rg) return { err: `Round 1 paired two ${m.a.rg} teams` };
-          }
+    const q = s => page.$(`#evtSwissBody ${s}`);
+    const click = async s => { const h = await q(s); if (!h) throw new Error(`nothing to click: ${s}`); await h.click(); };
+    try {
+      await click('[data-sw="fill"]');
+      /* One team placed the way a viewer does it: pick it, then a place. */
+      const chip = await q('.sw-chips .chip');
+      if (chip) {
+        const name = await chip.evaluate(c => c.dataset.n);
+        await chip.click();
+        await click('.sw-pt[data-sw="in"]');
+        const placed = await page.evaluate(n => swissEff().slots.concat(swissEff().pi).some(x => x && nk(x) === nk(n)), name);
+        if (!placed) throw new Error(`picking ${name} and clicking a place did not put it there`);
+      }
+      /* The rest straight into state: which teams they are does not matter here. */
+      await page.evaluate(() => {
+        const S = swissState, pin = swissPinIdx();
+        const spare = Object.keys(GPR_PTS).filter(n => !S.slots.concat(S.pi).some(x => x && nk(x) === nk(n)));
+        for (let i = 0; i < 16; i++) if (i !== pin && !S.slots[i]) S.slots[i] = spare.shift();
+        for (let i = 0; i < 4; i++) if (!S.pi[i]) S.pi[i] = spare.shift();
+        swissSave(); renderSwiss();
+      });
+      /* The play-in, first side of every match, until someone has won it. */
+      for (let n = 0; n < 6; n++) {
+        const s = await page.$('#evtSwissBody .sw-piboard .sw-m:not(:has(.winner)) .bslot.clickable');
+        if (!s) break;
+        await s.click();
+      }
+      const pw = await page.evaluate(() => swissEff().piWin);
+      if (!pw) throw new Error('six play-in picks did not produce a play-in winner');
+      /* Five rounds: draw what is left, then pick the first side of each match. */
+      for (let k = 0; k < 5; k++) {
+        const col = `.sw-rounds .bcell:nth-child(${k + 1})`;
+        const draw = await q(`${col} [data-sw="draw"]`);
+        if (draw) await draw.click();
+        for (let n = 0; n < 8; n++) {
+          const s = await q(`${col} .sw-m:not(:has(.winner)) .bslot.clickable`);
+          if (!s) break;
+          await s.click();
         }
       }
-      /* The rules forbid rematches and do not say what happens when a group
-         cannot avoid one; the engine then allows it. That should be rare. */
-      if (rematch > 8) return { err: `${rematch} rematches in 400 stages` };
+      const r = await page.evaluate(() => {
+        const E = swissEff(), recs = [...E.rec.values()];
+        const w3 = recs.filter(x => x.w === 3), l3 = recs.filter(x => x.l === 3);
+        const keys = E.rounds.flatMap(R => R.ms.map(m => m.key));
+        const r1 = EVENT.swiss.r1.map(p => p.slice().sort().join());
+        const bad = E.rounds[0].ms.find(m => !r1.includes([E.pool.get(nk(m.a)), E.pool.get(nk(m.b))].sort().join()));
+        const cross = swissCanPair(E, 1, E.rounds[1].live.find(x => x.w === 1).name, E.rounds[1].live.find(x => x.l === 1).name);
+        return { w3: w3.length, l3: l3.length, x30: w3.filter(x => !x.l).length, x03: l3.filter(x => !x.w).length,
+                 rematch: keys.length - new Set(keys).size, bad: bad ? `${bad.a} v ${bad.b}` : '', cross, shape: E.rounds.map(R => R.ms.length).join('/') };
+      });
+      if (r.w3 !== 8 || r.l3 !== 8) throw new Error(`the board ended ${r.w3} through and ${r.l3} out (rounds ${r.shape})`);
+      if (r.x30 !== 2 || r.x03 !== 2) throw new Error(`${r.x30} 3–0s and ${r.x03} 0–3s`);
+      if (r.rematch) throw new Error(`${r.rematch} rematch(es) on the board`);
+      if (r.bad) throw new Error(`Round 1 paired ${r.bad} across the wrong pools`);
+      if (!r.cross) throw new Error('a 1–0 and a 0–1 team were allowed to meet');
 
-      const O = swissOdds(F), N = SWISS_RUNS;
-      let adv = 0, x30 = 0, x03 = 0, pi = 0;
-      for (const a of O.acc.values()) { adv += a.adv; x30 += a.x30; x03 += a.x03; pi += a.pi; }
-      if (adv !== 8 * N || x30 !== 2 * N || x03 !== 2 * N || pi !== N)
-        return { err: `odds do not add up: ${adv / N} through, ${x30 / N} 3–0s, ${x03 / N} 0–3s, ${pi / N} play-in winners` };
-      return { rematch, unset: F.teams.filter(t => !t.set).length };
-    });
-    if (r.err) throw new Error(r.err);
-
-    /* A pick has to stick, and has to be the team that was clicked. */
-    const slot = await page.$('#evtSwissBody .sw-board .bcell:first-child .sw-m .bslot.eliminated');
-    if (!slot) throw new Error('no pickable team on the board');
-    const [key, t] = await slot.evaluate(s => [s.dataset.key, s.dataset.t]);
-    await slot.click();
-    const won = await page.$eval(`#evtSwissBody .bslot[data-key="${key}"][data-t="${t}"]`, s => s.classList.contains('winner'));
-    const saved = await page.evaluate(k => JSON.parse(localStorage.getItem('nexusdesk_swiss') || '{}').picks?.[k], key);
-    await page.click('#evtSwissBody [data-sw="clear"]');
-    if (!won) throw new Error('a picked team was not drawn as the winner');
-    if (saved !== t) throw new Error('a pick was not saved');
-    return `400 stages to the rules, odds sum to 8 through · ${r.unset} place(s) unsettled · ${r.rematch} forced rematch(es)`;
+      /* Riot's draw arriving. There is no real one until the event, so a
+         synthetic feed stands in: Round 1 drawn with three results, then a
+         Round 2 drawn. With scores hidden the Round 1 draw must come in and
+         nothing after it; with scores shown the results must beat the
+         viewer's picks, and Round 2 must be Riot's. */
+      const feed = await page.evaluate(() => {
+        const keep = evtBracket, guard = spoilFree;
+        try {
+          const names = Object.keys(GPR_PTS).slice(0, 16);
+          const mk = (a, b, w) => ({ teams: [{ name: a, win: w === 0 }, { name: b, win: w === 1 }] });
+          const r1 = [0, 2, 4, 6, 8, 10, 12, 14].map((i, j) => mk(names[i], names[i + 1], j < 3 ? 1 : -1));
+          const r2 = [mk(names[1], names[3], -1)];
+          evtBracket = { ...(keep || {}), swiss: { cols: [{ cells: [{ matches: r1 }] }, { cells: [{ matches: r2 }] }] } };
+          swissState.picks[swissKey(names[0], names[1])] = names[0];      // contradicted by the result
+          spoilFree = true;
+          let E = swissEff();
+          if (!E.rounds[0].real || E.rounds[0].ms.length !== 8) return { err: 'with scores hidden, Riot’s Round 1 draw did not come in' };
+          if (E.rounds[0].ms.some(m => m.played)) return { err: 'with scores hidden, a Round 1 result was filled in' };
+          if (E.rounds[1].real) return { err: 'with scores hidden, Riot’s Round 2 draw was shown' };
+          if (!E.held) return { err: 'with scores hidden, the board did not say results were being held back' };
+          spoilFree = false;
+          E = swissEff();
+          const m0 = E.rounds[0].ms[0];
+          if (!m0.played || nk(m0.w) !== nk(names[1])) return { err: 'a played result did not replace the viewer’s pick' };
+          if (E.rounds[0].ms.filter(m => m.played).length !== 3) return { err: 'not every played Round 1 result came in' };
+          return { ok: true };
+        } finally {
+          evtBracket = keep; spoilFree = guard;
+        }
+      });
+      if (feed.err) throw new Error(feed.err);
+      return `play-in won by ${pw}, rounds ${r.shape}, 8 through · 8 out · nothing invented on a cold visit · Riot's draw and results fill in, held back while scores are hidden · ${cold.wired}`;
+    } finally {
+      await page.evaluate(() => { Object.assign(swissState, { slots: [], pi: [], piw: {}, rounds: [], picks: {} }); swissSave(); renderSwiss(); });
+    }
   });
 
   await check('back to home', async () => {
@@ -1075,6 +1139,28 @@ if (loaded) {
         ['serious', 'critical'].includes(v.impact) && !A11Y_ADVISORY.includes(v.id));
       if (blocking.length) throw new Error(blocking.map(a11ySummary).join(', '));
       return `${LEAGUES[0]}: clean`;
+    });
+
+    /* Nor do either of those see the event tab, which is where the simulator's
+       controls live — its team chips shipped once in the browser's default
+       button colour, black on black, and only an ad-hoc axe run caught it.
+       Swept with the qualification teams placed, so the chips, places and a
+       Round 1 are all on the page. */
+    await check('accessibility: event tab', async () => {
+      await page.click('.tab-evt');
+      const slug = await page.$eval('.tab-evt', b => b.dataset.tab);
+      await page.waitForSelector(`#page-${slug}.active`, { timeout: STEP_MS });
+      await settled(`#page-${slug}`);
+      await page.click('#evtSwissBody [data-sw="fill"]');
+      try {
+        const { violations } = await axeRun();
+        const blocking = violations.filter(v =>
+          ['serious', 'critical'].includes(v.impact) && !A11Y_ADVISORY.includes(v.id));
+        if (blocking.length) throw new Error(blocking.map(a11ySummary).join(', '));
+        return `${slug}: clean`;
+      } finally {
+        await page.click('#evtSwissBody [data-sw="reset"]');
+      }
     });
   }
 

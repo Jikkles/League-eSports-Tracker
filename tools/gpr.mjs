@@ -77,12 +77,12 @@ const arg = name => {
 };
 const DRY = process.argv.includes('--dry-run');
 const TOP = Number(arg('--top') || 10);
-/* How deep GPR_PTS goes. The board shows ten; the Worlds Swiss simulator needs
-   a strength for every team in a sixteen-team field, and about half of any
-   Worlds field sits outside the top ten — an LCP or CBLOL champion is nowhere
-   near it. GPR is Riot's own cross-region rating, which is exactly the number a
-   Gen.G v Team Secret Whales matchup wants, so the points go this deep rather
-   than the simulator inventing a strength for anyone below tenth. */
+/* How deep GPR_PTS goes. The board shows ten; the Worlds simulator prints a
+   win chance for any pairing a viewer makes, and about half of a Worlds field
+   sits outside the top ten — an LCP or CBLOL champion is nowhere near it. GPR
+   is Riot's own cross-region rating, the one number that puts Gen.G and Team
+   Secret Whales on one scale, so it goes this deep rather than leaving those
+   matches blank. */
 const FIELD = Number(arg('--field') || 60);
 const YEAR_ARG = arg('--year');
 
@@ -205,13 +205,11 @@ function renderBlock(rows, asOf, field) {
     'const POWER_RANKINGS = [',
     lines.join(',\n'),
     '];',
-    `/* Points and home league for the first ${field.length} ranked teams: what the`,
-    '   Worlds Swiss simulator rates a team by, and — through the league — how it',
-    "   rates a place nobody has been seeded into yet (LCS #1 plays as the LCS's",
-    '   best-rated team). Same /getTeams spelling as the board above, so the page',
-    '   matches it with nk() like everything else. */',
+    `/* Points only, for the first ${field.length} ranked teams: the win chance the`,
+    '   Worlds simulator prints beside each side of a match. Same /getTeams',
+    '   spelling as the board above, so the page matches it with nk(). */',
     'const GPR_PTS = {',
-    field.map(r => `  ${q(r.t)}:[${r.pts},${q(r.r)}]`).join(',\n'),
+    field.map(r => `  ${q(r.t)}:${r.pts}`).join(',\n'),
     '};',
     '/* GPR:end */',
   ].join('\n');

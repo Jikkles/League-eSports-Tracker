@@ -874,12 +874,11 @@ if (m && !fails.length) {
         if (typeof S[f] !== 'string' || !S[f]) fail(`EVENT.swiss.${f} is not a stage slug.`);
     }
 
-    /* -- GPR_PTS: the simulator's ratings, generated beside POWER_RANKINGS -- */
+    /* -- GPR_PTS: the simulator's win chances, generated beside POWER_RANKINGS -- */
     if (GPR_PTS !== undefined) {
-      const bad = Object.entries(GPR_PTS || {}).filter(([, v]) =>
-        !Array.isArray(v) || typeof v[0] !== 'number' || typeof v[1] !== 'string');
+      const bad = Object.entries(GPR_PTS || {}).filter(([, v]) => typeof v !== 'number');
       if (!GPR_PTS || !Object.keys(GPR_PTS).length) fail('GPR_PTS is empty.');
-      else if (bad.length) fail(`GPR_PTS has ${bad.length} entr${bad.length > 1 ? 'ies' : 'y'} that are not [points, league]: ${bad[0][0]}`);
+      else if (bad.length) fail(`GPR_PTS has ${bad.length} entr${bad.length > 1 ? 'ies' : 'y'} that are not a number: ${bad[0][0]}`);
     }
 
     /* -- POWER_RANKINGS ---------------------------------------------------- */

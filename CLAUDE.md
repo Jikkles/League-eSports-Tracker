@@ -54,7 +54,7 @@ Deployed via GitHub Pages straight from this repo.
 - **For anything that touches rendering**, also run `node tools/smoke.mjs` — it opens the
   real page in a browser and is the only check that catches a parse-clean edit which
   throws on first render. It also re-runs the nav at a 390px phone viewport looking for
-  anything that drags the page sideways, sweeps the home board and a league tab with
+  anything that drags the page sideways, sweeps the home board, a league tab and the event tab with
   axe, and blocks the API outright to check the offline path — the empty-state messages,
   the cached-data fallback, and that a first visit during an outage says it has no data
   rather than claiming to show a cache it does not have. It needs playwright and axe-core, installed *without* a package.json — **both in
@@ -600,64 +600,75 @@ Worlds Updates* post on lolesports.com; and the bracket from the API.
   URI it is not an http link, so `links.mjs` does not check it; nothing can rot.
   Keep the two wiki links, which it does check.
 
-## The Swiss stage simulator
+## The Play-In & Swiss simulator
 
-The event tab's **Swiss Stage Simulator** (`renderSwiss()`, beside the
-published bracket) is the one stage the feed cannot wire in advance: Riot
-publishes the Swiss stage as five rounds of 8/8/8/6/3 matches, but every slot
-is a `decisionPoint`, because pairings are drawn after each round. So the rules
-are written down in `EVENT.swiss` and played by the page.
+The event tab's **Play-In & Swiss Simulator** (`renderSwiss()`) sits under
+Riot's published play-in bracket, because the play-in is played first. It is
+the viewer's board, and **the rule it was rebuilt around is that it never
+invents anything.** The first version drew the pairings itself and projected
+winners, which put teams against teams nobody had drawn them against; Tom's
+words were that it "put teams against teams that we don't even know are
+playing yet". So:
 
-- **`EVENT.swiss.pools` names places, not teams.** `'lck:2'` is whoever
-  `EVENT.qual` seeds second from Korea, read through `qualSeeds()` — the same
-  function the qualification board uses, lifted out of `evtQual()` so "who is
-  LCK #2" has one answer. `'playin'` is the play-in winner; `playin` lists the
-  four places that play for it. The pools fill themselves as the board does,
-  and `check.mjs` holds the two lists to the board: every place in exactly one
-  of them, `'playin'` once, four pools of four, `r1` pairing each pool once.
+- **The viewer places the teams, makes the pairings and picks the winners.**
+  Teams come from the qualification board (`qualThru()`) or are typed in —
+  a team still playing for a place is a guess the viewer may make and the page
+  may not. "Fill from qualification" and "Draw the rest for me" exist, but only
+  as buttons: nothing is filled or drawn without a click. `smoke.mjs` fails a
+  cold visit that shows a single pairing or place nobody made.
+- **Riot's data takes over the moment it exists, with no button.**
+  `swissEff()` builds the board fresh on every render: a round Riot has drawn
+  is Riot's (its teams, its pairings, locked and badged *Riot's draw*), a played
+  result replaces the viewer's pick, and the records it leaves carry into the
+  next round. A drawn Round 1 *is* the field, whoever the viewer had placed.
+  The viewer's own pairings for later rounds are kept in state and **filtered
+  on every render** — any that the real results have made impossible (wrong
+  record, rematch, a team already out) are left out rather than drawn, and
+  come back if the pick that broke them is changed. That filter is why there
+  is no "sync" step and why the board can never show a pairing that cannot
+  happen. The play-in works the same way, off `evtBracket.playin`.
+- **The spoiler guard draws a hard line through it.** With scores hidden the
+  play-in's opening pairings and the Round 1 draw still arrive — a draw is not
+  a result — and nothing after them does: a Round 2 draw between two 1–0 teams
+  is the Round 1 result by another name. The panel says when it is holding
+  something back. Flipping the switch re-renders it.
+- **`EVENT.swiss` carries the rules.** `pools` names places on the
+  qualification board (`'lck:2'`), used by "Fill from qualification" and by the
+  Round 1 pool rule; `'playin'` is the seat the play-in winner takes, and
+  `playin` the four places that play for it. `r1` is the Round 1 pairing of
+  pools. `check.mjs` holds the pools to the board: every place in exactly one
+  list, `'playin'` once, four pools of four, `r1` pairing each pool once.
+  `swissCanPair()` enforces the rest when the viewer pairs two teams, and says
+  why in words when it refuses: same record only, no rematch, and in Round 1
+  only across the pools `r1` pairs and never inside a region.
 - **What is sourced and what is expected.** The pools are Leaguepedia's. The
-  format lines (same-record draws, no rematches, Bo3 exactly where a team can go
-  through or out) are on both wikis. The Round 1 rule — Pool 1 v 4, Pool 2 v 3,
-  no same-region meeting — is Liquipedia's, in a draft section, matching 2024
-  and 2025; Riot had not published the 2026 wording when this was written, and
-  the panel says so. One article checked while researching it had the wrong
-  teams in every pool, so do not "confirm" it from a search result.
-- **Ratings are `GPR_PTS`, generated by `gpr.mjs` in the GPR block** — points
-  and home league for the top 60 GPR teams, beside the top-10 board. GPR is
-  Riot's cross-region rating, the only number on the page that puts an LCP
-  champion and Gen.G on one scale; `POWER_RANKINGS` stops at ten, and half a
-  Worlds field sits below that. A place nobody has been seeded into yet is
-  rated as **its league's team of the same rank by GPR** (LCS #1 as the LCS's
-  best-rated team) and the panel names the stand-in. It was the field median
-  first, which rated "CBLOL #1" above every Brazilian team and made two
-  placeholders the play-in favourites over Karmine Corp.
-- **One engine, `swissRun()`, plays one whole stage.** The pick board is one run
-  with a fixed seed (`nexusdesk_swiss` keeps it and the picks), the favourite
-  winning every match not picked; the odds are `SWISS_RUNS` (10,000) runs with
-  neither, cached on the field and what has been played so a pick never re-runs
-  them. They are sampled, so the wording follows the race panel's rule: zero
-  hits is "never seen", every hit is ">99.9%", and only a result actually
-  played says *Through* or *Out*.
-- **Riot's draw replaces the model's round by round.** `fetchEventBracket()`
-  now keeps the Swiss and play-in stages too (`evtTrimStage()`, shared with the
-  bracket panel). Once a round's pairings are all published, `swissRun()` uses
-  them and their results; before that the rules draw it. The play-in is walked
-  off Riot's published wiring, falling back to a four-team double elimination
-  written out as `SWISS_PI` in the same shape.
-- **The spoiler guard covers all of it.** With scores hidden nothing played is
-  used — not a result, not a pairing (a Round 2 draw between two 1–0 teams *is*
-  the Round 1 result), not the play-in winner — and the note under the odds
-  says so. Flipping the switch re-renders the panel.
-- **`smoke.mjs` holds the rules against the engine** over 400 random stages:
-  eight through and eight out, exactly two 3–0s and two 0–3s, no rematch, Bo3
-  exactly where a team is on two wins or two losses, Round 1 only between the
-  pools `r1` pairs and never inside a region — and the odds adding up to eight
-  through, two 3–0s, two 0–3s and one play-in winner per stage, exactly. It
-  also clicks a pick and checks it sticks. A broken rule in here renders a
-  perfectly plausible board and throws nothing, which is why.
+  format lines (same-record draws, no rematches, Bo3 exactly where a team can
+  go through or out) are on both wikis. The Round 1 rule — Pool 1 v 4, Pool 2
+  v 3, no same-region meeting — is Liquipedia's, in a draft section, matching
+  2024 and 2025; Riot had not published the 2026 wording, and the panel says
+  so. One article checked while researching it had the wrong teams in every
+  pool, so do not "confirm" it from a search result.
+- **`SWISS_PI` is the play-in written out, and it has to match Riot's.** The
+  board reads the feed's six play-in matches *by position*, so `smoke.mjs`
+  holds `SWISS_PI` to the feed's own `origin` wiring match by match.
+- **The only model on the board is a hint.** Each side of a match prints the
+  GPR win chance (`GPR_PTS`, points for the top 60 teams, generated by
+  `gpr.mjs` beside the top-10 board — `POWER_RANKINGS` stops at ten, and half
+  a Worlds field sits below that). It is a number beside a name, never a pick.
+  There was a 10,000-stage odds table as well; it was removed with the
+  projected board, both because it was the self-populating part and because
+  the page was at 162 of 165 KB gzipped. If it comes back, it comes back
+  folded away and labelled as the model's, not the viewer's.
+- **`smoke.mjs` drives a whole tournament through the real buttons:** places a
+  team by hand, plays the play-in out, draws and picks all five rounds, and
+  holds the result to the rules — eight through and eight out, two 3–0s and
+  two 0–3s, no rematch, Round 1 only across `r1`'s pools, a 1–0 refused
+  against an 0–1. Then it feeds the board a synthetic Riot draw (the real one
+  does not exist until the event) and checks the guard holds results back and
+  that, with scores shown, a played result beats the viewer's pick.
 - **Rolling on to next year** is `EVENT.swiss` with the rest of `EVENT`: new
   pools from the new tournament page, and the Round 1 rule re-checked rather
-  than assumed.
+  than assumed. Saved boards live in `nexusdesk_swiss`.
 
 ## The tab in the URL
 
@@ -1029,7 +1040,7 @@ place in a team's range is settled.
 
 ### The GPR block
 
-`POWER_RANKINGS_ASOF`, `POWER_RANKINGS` and `GPR_PTS` (the Swiss simulator's ratings — see above) sit between `/* GPR:generated */` and
+`POWER_RANKINGS_ASOF`, `POWER_RANKINGS` and `GPR_PTS` (the simulator's win chances — see above) sit between `/* GPR:generated */` and
 `/* GPR:end */`. **Never hand-edit them** — `tools/gpr.mjs` rewrites the whole
 block from lolesports.com's official Global Power Rankings.
 
