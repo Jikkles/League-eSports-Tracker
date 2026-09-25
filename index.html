@@ -8335,6 +8335,28 @@ function openApiHelp() {
   });
 }
 
+/* A refresh must not redraw a board out from under a drag. Both simulators
+   rebuild their DOM on every render, so a refresh landing while the pointer
+   rests on a drop target swaps that target for a new element which has never
+   seen a dragover — and the browser refuses a drop nothing has accepted. The
+   team being carried silently goes nowhere. Measured: 5 of 5 drops lost that
+   way, and it failed a CI run when the first refresh landed inside smoke.mjs's
+   drag. So while a drag is in flight the refresh leaves both boards alone and
+   they are redrawn once it ends. Capture phase, because a drop re-renders and
+   the source's dragend may then fire on a detached node that never reaches
+   document; the 30s cap is so a lost dragend cannot freeze the boards. */
+let dragAt = 0, dragHeld = false;
+const midDrag = () => dragAt && Date.now() - dragAt < 30000;
+function redrawSims() {
+  for (const slug of Object.keys(REGIONS)) try { renderSim(slug); } catch (e) { console.error('sim failed for ' + slug, e); }
+  try { renderSwiss(); } catch (e) { console.error('swiss failed', e); }
+}
+document.addEventListener('dragstart', () => { dragAt = Date.now(); }, true);
+for (const ev of ['drop', 'dragend']) document.addEventListener(ev, () => {
+  dragAt = 0;
+  if (dragHeld) { dragHeld = false; setTimeout(redrawSims); }   // after the drop's own handler
+}, true);
+
 let lastGoodAt = 0;                 // when a refresh last actually came back
 async function refreshAll(deep=true) {
   $('#lastRefresh').textContent = '…';
@@ -8381,7 +8403,7 @@ async function refreshAll(deep=true) {
     try {
       renderRegionData(slug);
       renderWatch(slug, findLiveFor(slug));
-      renderSim(slug);
+      if (midDrag()) dragHeld = true; else renderSim(slug);
       renderRace(slug);
       renderRegionHonours(slug);
     } catch (e) { console.error('render failed for ' + slug, e); }
@@ -8395,7 +8417,8 @@ async function refreshAll(deep=true) {
      tournament, not a fifth region, and a throw in either of these must not
      cost the home board its render. */
   try { renderEventBoard(); renderEventBracket(); } catch (e) { console.error('event board failed', e); }
-  try { renderSwiss(); } catch (e) { console.error('swiss failed', e); }
+  if (midDrag()) dragHeld = true;
+  else try { renderSwiss(); } catch (e) { console.error('swiss failed', e); }
   // a refresh that failed must not stamp the clock as though the board were
   // current — that is what let an hour-old game sit there looking live
   $('#lastRefresh').textContent = ok ? 'updated ' + fmtHM(Date.now())

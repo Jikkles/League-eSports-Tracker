@@ -569,9 +569,30 @@ if (loaded) {
 
     const L = s => page.locator(`#evtSwissBody ${s}`);
     try {
-      /* One team dragged in, the way a viewer does it. */
+      /* One team dragged in, the way a viewer does it — with the minute's
+         refresh landing while the pointer rests on the drop target. That
+         refresh used to replace the target with an element that had never
+         seen a dragover, the browser refused the drop, and the team went
+         nowhere: it failed a CI run by chance, so here it happens every time.
+         What is held is the guard's contract — the target survives the
+         refresh — rather than the drop itself, which also depends on nothing
+         above the board changing height in the meantime. */
       const name = await L('.sw-chips .chip').first().getAttribute('data-n');
-      await L('.sw-chips .chip').first().dragTo(L('.sw-tk.drop').first());
+      const box = async s => { const b = await L(s).first().boundingBox(); return [b.x + b.width / 2, b.y + b.height / 2]; };
+      await L('.sw-chips .chip').first().scrollIntoViewIfNeeded();
+      const [sx, sy] = await box('.sw-chips .chip'), [tx, ty] = await box('.sw-tk.drop');
+      await page.mouse.move(sx, sy); await page.mouse.down();
+      await page.mouse.move((sx + tx) / 2, (sy + ty) / 2, { steps: 5 });
+      await page.mouse.move(tx, ty, { steps: 5 });
+      if (!(await page.evaluate(() => dragAt))) { await page.mouse.up(); throw new Error('the test drag never started — nothing below was exercised'); }
+      const target = await L('.sw-tk.drop').first().elementHandle();
+      await page.evaluate(() => refreshAll(false));
+      if (!(await target.evaluate(t => t.isConnected))) {
+        await page.mouse.up();
+        throw new Error('a refresh mid-drag redrew the board under the drop target, which loses the drop');
+      }
+      const [ux, uy] = await target.evaluate(t => { const b = t.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; });
+      await page.mouse.move(ux, uy, { steps: 2 }); await page.mouse.up();
       const r1 = await page.evaluate(() => swissState.r1.filter(Boolean));
       if (r1.length !== 1 || r1[0] !== name) throw new Error(`dragging ${name} in left Round 1 holding ${JSON.stringify(r1)}`);
       /* The rest straight into state; which teams they are does not matter here. */
