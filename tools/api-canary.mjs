@@ -302,7 +302,16 @@ if (Object.keys(leagueIds).length !== SLUGS.length) {
     const wired = matches.flatMap(m => m.teams || []).filter(x => x.origin?.type === 'match').length;
     if (!wired) throw new Error('no slot in the bracket carries a match origin');
 
-    return `${t.slug} · ${st.name}: ${matches.length} matches, ${wired} wired slots · ${mine.length} fixture(s) scheduled`;
+    /* The two simulators read their own stages by slug, and a slug that stops
+       matching fails the same quiet way: Riot's draws and results never take
+       the viewer's board over, and the board goes on looking fine. */
+    const sims = [['Swiss', EVENT.swiss?.stage], ['knockout', EVENT.ko?.stage]].filter(([, s]) => s);
+    const gone = sims.filter(([, s]) => !stages.some(x => x.slug === s));
+    if (gone.length) throw new Error(gone.map(([k, s]) => `the ${k} simulator reads stage "${s}", which ${t.slug} does not have`).join('; ')
+      + ` (has: ${stages.map(s => s.slug).join(', ')})`);
+
+    return `${t.slug} · ${st.name}: ${matches.length} matches, ${wired} wired slots · ${mine.length} fixture(s) scheduled`
+      + (sims.length ? ` · simulator stages ${sims.map(([, s]) => s).join(', ')} present` : '');
   });
 
   /* ---- the CORS proxy fallback ------------------------------------------- */

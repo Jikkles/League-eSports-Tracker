@@ -656,6 +656,87 @@ if (loaded) {
     }
   });
 
+  /* The knockout is drawn from the Swiss board, so the failure worth catching
+     is a draw that looks like a bracket and breaks the ruleset's §4.3.4: a
+     3–0 paired with anything but a 3–2, or both 3–0s on one half. Nothing
+     throws when that happens. So this plays a Swiss stage out in state, holds
+     the default draw and twenty random redraws to the rule, picks a champion
+     through the real buttons, swaps two teams by drag, and feeds a synthetic
+     Riot quarterfinal draw — the real one is made on 31 Oct — to check it
+     takes over, and that the spoiler guard holds it back. */
+  await check('event tab: knockout simulator', async () => {
+    const L = s => page.locator(`#evtKoBody ${s}`);
+    try {
+      const r = await page.evaluate(() => {
+        if (typeof koBoard !== 'function' || !EVENT.ko) return { err: 'the simulator is not on the page' };
+        if (koBoard().rec.size) return { err: 'a cold visit has teams in the knockout that the Swiss board never put through' };
+        swissState.r1 = Object.keys(GPR_PTS).slice(0, 16);
+        for (let n = 0; n < 40; n++) {
+          const open = Object.values(swissBoard().boxes).filter(b => b && b.ms).flatMap(b => b.ms).filter(m => m.a && m.b && !m.w);
+          if (!open.length) break;
+          for (const m of open) swissState.win[m.key] = Math.random() < .5 ? m.a : m.b;
+        }
+        swissDone();
+        const rule = () => {
+          const B = koBoard(), l = x => B.rec.get(nk(x))?.l;
+          if (B.rec.size !== 8) return `${B.rec.size} teams in the knockout for 8 through the Swiss stage`;
+          const qf = B.rounds[0], top = qf.map(m => [m.a, m.b].some(x => l(x) === 0));
+          if (qf.some(m => !m.a || !m.b)) return 'a quarterfinal place is empty with all eight teams known';
+          if (qf.some((m, j) => top[j] && [l(m.a), l(m.b)].sort().join() !== '0,2')) return 'a 3–0 was not drawn against a 3–2';
+          if (top.filter((t, j) => t && j < 2).length !== 1) return 'the two 3–0s are not on opposite halves';
+          if (qf.some(m => m.bad)) return 'a legal draw was marked as breaking the rule';
+          return '';
+        };
+        let bad = rule();
+        if (bad) return { err: 'default draw: ' + bad };
+        for (let i = 0; i < 20 && !bad; i++) { document.querySelector('#evtKoBody [data-ko="draw"]').click(); bad = rule(); }
+        return bad ? { err: 'random redraw: ' + bad } : {};
+      });
+      if (r.err) throw new Error(r.err);
+
+      for (let n = 0; n < 10; n++) {
+        const t = L('.sw-mt:not(:has(.w)) .sw-tk[data-ko="win"]');
+        if (!(await t.count())) break;
+        await t.first().click();
+      }
+      const champ = await page.evaluate(() => koBoard().champ);
+      if (!champ) throw new Error('clicking every winner did not produce a champion');
+      if (!(await page.textContent('#evtKoSub')).includes(champ)) throw new Error('the panel does not name the champion it drew');
+
+      /* Back to the default draw, where place 1 is a 3–2 facing the 3–0 and
+         place 2 a 3–1, so swapping those two has to break the rule. */
+      await L('[data-ko="reset"]').click();
+      const before = await L('.sw-tk[data-r="0"][data-n]').evaluateAll(t => t.map(x => x.dataset.n).join());
+      await L('.sw-tk[data-r="0"][data-n]').nth(1).dragTo(L('.sw-tk[data-r="0"][data-n]').nth(2));
+      const after = await L('.sw-tk[data-r="0"][data-n]').evaluateAll(t => t.map(x => x.dataset.n).join());
+      if (before === after) throw new Error('dragging one quarterfinalist onto another did not swap them');
+      if (!(await L('.sw-mt.rem').count())) throw new Error('a swap that pairs a 3–0 with a non-3–2 was not marked against the rule');
+
+      const feed = await page.evaluate(() => {
+        const keep = evtBracket, guard = spoilFree;
+        try {
+          const names = Object.keys(GPR_PTS).slice(20, 28);
+          const mk = (a, b, w) => ({ teams: [{ name: a, win: w === 0 }, { name: b, win: w === 1 }] });
+          const qf = [0, 2, 4, 6].map((i, j) => mk(names[i], names[i + 1], j ? -1 : 1));
+          evtBracket = { ...(keep || {}), ko: { cols: [{ cells: [{ matches: qf }] }] } };
+          koState.win[swissKey(names[0], names[1])] = names[0];      // contradicted by the result
+          spoilFree = true;
+          let B = koBoard();
+          if (B.realQF || !B.held) return { err: 'with scores hidden, Riot’s quarterfinal draw was filled in, or the panel did not say it was held' };
+          spoilFree = false;
+          B = koBoard();
+          if (!B.realQF || nk(B.slots[0]) !== nk(names[0])) return { err: 'Riot’s quarterfinal draw did not replace the viewer’s' };
+          if (!B.rounds[0][0].played || nk(B.rounds[0][0].w) !== nk(names[1])) return { err: 'a played quarterfinal did not replace the viewer’s pick' };
+          return {};
+        } finally { evtBracket = keep; spoilFree = guard; }
+      });
+      if (feed.err) throw new Error(feed.err);
+      return `eight teams off the Swiss board · default and 20 random draws hold to §4.3.4 · a champion clicked through · drag swap flags a rule break · Riot's draw takes over, held back while scores are hidden`;
+    } finally {
+      await page.evaluate(() => { Object.assign(swissState, { r1: [], order: {}, win: {} }); Object.assign(koState, { order: null, win: {} }); swissDone(); });
+    }
+  });
+
   await check('back to home', async () => {
     await page.click('.fchip[data-f=all]');
     await page.waitForSelector('#page-home.active', { timeout: STEP_MS });

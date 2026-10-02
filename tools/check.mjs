@@ -872,6 +872,10 @@ if (m && !fails.length) {
       }
       if (typeof S.stage !== 'string' || !S.stage) fail('EVENT.swiss.stage is not a stage slug.');
     }
+    /* -- EVENT.ko: the knockout simulator's stage, and the ruleset both notes link -- */
+    if (EVENT?.ko && (typeof EVENT.ko.stage !== 'string' || !EVENT.ko.stage)) fail('EVENT.ko.stage is not a stage slug.');
+    if ((EVENT?.ko || EVENT?.swiss) && !/^https:\/\//.test(EVENT.rules || ''))
+      fail('EVENT.rules is not an https link; both simulators cite it for their draw rules.');
 
     /* -- GPR_PTS: the simulator's win chances, generated beside POWER_RANKINGS -- */
     if (GPR_PTS !== undefined) {

@@ -538,6 +538,7 @@ tr.race-row:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
 .rfx-sc.on{background:rgba(11,198,227,.14);border-color:var(--cyan);color:var(--cyan)}
 .race-hint,.race-note{font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--faint)}
 .race-note{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.race-note a{color:var(--cyan);text-decoration:underline}
 .race-focus{margin-top:14px}
 .rf-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:17px;font-weight:700;margin-bottom:8px}
 .rf-head .rf-rec{font-family:var(--mono);font-size:11px;color:var(--dim);font-weight:400}
@@ -668,6 +669,12 @@ tr.t-click:hover td:nth-child(2){color:var(--cyan)}
 .sw-end.q{border-color:rgba(49,196,111,.55)}
 .sw-end.q .sw-bh{background:rgba(49,196,111,.14);color:var(--win)}
 .sw-end.e .sw-bh{background:rgba(232,57,74,.12);color:var(--loss)}
+.ko-grid{grid-template-columns:repeat(4,minmax(170px,1fr));gap:8px 14px;align-items:stretch}
+.ko-grid .sw-col{justify-content:space-around}
+.ko-grid .sw-mt{grid-template-columns:minmax(0,1fr);gap:2px}
+.ko-grid .vs{display:none}
+.ko-h{font-family:var(--mono);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim)}
+.sw-tk .sw-tag{margin-left:auto;white-space:nowrap}
 .evt-bracket{margin-top:4px}
 .evt-bracket .bslot{font-size:13.5px}
 .evt-bracket .bslot .tname.tbd{font-family:var(--mono);font-size:10.5px;letter-spacing:.2px;line-height:1.35;white-space:normal}
@@ -1731,6 +1738,10 @@ const EVENT = {
   logo:'data:image/webp;base64,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',
   wiki:'https://lol.fandom.com/wiki/2026_Season_World_Championship',
   liqui:'https://liquipedia.net/leagueoflegends/World_Championship/2026',
+  /* Riot's own event ruleset (2026 World Championship Event Specific Ruleset,
+     v1.0) — the source for the Swiss pools, both draw rules and the round
+     dates below. Linked from Leaguepedia's and Liquipedia's tournament pages. */
+  rules:'https://cdn.sanity.io/files/dsfx7636/news_live/faa5ce974e58615911fbee931c6123e2785a8b46.pdf',
 
   /* The tab's one connection to the feed, and the reason the boards below are a
      placeholder rather than a stub. `league` is the API's own league slug for
@@ -1742,28 +1753,32 @@ const EVENT = {
      heading *Recent Games*. Everything the feed hands back is cut to
      EVENT.start onwards, so a page with nothing to show shows nothing.
 
-     What is behind it today: Riot has published the tournament and its entire
-     bracket skeleton, every match wired to the ones feeding it, every team TBD
-     — and not one fixture. `getSchedule` for this league still ends at the 2025
-     final and `getEventDetails` on the 2026 match ids returns null. So the
-     bracket panel is real and the three fixture boards are empty, which is
-     exactly what the tournament is: drawn, and not yet scheduled. */
+     What is behind it today (2 Oct): Riot has published the bracket skeleton
+     of all three stages, every match wired to the ones feeding it, and — new
+     since this was first written — the fixtures themselves, every one with a
+     kick-off time and every team TBD. Swiss Round 3 (25–26 Oct) is the one
+     block not yet in the feed. So the boards carry real times with TBD teams,
+     which is exactly what the tournament is: scheduled, and not yet drawn. */
   feed:{ league:'worlds', stage:'play_ins' },
   /* Riot has published the stage schedule and the three venues, so the strip
      carries dates rather than TBD. Source: lolesports.com "MSI and Worlds
      Updates", which is also where the two-block Swiss and the split between
      the Texas knockouts and the Brooklyn final come from.
 
-     What is still TBD is everything below stage level: no fixture on this
-     tournament has a kick-off time yet, and the four play-in teams are not
-     known. `when` is a stage window, never a game time — don't let a viewer
-     read it as one. `detail` is the breakdown inside that window where the
-     stage has one, and is optional. */
+     `when` is a stage window, never a game time — don't let a viewer read it
+     as one; the fixture boards carry the times. `detail` is the breakdown
+     inside that window, and is optional. The per-round days are the ruleset's
+     (EVENT.rules §4.3.5, which draws each Swiss round "immediately following"
+     the previous day's games) and agree with the feed's kick-off times: the
+     play-in's two first-round Bo5s on 15 Oct and two on the 16th, Swiss
+     Rounds 1 and 2 as eight Bo1s on each of 23 and 24 Oct, Round 4's six Bo3s
+     over 28–30 Oct and Round 5's three on the 31st. Round 3 is the one round
+     the feed has not filed yet; the ruleset puts it on 25–26 Oct. */
   stages:[
     {name:'Play-In',  from:'2026-10-15', to:'2026-10-18', when:'15–18 Oct', venue:'Riot Games Arena · Los Angeles',
-     detail:'Winner joins the Swiss stage', sub:'4 TEAMS · DOUBLE ELIM · BO5'},
+     detail:'Winner joins the Swiss stage · decider 18 Oct', sub:'4 TEAMS · DOUBLE ELIM · BO5'},
     {name:'Swiss',    from:'2026-10-23', to:'2026-10-31', when:'23–31 Oct', venue:'CU of Texas Event Center · Allen, TX',
-     detail:'23–26 Oct, then 28–31 Oct', sub:'16 TEAMS · FIVE ROUNDS · 3 WINS THROUGH'},
+     detail:'R1 23 Oct · R2 24 · R3 25–26 · R4 28–30 · R5 31 Oct', sub:'16 TEAMS · FIVE ROUNDS · 3 WINS THROUGH'},
     /* The one stage played in two buildings: quarters and semis stay in Allen,
        and the final moves to Brooklyn six days later. `venue` takes a list for
        exactly this, rather than folding two arenas into one line. */
@@ -1784,13 +1799,11 @@ const EVENT = {
      check.mjs holds the two lists to EVENT.qual: every place on the board in
      exactly one of them.
 
-     The pools are Leaguepedia's (the tournament page's participants table).
-     `r1` — Pool 1 meets Pool 4, Pool 2 meets Pool 3, nobody meets their own
-     region — is Liquipedia's, the same rule shape Riot used in 2024 and 2025;
-     Riot has not published the 2026 wording, so treat it as expected rather
-     than announced. Rounds 2–5 draw teams on the same record with no rematch,
-     and a match that can send a team through or out is a Bo3, the rest Bo1.
-     Those three are on both wikis' format sections. */
+     All of it is Riot's own now: the pools, `r1` (Pool 1 meets Pool 4,
+     Pool 2 meets Pool 3, nobody meets their own region) and the no-rematch
+     rule are §4.3.2–4.3.3 of the event ruleset linked as EVENT.rules, and
+     agree with Leaguepedia's participants table. Bo3 exactly where a team can
+     go through or out is §4.1.2. */
   swiss:{
     stage:'swiss',
     pools:[['lck:1','lpl:1','lcs:1','lec:1'],
@@ -1800,6 +1813,16 @@ const EVENT = {
     r1:[[1,4],[2,3]],
     playin:['lcs:3','lec:3','lcp:3','cblol-brazil:2'],
   },
+
+  /* The knockout simulator's one connection to the feed: the slug of the
+     stage Riot files the quarterfinals under, whose draw and results take the
+     viewer's bracket over as they are published. The draw rule it fills by is
+     the ruleset's §4.3.4 (EVENT.rules): each 3–0 is paired at random with a
+     3–2, those two matches go on opposite halves of the bracket, and the other
+     four teams are drawn into the remaining two — no regional restriction.
+     Riot's wiring puts quarterfinals 1–2 into one semifinal and 3–4 into the
+     other, which is the shape the simulator draws. */
+  ko:{ stage:'knockouts' },
 
   /* Who is already going, and what decides the rest. Riot publishes no
      qualification feed, so this is researched and patched by hand like
@@ -1845,14 +1868,11 @@ const EVENT = {
          below fourth, which put T1 through in the same result; Dplus KIA took
          the last place five days later by knocking KT out of the tournament.
 
-         Korea is full, and the order is half drawn. Gen.G won the
-         upper-bracket final 3–1 on 5 Sep and are in the Grand Final, so they
-         finish first or second whatever happens. Hanwha Life drop to the lower
-         final and can still come back through it, so they stay first to third.
-         T1 beat Dplus KIA 3–1 on 6 Sep, and that is the one place this board
-         can now name outright: the loser of that match is fourth, so Dplus KIA
-         are Korea’s fourth seed and T1 join the other two on first to third.
-         Only the last two rounds are left to separate those three. */
+         Korea is full and fully seeded: Dplus KIA fourth after losing to T1
+         on 6 Sep, T1 third on 12 Sep, and Gen.G over Hanwha Life in the final
+         on 13 Sep (Leaguepedia's participants table agrees). The seeds below
+         are written as they stood before those rounds; QUAL_AUTO narrows them
+         to the settled ones at render time, and the narrower answer wins. */
       {rg:'Korea', lg:'LCK', slug:'lck', color:'var(--lck)', feed:{league:'lck'},
        routes:[{via:'LCK Season Playoffs champion',     on:'2026-09-13', at:{stage:'regional_championship', place:1}},
                {via:'LCK Season Playoffs runner-up',    on:'2026-09-13', at:{stage:'regional_championship', place:2}},
@@ -3335,14 +3355,15 @@ async function fetchEventBracket() {
     .flatMap(c => c.cells||[]).reduce((n, c) => n + (c.matches||[]).length, 0);
   const pick = stages.find(s => s.slug === EVENT.feed?.stage) || stages[0];
   if (!pick) return null;
-  /* The Swiss simulator reads one more stage the same way: the Swiss stage
-     itself, whose real draws and results take the viewer's board over as they
-     are published. */
+  /* The two simulators read two more stages the same way — the Swiss stage
+     and the knockouts — whose real draws and results take the viewer's boards
+     over as they are published. */
   const bySlug = slug => { const s = stages.find(x => x.slug === slug); return s ? evtTrimStage(s) : null; };
   evtBracket = {
     tid,
     stage: evtTrimStage(pick),
     swiss: bySlug(EVENT.swiss?.stage),
+    ko: bySlug(EVENT.ko?.stage),
     others: stages.filter(s => s !== pick).map(s => ({ name: s.name, n: countOf(s) })),
   };
   lsWrite(LS('evtBracket'), JSON.stringify(evtBracket));
@@ -5095,7 +5116,7 @@ function renderEventBoard() {
   evtFillList($('#evtNext'), $('#evtNextSub'),
     all.filter(ev => evPhase(ev, lids) === 'up')
        .sort((a, b) => new Date(a.startTime) - new Date(b.startTime)),
-    false, 'the draw has not been made — fixtures land here when it is');
+    false, 'fixtures land here as Riot schedules them');
 
   evtFillList($('#evtRecent'), $('#evtRecentSub'),
     all.filter(ev => ['done', 'pending'].includes(evPhase(ev, lids)))
@@ -5373,11 +5394,14 @@ function renderSwiss() {
       <form class="sw-add" data-sw="add"><input name="n" placeholder="Add a team…" aria-label="Add a team" maxlength="40"><button class="btn small" type="submit">Add</button></form></div>`}
     <div class="bracket sw-grid">${cols}</div>
     <div class="race-note">Pools are Riot's Round 1 draw pots: Pool 1 meets Pool 4 and Pool 2 meets Pool 3, never inside a
-      region — the rule from 2024 and 2025, expected again (Riot has not published the 2026 wording). After Round 1,
+      region (<a href="${esc(EVENT.rules)}" target="_blank" rel="noopener">ruleset</a> §4.3.2). After Round 1,
       teams on the same record meet and nobody meets twice; a pairing that repeats one is marked in red.
       ${B.held ? '<br>Scores are hidden, so Riot’s results and later draws are not filled in — turn the switch off to bring them in.' : ''}</div>`;
   const sub = $('#evtSwissSub');
   if (sub) sub.textContent = `${Object.keys(SWISS_END).filter(k => k[0] === '3').reduce((n, k) => n + (B.arrive[k] || []).length, 0)} of 8 qualified`;
+  /* The knockout is drawn from this board, so it is redrawn with it — which
+     also gives it every one of this function's callers, the drag hold among them. */
+  try { renderKO(); } catch (e) { console.error('knockout failed', e); }
 }
 
 /* ---- the controls: click, keyboard, drag ---- */
@@ -5426,7 +5450,7 @@ document.addEventListener('click', e => {
   swissDone();
 });
 document.addEventListener('keydown', e => {
-  const b = (e.key === 'Enter' || e.key === ' ') && e.target.closest?.('#evtSwissBody [data-sw][role="button"]');
+  const b = (e.key === 'Enter' || e.key === ' ') && e.target.closest?.('#evtSwissBody [data-sw][role="button"], #evtKoBody [data-ko][role="button"]');
   if (b) { e.preventDefault(); b.click(); }
 });
 document.addEventListener('submit', e => {
@@ -5463,6 +5487,179 @@ document.addEventListener('drop', e => {
   swissDone();
 });
 
+/* -------- the knockout stage simulator -------------------------------------
+
+   The eight-team, best-of-five single elimination the Swiss stage feeds,
+   filled from the Swiss simulator above rather than by hand: its 3–0s, 3–1s
+   and 3–2s are this bracket's teams, each carrying its record.
+
+   The draw is the ruleset's §4.3.4 (EVENT.ko), and it is the only thing here
+   the board decides: each 3–0 meets a 3–2, those two quarterfinals go on
+   opposite halves, and the remaining four teams are drawn into the other two.
+   By default that is done in the order teams reached their record, like the
+   Swiss boxes; ↻ draws again at random within the rule, and a viewer can drag
+   any team onto another to swap them — a quarterfinal the rule would not
+   allow is marked in red rather than refused, the same way a Swiss rematch is.
+
+   Riot takes over as it does on the Swiss board: once the quarterfinal draw
+   is published it replaces the viewer's, and every result replaces a pick.
+   Under the spoiler guard nothing of Riot's comes in at all — a quarterfinal
+   draw names the eight teams through the Swiss stage, which is its results by
+   another name — and the panel says so. */
+const koState = Object.assign({ order: null, win: {} }, lsJSON(LS('ko'), {}));
+if (!Array.isArray(koState.order)) koState.order = null;
+if (!koState.win || typeof koState.win !== 'object' || Array.isArray(koState.win)) koState.win = {};
+function koSave() { lsWrite(LS('ko'), JSON.stringify(koState)); }
+
+/* The eight quarterfinal places in Riot's order — quarterfinals 1–2 feed one
+   semifinal and 3–4 the other — with what the rule puts in each. */
+const KO_SLOT = ['3–0', '3–2', '3–1 / 3–2', '3–1 / 3–2', '3–0', '3–2', '3–1 / 3–2', '3–1 / 3–2'];
+const KO_ROUNDS = [['Quarterfinals', 'QF'], ['Semifinals', 'SF'], ['Finals', 'Final']];
+
+/* A draw within the rule: `q0`/`q1`/`q2` are the 3–0s, 3–1s and 3–2s.
+   `mix` shuffles; without it teams go in the order they arrived. */
+function koDraw(q0, q1, q2, mix) {
+  const sh = a => mix ? a.slice().sort(() => Math.random() - .5) : a.slice();
+  const s = Array(8).fill(null), z = sh(q0), t = sh(q2), rest = sh(q1.concat(t.slice(2)));
+  [0, 4].forEach((h, k) => {
+    const o = mix && Math.random() < .5 ? 2 : 0;          // which quarterfinal of the half is the 3–0's
+    s[h + o] = z[k] || null; s[h + o + 1] = t[k] || null;
+    s[h + 2 - o] = rest[2 * k] || null; s[h + 3 - o] = rest[2 * k + 1] || null;
+  });
+  return s;
+}
+
+function koBoard() {
+  const SB = swissBoard(), guard = spoilFree, S = koState;
+  const rec = new Map();
+  for (const t of SB.rec.values()) if (t.w === 3) rec.set(nk(t.name), { name: t.name, l: t.l });
+  const by = l => [...rec.values()].filter(t => t.l === l).map(t => t.name);
+  const riot = (evtBracket?.ko?.cols || []).map(c => c.cells.flatMap(x => x.matches));
+  const fr = guard ? [] : riot.flat().filter(m => m.teams.every(swissNamed));
+  const qf = guard ? [] : riot[0] || [];
+  const realQF = qf.length === 4 && qf.every(m => m.teams.every(swissNamed));
+  const saved = S.order;
+  const slots = realQF ? qf.flatMap(m => m.teams.map(t => t.name))
+    : rec.size === 8 && saved?.length === 8 && saved.every(n => n && rec.has(nk(n))) ? saved.map(n => rec.get(nk(n)).name)
+    : koDraw(by(0), by(1), by(2));
+  const rounds = [];
+  for (let r = 0, cur = slots; r < 3; r++) {
+    const ms = [];
+    for (let i = 0; i < cur.length; i += 2) {
+      const a = cur[i] || null, b = cur[i + 1] || null;
+      const m = { a, b, key: a && b ? swissKey(a, b) : '', w: null, played: false, real: false, bad: '' };
+      if (a && b) {
+        const f = fr.find(f => swissKey(f.teams[0].name, f.teams[1].name) === m.key);
+        m.real = !!f;
+        const won = f ? f.teams.findIndex(t => t.win) : -1;
+        if (won >= 0) { m.w = f.teams[won].name; m.played = true; }
+        else if (S.win[m.key]) m.w = [a, b].find(x => nk(x) === nk(S.win[m.key])) || null;
+      }
+      ms.push(m);
+    }
+    rounds.push(ms);
+    cur = ms.map(m => m.w);
+  }
+  /* The viewer's quarterfinals held to the rule, once all eight are in. */
+  if (!realQF && rec.size === 8) {
+    const l = x => rec.get(nk(x))?.l;
+    const top = rounds[0].map(m => [m.a, m.b].some(x => l(x) === 0));
+    rounds[0].forEach((m, j) => {
+      const ls = [l(m.a), l(m.b)].sort().join();
+      if (ls.includes('0') && ls !== '0,2') m.bad = 'Riot pairs every 3–0 with a 3–2';
+      else if (top[j] && top.filter((t, k) => t && (k < 2) === (j < 2)).length > 1) m.bad = 'The two 3–0s go on opposite halves of the bracket';
+    });
+  }
+  const held = guard && riot.flat().some(m => m.teams.some(swissNamed));
+  return { rec, slots, rounds, realQF, held, champ: rounds[2][0].w };
+}
+
+/* A round's dates off the feed's own fixtures, in the viewer's time zone. */
+function koWhen(block) {
+  const ds = (scheduleCache[EVENT.slug] || []).filter(e => e.blockName === block).map(e => e.startTime).sort();
+  const f = t => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return !ds.length ? '' : f(ds[0]) === f(ds[ds.length - 1]) ? f(ds[0]) : `${f(ds[0])} – ${f(ds[ds.length - 1])}`;
+}
+
+function renderKO() {
+  const box = $('#evtKoBody');
+  if (!box || !EVENT.ko) return;
+  const B = koBoard(), S = koState, n = B.rec.size, swap = n === 8 && !B.realQF;
+  const tok = (r, i, m, x) => {
+    if (!x) return `<div class="sw-tk empty">${r ? 'Winner of ' + KO_ROUNDS[r - 1][1] + (i + 1) : KO_SLOT[i]}</div>`;
+    const other = i % 2 ? m.a : m.b, open = other && !m.played, rc = B.rec.get(nk(x));
+    const ra = swissPts(x), rb = other && swissPts(other);
+    const p = ra == null || rb == null ? null : seriesProb(1 / (1 + Math.pow(10, (rb - ra) / 400)), 5);
+    const drag = swap && !r;
+    return `<div class="sw-tk${m.w ? (nk(m.w) === nk(x) ? ' w' : ' l') : ''}${m.played ? ' played' : ''}"${drag ? ' draggable="true"' : ''}`
+      + ` data-ko="${open ? 'win' : 'tk'}" data-r="${r}" data-i="${i}" data-n="${esc(x)}" data-key="${esc(m.key)}"${open ? ' role="button" tabindex="0"' : ''}`
+      + ` title="${esc(x)}${m.played ? ' — played' : p == null ? '' : ` — ${Math.round(p * 100)}% to win a Bo5 (GPR)`}${drag ? ' · drag onto another team to swap' : ''}">`
+      + `${logoHTML(x)}<span class="tname">${esc(raceShort(x))}</span>${rc ? `<span class="sw-tag">3–${rc.l}</span>` : ''}</div>`;
+  };
+  const cols = B.rounds.map((ms, r) => `<div class="sw-col">${ms.map((m, j) =>
+    `<div class="sw-box"><div class="sw-bh"><b>${KO_ROUNDS[r][1]}${ms.length > 1 ? j + 1 : ''}</b><span>Bo5</span>`
+    + (m.real ? '<span class="race-chip live" title="Riot has drawn this match">Riot</span>' : '') + '</div>'
+    + `<div class="sw-mt${m.bad ? ' rem' : ''}"${m.bad ? ` title="${esc(m.bad)}"` : ''}>${tok(r, 2 * j, m, m.a)}<span class="vs">vs</span>${tok(r, 2 * j + 1, m, m.b)}</div></div>`).join('')}</div>`).join('');
+  const champ = `<div class="sw-col"><div class="sw-box sw-end q"><div class="sw-bh"><b>Champion</b></div><div class="sw-ends">${B.champ
+    ? `<span class="sw-tk">${logoHTML(B.champ)}<span class="tname">${esc(B.champ)}</span></span>` : '<span class="sw-tk empty">Winner of the final</span>'}</div></div></div>`;
+  const heads = KO_ROUNDS.map(([name]) => [name, koWhen(name)]).concat([['Champion', '']])
+    .map(([a, w]) => `<div class="ko-h">${esc(a)}${w ? ' · ' + esc(w) : ''}</div>`).join('');
+
+  box.innerHTML = `
+    <div class="sim-toolbar">
+      <button class="btn small" type="button" data-ko="draw"${swap ? '' : ' disabled'}>↻ Redraw</button>
+      <button class="btn small" type="button" data-ko="clear"${Object.keys(S.win).length ? '' : ' disabled'}>Clear winners</button>
+      <button class="btn small" type="button" data-ko="reset">Reset</button>
+      <span class="race-hint">${B.realQF
+        ? 'Riot has made the quarterfinal draw. Click a team to pick it to win; results fill in as they are played.'
+        : n < 8 ? `Filled from the Swiss simulator above — ${n} of 8 through so far. Finish the Swiss board and the draw completes itself.`
+        : 'Drawn by Riot’s rule. ↻ draws again, dragging one team onto another swaps them, and clicking a team picks it to win.'}</span>
+    </div>
+    <div class="bracket ko-grid">${heads}${cols}${champ}</div>
+    <div class="race-note">The quarterfinal draw is the <a href="${esc(EVENT.rules)}" target="_blank" rel="noopener">ruleset</a>’s
+      §4.3.4: each 3–0 team is drawn against a 3–2, those two matches go on opposite halves of the bracket, and the other
+      four teams are drawn into the last two quarterfinals — with no regional restriction. A quarterfinal that breaks it
+      is marked in red. Every match is a Bo5; the final is in Brooklyn.
+      ${B.held ? '<br>Scores are hidden, so Riot’s draw and results are not filled in — turn the switch off to bring them in.' : ''}</div>`;
+  const sub = $('#evtKoSub');
+  if (sub) sub.textContent = B.champ ? 'champion: ' + B.champ : `${n} of 8 teams`;
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('#evtKoBody [data-ko]');
+  if (!b) return;
+  const S = koState, d = b.dataset;
+  if (d.ko === 'win') S.win[d.key] = S.win[d.key] && nk(S.win[d.key]) === nk(d.n) ? null : d.n;
+  else if (d.ko === 'draw') {
+    const R = [...koBoard().rec.values()], by = l => R.filter(t => t.l === l).map(t => t.name);
+    S.order = koDraw(by(0), by(1), by(2), true);
+  }
+  else if (d.ko === 'clear') S.win = {};
+  else if (d.ko === 'reset') Object.assign(S, { order: null, win: {} });
+  else return;
+  koSave(); renderKO();
+});
+document.addEventListener('dragstart', e => {
+  const t = e.target.closest?.('#evtKoBody [draggable="true"]');
+  if (t) { e.dataTransfer.setData('text/plain', JSON.stringify({ ko: +t.dataset.i })); e.dataTransfer.effectAllowed = 'move'; }
+});
+document.addEventListener('dragover', e => {
+  const t = e.target.closest?.('#evtKoBody .sw-tk[draggable="true"]');
+  if (t) { e.preventDefault(); t.classList.add('over'); }
+});
+document.addEventListener('dragleave', e => e.target.closest?.('#evtKoBody .sw-tk')?.classList.remove('over'));
+document.addEventListener('drop', e => {
+  const t = e.target.closest?.('#evtKoBody .sw-tk[draggable="true"]');
+  if (!t) return;
+  e.preventDefault();
+  let src; try { src = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+  if (!Number.isInteger(src?.ko)) return;
+  const s = koBoard().slots.slice(), j = +t.dataset.i;
+  [s[src.ko], s[j]] = [s[j], s[src.ko]];
+  koState.order = s;
+  koSave(); renderKO();
+});
+
 function buildEventPage() {
   const page = $('#page-' + EVENT.slug);
   if (!page) return;                 // no section, no page — check.mjs catches that
@@ -5491,16 +5688,17 @@ function buildEventPage() {
       <div class="links">
         <a class="btn small" href="${esc(EVENT.wiki)}" target="_blank" rel="noopener">Leaguepedia ↗</a>
         <a class="btn small" href="${esc(EVENT.liqui)}" target="_blank" rel="noopener">Liquipedia ↗</a>
+        <a class="btn small" href="${esc(EVENT.rules)}" target="_blank" rel="noopener">Ruleset ↗</a>
       </div>
     </div>
 
     <div class="panel evt-note">
       <b>This page is a work in progress.</b> The qualification board, the stage strip and the bracket
-      below are all real — Riot has published the dates, the three venues and the whole tournament
-      wiring. What is missing is the one thing nobody has yet: a schedule. No fixture on this tournament
-      has a kick-off time and the draw has not been made, so the boards read TBD until it is, and then
-      fill themselves. The simulator at the bottom is yours to fill in until then, and Riot's
-      draws and results take it over as they are made. The four league tabs are unaffected.
+      below are all real — Riot has published the dates, the three venues, the whole tournament
+      wiring and now the fixtures' kick-off times. What nobody has yet is the draw, so every fixture
+      reads TBD where a team will go, and fills itself as the draws are made. The two simulators at
+      the bottom are yours to fill in until then, and Riot's draws and results take them over as they
+      are made. The four league tabs are unaffected.
     </div>
 
     <div class="panel live-panel off" id="evtLivePanel">
@@ -5547,7 +5745,7 @@ function buildEventPage() {
       <div class="panel">
         <div class="p-head"><div class="p-title">Next Up</div>
           <span class="p-sub">${esc(EVENT.name)}</span></div>
-        <div class="p-sub sub-line" id="evtNextSub">the draw has not been made — fixtures land here when it is</div>
+        <div class="p-sub sub-line" id="evtNextSub">fixtures land here as Riot schedules them</div>
         <div class="nxt-list" id="evtNext">${rows('up')}</div>
       </div>
 
@@ -5586,6 +5784,15 @@ function buildEventPage() {
       <div class="p-head"><div class="p-title">Swiss Stage Simulator</div>
         <span class="p-sub" id="evtSwissSub"></span></div>
       <div id="evtSwissBody"><div class="loading">Loading the simulator…</div></div>
+    </div>
+
+    <!-- The knockout stage the Swiss board feeds: its eight teams come from
+         the simulator above, placed by Riot's draw rule. renderKO() fills it,
+         from inside renderSwiss(). -->
+    <div class="panel evt-swiss">
+      <div class="p-head"><div class="p-title">Knockout Stage Simulator</div>
+        <span class="p-sub" id="evtKoSub"></span></div>
+      <div id="evtKoBody"><div class="loading">Loading the simulator…</div></div>
     </div>
 `;
 }
