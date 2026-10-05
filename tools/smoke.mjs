@@ -817,7 +817,7 @@ if (loaded) {
         .filter(x => getComputedStyle(x).visibility === 'hidden').length;
       return { n: t.length, w: sum('w'), l: sum('l'), rw: sum('rw'), rl: sum('rl'), inn, qf,
                out: t.filter(x => x.st === 'out').length, guard: spoilFree,
-               boxes: hid('#cupSwissBody .sp-mask') };
+               boxes: document.querySelectorAll('#cupSwissBody .cup-end.spoil').length };
     });
     if (r.w !== r.l) throw new Error(`${r.w} Swiss wins against ${r.l} losses`);
     if (r.rw !== r.rl) throw new Error(`${r.rw} round-robin wins against ${r.rl} losses`);
@@ -834,6 +834,35 @@ if (loaded) {
      the guard is fed a synthetic one: a played quarterfinal whose winner sits
      in the semifinal. Guarded, neither the score, the winner nor the team the
      result moved on may show; unguarded, all three must. */
+  /* With scores hidden, every hidden thing on the board has its own SHOW, and
+     the panel has one button that reveals the lot — the thing the switch at
+     the top used to be the only way to do. One click must leave nothing on
+     the board hidden and nothing elsewhere revealed; the state is per visit,
+     so it is cleared again afterwards. */
+  await check('cup tab: Show results reveals the Swiss board', async () => {
+    const before = await page.evaluate(() => ({
+      guard: spoilFree,
+      hidden: document.querySelectorAll('#cupSwissBody .spoil').length,
+      btns: [...document.querySelectorAll('#cupSwissBody .spoil .sp-btn')].filter(b => getComputedStyle(b).display !== 'none').length,
+      elsewhere: document.querySelectorAll('#recentStrip .nxt.spoil').length,
+    }));
+    if (!before.guard) return 'skipped — the guard is off';
+    if (!before.hidden) return 'nothing on the board to hide yet';
+    if (before.btns !== before.hidden) throw new Error(`${before.hidden} hidden items but ${before.btns} visible SHOW buttons`);
+    await page.click('#cupSwissAct [data-reveal]');
+    await page.waitForTimeout(200);
+    const after = await page.evaluate(() => ({
+      hidden: document.querySelectorAll('#cupSwissBody .spoil').length,
+      button: !!document.querySelector('#cupSwissAct [data-reveal]'),
+      elsewhere: document.querySelectorAll('#recentStrip .nxt.spoil').length,
+    }));
+    await page.evaluate(() => { spoilShown.clear(); applySpoil(); renderEvents(); });
+    if (after.hidden) throw new Error(`${after.hidden} items still hidden after Show results`);
+    if (after.button) throw new Error('the Show results button is still there with nothing left to show');
+    if (after.elsewhere !== before.elsewhere) throw new Error('Show results revealed rows on another board');
+    return `${before.hidden} hidden items, each with a SHOW, all revealed by one click`;
+  });
+
   await check('cup tab: bracket holds results under the guard', async () => {
     const r = await page.evaluate(() => {
       const keep = cupBracket, guard = spoilFree;
@@ -1166,7 +1195,7 @@ if (loaded) {
      standings columns, all from one click. */
   await check('spoiler switch reaches every board', async () => {
     const count = () => page.evaluate(() => ({
-      rows: document.querySelectorAll('#results-lck .match.spoil, #recentStrip .nxt.spoil, #cupSwissBody .swc.spoil').length,
+      rows: document.querySelectorAll('#results-lck .match.spoil, #recentStrip .nxt.spoil, #cupSwissBody .swc.spoil, #cupSwissBody .cup-end.spoil').length,
       masked: [...document.querySelectorAll('#table-lck .sp-mask, #cupSwissBody .sp-mask')]
         .filter(x => getComputedStyle(x).visibility === 'hidden').length,
     }));

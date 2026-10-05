@@ -29,6 +29,9 @@ on:
 
 # One at a time, and never cancel: two generators landing close together would
 # otherwise leave the survivor proving a build that has already been replaced.
+# The other side of that race — the earlier run checking a build Pages
+# cancelled in favour of the newer one — is handled inside deployed.mjs, which
+# accepts a live site serving main's tip as current.
 concurrency:
   group: deployed
   cancel-in-progress: false

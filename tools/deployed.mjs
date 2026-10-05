@@ -26,11 +26,22 @@
  * Run straight after a push it polls, because a rebuild takes about a minute.
  * Run at any other time it answers immediately on the first attempt.
  *
+ * A build that has been superseded counts as landed. Two pushes a few seconds
+ * apart make Pages cancel the first build and deploy only the second, so the
+ * run checking the first commit would wait for bytes that will never be
+ * served and fail — which is exactly what happened on 2026-10-05, the one red
+ * deploy check in weeks, with the live site perfectly current. So on a
+ * mismatch it also asks git what main's tip is now, and a live page matching
+ * that tip is the healthy answer: the question was always "is the live site
+ * current?", and "is it this particular commit?" was only the usual way of
+ * asking it.
+ *
  * No dependencies, no build step. Plain node 18+ for global fetch.
  */
 
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -62,6 +73,23 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const local = readFileSync(INDEX);
 const want = sha(local);
 
+/* main's index.html as of right now, when main has moved past this checkout —
+   the build Pages should be serving if this one was superseded. Null when it
+   has not moved, or when git is not there to ask (the check then behaves
+   exactly as it always did). Plain `git fetch`, never `--depth`: on a full
+   local clone a depth would quietly make the repository shallow. */
+const ROOT = join(HERE, '..');
+function newerTip() {
+  try {
+    const git = (...a) => execFileSync('git', a, { cwd: ROOT, timeout: 30000, maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'ignore'] });
+    git('fetch', '-q', 'origin', 'main');
+    const head = git('rev-parse', 'HEAD').toString().trim();
+    const tip = git('rev-parse', 'FETCH_HEAD').toString().trim();
+    if (head === tip) return null;
+    return { tip, sha: sha(git('show', 'FETCH_HEAD:index.html')) };
+  } catch { return null; }
+}
+
 /* The "as of" line is the most human-readable version marker the page carries,
    so a mismatch can say *which* build is live rather than just "not yours". */
 const asOf = src => (String(src).match(/POWER_RANKINGS_ASOF\s*=\s*['"]([^'"]+)['"]/) || [])[1] || 'unknown';
@@ -89,6 +117,12 @@ while (Date.now() - started < TIMEOUT_MS || attempt === 0) {
       const got = sha(body);
       if (got === want) {
         console.log(`  ok   attempt ${attempt}: the live site is serving this build.`);
+        process.exitCode = 0;
+        break;
+      }
+      const newer = newerTip();
+      if (newer && got === newer.sha) {
+        console.log(`  ok   attempt ${attempt}: this commit was superseded, and the live site is serving main's tip (${newer.tip.slice(0, 7)}).`);
         process.exitCode = 0;
         break;
       }

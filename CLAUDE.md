@@ -766,10 +766,16 @@ just missed Worlds. Driven by the `CUP` constant and by the API league
   games on its day, or the round after the last one seen: the stage's days
   are its rounds. It reads blocks named *Swiss*, and `api-canary.mjs` fails if
   the feed stops naming them that.
-- **Under the spoiler guard** each match row (`.swc`, a fourth row shape
-  `applySpoil()` knows) hides its score and winner behind the usual per-match
-  SHOW button, and the qualified/eliminated boxes are masked whole. Pairings
-  stay visible, as they do on the fixture boards.
+- **Under the spoiler guard** each match row (`.swc`) hides its score and
+  winner behind the usual per-match SHOW button, and each qualified/eliminated
+  box (`.cup-end`, keyed `cupbox:<key>` in `spoilShown`) gets a SHOW of its
+  own over its slots — both are row shapes `applySpoil()` knows. Pairings stay
+  visible, as they do on the fixture boards. Tom's complaint about the first
+  version was that the only way to see anything was the switch at the top, so
+  **every hidden thing has its own click, and each panel has a "Show
+  results" button** (`revealBtn()` / `data-reveal`) that reveals the whole
+  Swiss board or a whole bracket (`brk:<slug>`, honoured by
+  `renderEventBracket()` on both event tabs) for the visit.
 - **The published-bracket panel now honours the spoiler guard — on both
   tabs.** It used to paint winners and scores regardless of the switch, which
   was latent on Worlds (nothing played) and live on the cup. Under the guard

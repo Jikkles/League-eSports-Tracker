@@ -174,6 +174,9 @@ nav{max-width:1900px;margin:0 auto;display:flex;gap:4px;padding:0 20px}
 .swc.spoil .cup-s > span,.swc.spoil .cup-s > i{visibility:hidden}
 .swc.spoil .sw-tk.l{color:var(--text)} .swc.spoil .sw-tk.l img{opacity:1}
 .swc.spoil .sp-btn{inset:-3px -8px}
+.cup-end{position:relative}
+.cup-end.spoil .sw-ends{visibility:hidden}
+.cup-end.spoil .sp-btn{top:38px;bottom:8px;left:8px;right:8px}
 .evt-mark .ini{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:1.6px;color:inherit}
 
 /* ============ LAYOUT ============ */
@@ -4559,7 +4562,7 @@ function applySpoil() {
      question and gets a per-match button; form is a mode. */
   document.body.classList.toggle('spoil-free', spoilFree);
   document.querySelectorAll('.sp-btn[data-spoil]').forEach(btn => {
-    const row = btn.closest('.nxt, .match, .lcard, .swc');
+    const row = btn.closest('.nxt, .match, .lcard, .swc, .cup-end');
     if (!row) return;
     row.classList.toggle('spoil', spoilFree && !spoilShown.has(btn.dataset.spoil));
   });
@@ -5280,6 +5283,7 @@ function renderEventBracket(E = EVENT) {
     return;
   }
   let drawnN = 0, total = 0, inner = '', held = false;
+  const guard = spoilFree && !spoilShown.has('brk:' + E.slug);
   for (const col of st.cols) {
     let cell = '<div class="bcell">';
     for (const c of col.cells) {
@@ -5288,11 +5292,11 @@ function renderEventBracket(E = EVENT) {
         total++;
         if (m.teams.some(t => t.name && t.name !== 'TBD')) drawnN++;
         const real = m.teams.some(t => t.win);
-        const played = real && !spoilFree;
-        if (real && spoilFree) held = true;
+        const played = real && !guard;
+        if (real && guard) held = true;
         cell += '<div class="bmatch">' + m.teams.map(t => {
           const named = !!(t.name && t.name !== 'TBD');
-          const known = named && !(spoilFree && (t.org?.type === 'match' || !(B.first && col === st.cols[0])));
+          const known = named && !(guard && (t.org?.type === 'match' || !(B.first && col === st.cols[0])));
           if (named && !known) held = true;
           const from = known ? null : evtOriginLabel(st, t.org);
           /* No score box on a match nobody has played. A column of dashes is
@@ -5314,6 +5318,8 @@ function renderEventBracket(E = EVENT) {
   const ttl = $(P + 'BracketTitle');
   if (ttl) ttl.textContent = E.feed?.title || st.name + ' Bracket';
   body.innerHTML = `<div class="bracket evt-bracket" style="grid-template-columns:repeat(${st.cols.length}, minmax(${BCOL_MIN}px,1fr))">${inner}</div>`;
+  const act = $(P + 'BracketAct');
+  if (act) act.innerHTML = held ? revealBtn('brk:' + E.slug, 'Show results') : '';
   const rest = (B.others || []).filter(o => o.n);
   if (sub) sub.textContent = (held ? 'results hidden · ' : '')
     + (drawnN ? `${drawnN} of ${total} matches drawn` : `${total} matches · no teams drawn yet`)
@@ -5894,7 +5900,7 @@ function buildEventPage() {
          tab twice in a day. -->
     <div class="panel evt-brk">
       <div class="p-head"><div class="p-title" id="evtBracketTitle">${esc(evtBracket?.stage?.name || EVENT.stages[0]?.name || 'Bracket')} Bracket</div>
-        <span class="p-sub" id="evtBracketSub"></span></div>
+        <span class="p-sub" id="evtBracketSub"></span><div class="right" id="evtBracketAct"></div></div>
       <div class="p-sub sub-line">published by Riot — every slot names the match that fills it</div>
       <div id="evtBracketBody"><div class="loading">Loading the published bracket…</div></div>
     </div>
@@ -6011,14 +6017,35 @@ function cupCard(ev) {
 }
 
 /* Who a box has sent through or out — the Worlds board's end boxes. Being the
-   result of everything before it, the list is masked whole under the guard,
-   the way the standings' form is. */
-function cupEnd(title, sub, list, n, q) {
+   result of everything before it, each one is guarded like a match: under the
+   guard its slots keep their shape and a SHOW button sits over them, keyed
+   `cupbox:<key>` in spoilShown so the reveal works exactly as a row's does. */
+function cupEnd(key, title, sub, list, n, q) {
+  const id = 'cupbox:' + key;
   const cells = Array.from({ length: n }, (_, i) => list[i]
     ? `<span class="sw-tk">${logoHTML(list[i].t)}<span class="tname">${esc(list[i].t)}</span></span>` : '<span class="sw-tk empty"></span>').join('');
-  return `<div class="sw-box sw-end ${q ? 'q' : 'e'}"><div class="sw-bh"><b>${title}</b><span>${sub}</span></div>`
-    + `<div class="sw-ends sp-cell" data-mask="hidden"><div class="sp-mask">${cells}</div></div></div>`;
+  return `<div class="sw-box sw-end cup-end ${q ? 'q' : 'e'}${spoilFree && !spoilShown.has(id) ? ' spoil' : ''}">`
+    + `<div class="sw-bh"><b>${title}</b><span>${sub}</span></div><div class="sw-ends">${cells}</div>`
+    + `<button class="sp-btn" data-spoil="${id}" type="button" title="Hidden — click to reveal" aria-label="Reveal ${esc(title)} ${esc(sub)}">SHOW</button></div>`;
 }
+
+/* One click for a whole panel, beside its title: every result on the Swiss
+   board, or every result in a bracket. Drawn only while the panel is holding
+   something back, and forgotten with the rest of spoilShown when the guard is
+   turned back on. */
+const revealBtn = (what, label) =>
+  `<button class="btn small sp-all" type="button" data-reveal="${esc(what)}">${esc(label)}</button>`;
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-reveal]');
+  if (!b) return;
+  const what = b.dataset.reveal;
+  if (what === 'cupswiss') {
+    for (const ev of cupBox.keys()) if (ev.match?.id && hasWinner(ev)) spoilShown.add(ev.match.id);
+    for (const k of ['2-0', '2-1', 'rr-out', 'dec-in', 'dec-out']) spoilShown.add('cupbox:' + k);
+  } else spoilShown.add(what);
+  applySpoil();
+  renderEvents();
+});
 
 function renderCupSwiss() {
   const rows = cupSwiss();
@@ -6035,14 +6062,16 @@ function renderCupSwiss() {
     box.innerHTML = `<div class="bracket sw-grid cup-grid">
       ${col(games('0-0', '0–0', 'Bo1'))}
       ${col(games('1-0', '1–0', 'Bo3') + games('0-1', '0–1', 'Bo3'))}
-      ${col(cupEnd('Qualified', '2–0', q(t => !t.dec && t.l === 0), 3, true) + games('1-1', '1–1', 'Bo3') + games('rr', '0–2', 'Round robin'))}
-      ${col(cupEnd('Qualified', '2–1', q(t => !t.dec && t.l === 1), 3, true) + games('dec', 'Decider', 'Bo3') + cupEnd('Eliminated', 'Round robin', o(t => !t.dec), 2, false))}
-      ${col(cupEnd('Qualified', 'Decider', q(t => t.dec), 2, true) + cupEnd('Eliminated', 'Decider', o(t => t.dec), 2, false))}
+      ${col(cupEnd('2-0', 'Qualified', '2–0', q(t => !t.dec && t.l === 0), 3, true) + games('1-1', '1–1', 'Bo3') + games('rr', '0–2', 'Round robin'))}
+      ${col(cupEnd('2-1', 'Qualified', '2–1', q(t => !t.dec && t.l === 1), 3, true) + games('dec', 'Decider', 'Bo3') + cupEnd('rr-out', 'Eliminated', 'Round robin', o(t => !t.dec), 2, false))}
+      ${col(cupEnd('dec-in', 'Qualified', 'Decider', q(t => t.dec), 2, true) + cupEnd('dec-out', 'Eliminated', 'Decider', o(t => t.dec), 2, false))}
     </div>`;
   }
   const n = k => rows.filter(t => t.st === k).length;
-  if (sub) sub.textContent = spoilFree ? 'results hidden'
-    : `${n('in')} of 8 qualified · ${n('out')} of 4 eliminated`;
+  const held = !!document.querySelector('#cupSwissBody .spoil');
+  if (sub) sub.textContent = held ? 'results hidden' : `${n('in')} of 8 qualified · ${n('out')} of 4 eliminated`;
+  const act = $('#cupSwissAct');
+  if (act) act.innerHTML = held ? revealBtn('cupswiss', 'Show results') : '';
 }
 
 /* Live first, then the dates, the fixtures, the Swiss stage and the
@@ -6102,14 +6131,14 @@ function buildCupPage() {
 
     <div class="panel evt-swiss">
       <div class="p-head"><div class="p-title">Swiss Stage</div>
-        <span class="p-sub" id="cupSwissSub"></span></div>
+        <span class="p-sub" id="cupSwissSub"></span><div class="right" id="cupSwissAct"></div></div>
       <div class="p-sub sub-line">a win moves a team right, a loss down · two wins reach the knockouts · the three 0–2 teams play a round robin for the last place in the decider</div>
       <div id="cupSwissBody"></div>
     </div>
 
     <div class="panel evt-brk">
       <div class="p-head"><div class="p-title" id="cupBracketTitle">Knockout Stage</div>
-        <span class="p-sub" id="cupBracketSub"></span></div>
+        <span class="p-sub" id="cupBracketSub"></span><div class="right" id="cupBracketAct"></div></div>
       <div class="p-sub sub-line">published by Riot — every slot names the match that fills it</div>
       <div id="cupBracketBody"><div class="loading">Loading the published bracket…</div></div>
     </div>
