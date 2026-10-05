@@ -2026,15 +2026,13 @@ const EVENT = {
    `stages` — and drawn by the same feed, fixture and bracket functions, which
    take the event as an argument. What it does not have is a qualification
    board or simulators: the field was settled before it started, so `teams`
-   is a plain list, and its Swiss table is computed from the feed.
+   is a plain list, and its Swiss board is computed from the feed.
 
    `teams` is the field in Leaguepedia's participants table: `t` is the
-   feed's own spelling (the Swiss table joins on it), `lg` and `seed` the
-   place each team came through. Order is the table's, and the table keeps
-   it rather than sorting by record, because a sorted table under the
-   spoiler guard would still be the results, in order.
+   feed's own spelling (the Swiss board joins on it), `lg` and `seed` the
+   place each team came through.
 
-   The rules the Swiss table applies (Leaguepedia's format section, and the
+   The rules the Swiss board applies (Leaguepedia's format section, and the
    feed agrees: Round 1 is six Bo1s, every later round Bo3): two wins goes
    through, and the three teams who start 0–2 play a single round robin in
    Round 3 whose best goes on to the Round 4 decider against the three 1–2s.
