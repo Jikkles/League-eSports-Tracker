@@ -756,7 +756,7 @@ if (loaded) {
       const slots = [...pg.querySelectorAll('#cupBracketBody .bslot')];
       return {
         stages: cards.join('|') === CUP.stages.map(x => x.when).join('|'),
-        teams: pg.querySelectorAll('#cupTableBody tr').length - 1,
+        teams: new Set([...pg.querySelectorAll('#cupSwissBody .swc .sw-tk[title]')].map(x => x.title)).size,
         rows: rows.length,
         real: rows.filter(x => !x.classList.contains('tbd')).length,
         foreign: rows.filter(x => !(x.querySelector('.n-rg')?.textContent || '').includes(CUP.name)).length,
@@ -767,7 +767,7 @@ if (loaded) {
       };
     }, slug);
     if (!r.stages) throw new Error('the stage strip does not match CUP.stages');
-    if (r.teams !== 12) throw new Error(`the Swiss standings have ${r.teams} rows, not CUP's 12 teams`);
+    if (r.teams !== 12) throw new Error(`the Swiss board names ${r.teams} teams, not CUP's 12`);
     if (!r.rows) throw new Error('the fixture boards drew no rows at all');
     if (r.foreign) throw new Error(`${r.foreign} fixture rows are not labelled ${slug} — a board is reading another event`);
     if (!r.live) throw new Error('the live panel drew neither a card nor an offline state');
@@ -776,12 +776,13 @@ if (loaded) {
     return `${r.real} real fixture rows, ${r.slots} bracket slots`;
   });
 
-  /* The Swiss table is computed from results rather than fetched, so like the
+  /* The Swiss board is computed from results rather than fetched, so like the
      race panel it is held to arithmetic: every match it counts has one winner
      and one loser, the round robin likewise, no more than eight through and
      four out. And once Riot names the quarterfinalists, they have to be
      exactly the teams the table put through — the two halves of the tab
-     telling one story. Under the guard both result columns must be masked. */
+     telling one story. Under the guard the board's five qualified and
+     eliminated boxes must be masked. */
   /* The Swiss board places every fixture in a box by the records of the two
      teams in it, or by its day when nobody has been drawn. Every Swiss
      fixture in the feed must land exactly once, no box may hold more matches
@@ -794,7 +795,8 @@ if (loaded) {
       for (const k of cupBox.values()) per[k] = (per[k] || 0) + 1;
       const over = Object.entries(per).filter(([k, n]) => n > (CUP_BOX[k] ?? 0));
       const cards = [...document.querySelectorAll('#cupSwissBody .swc')];
-      const blank = cards.filter(c => [...c.querySelectorAll('.swc-c')].some(x => !x.textContent.trim())).length;
+      const blank = cards.filter(c => c.querySelectorAll('.sw-tk').length !== 2
+        || [...c.querySelectorAll('.sw-tk')].some(x => !x.textContent.trim())).length;
       return { n: swiss.length, placed: cupBox.size, over, cards: cards.length,
                want: Object.values(CUP_BOX).reduce((a, b) => a + b, 0), blank };
     });
@@ -805,7 +807,7 @@ if (loaded) {
     return `${r.placed} fixtures over ${r.want} places`;
   });
 
-  await check('cup tab: Swiss table adds up', async () => {
+  await check('cup tab: Swiss records add up', async () => {
     const r = await page.evaluate(() => {
       const t = cupSwiss(), sum = k => t.reduce((n, x) => n + x[k], 0);
       const inn = t.filter(x => x.st === 'in').map(x => nk(x.t)).sort();
@@ -815,7 +817,7 @@ if (loaded) {
         .filter(x => getComputedStyle(x).visibility === 'hidden').length;
       return { n: t.length, w: sum('w'), l: sum('l'), rw: sum('rw'), rl: sum('rl'), inn, qf,
                out: t.filter(x => x.st === 'out').length, guard: spoilFree,
-               masked: hid('#cupTableBody .sp-mask'), boxes: hid('#cupSwissBody .sp-mask') };
+               boxes: hid('#cupSwissBody .sp-mask') };
     });
     if (r.w !== r.l) throw new Error(`${r.w} Swiss wins against ${r.l} losses`);
     if (r.rw !== r.rl) throw new Error(`${r.rw} round-robin wins against ${r.rl} losses`);
@@ -823,7 +825,6 @@ if (loaded) {
     if (r.out > 4) throw new Error(`${r.out} teams out, where four leave the Swiss stage`);
     if (r.qf.length === 8 && r.inn.length === 8 && r.qf.join() !== r.inn.join())
       throw new Error(`Riot's quarterfinalists are not the eight the table put through`);
-    if (r.guard && r.masked !== r.n * 2) throw new Error(`${r.masked} of ${r.n * 2} result cells masked under the guard`);
     if (r.guard && r.boxes !== 5) throw new Error(`${r.boxes} of the board's 5 through/out boxes masked under the guard`);
     return `${r.w} matches + ${r.rw} round robin · ${r.inn.length} through, ${r.out} out`;
   });
@@ -1166,7 +1167,7 @@ if (loaded) {
   await check('spoiler switch reaches every board', async () => {
     const count = () => page.evaluate(() => ({
       rows: document.querySelectorAll('#results-lck .match.spoil, #recentStrip .nxt.spoil, #cupSwissBody .swc.spoil').length,
-      masked: [...document.querySelectorAll('#table-lck .sp-mask, #cupSwissBody .sp-mask, #cupTableBody .sp-mask')]
+      masked: [...document.querySelectorAll('#table-lck .sp-mask, #cupSwissBody .sp-mask')]
         .filter(x => getComputedStyle(x).visibility === 'hidden').length,
     }));
     const before = await count();

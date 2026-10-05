@@ -745,29 +745,31 @@ just missed Worlds. Driven by the `CUP` constant and by the API league
   `renderEvents()` draws both, each in its own try.
 - **What it does not have is a qualification board or simulators.** The field
   was settled before it started, so `CUP.teams` is a plain list — `t` in the
-  feed's own spelling, because the Swiss table joins on it.
-- **Layout, as Tom asked for it:** dates, Live Now, then the **Swiss Stage**
-  board with the **Knockout Stage** (Riot's bracket, titled by
-  `CUP.feed.title`) straight under it, then the fixture boards and the Swiss
-  standings table. No power rankings on this tab — he did not want them.
-- **The Swiss board is Riot's on-air graphic**: one box per record (0–0;
-  1–0, 0–1; 2–0 through, 1–1, the 0–2 round robin; 2–1 through, the decider,
-  out; then the decider's through and out), shaped by `CUP_BOX` /
-  `CUP_ROUNDS`. It is computed, not fetched (`cupSwiss()`): the feed files the
-  stage as three standings stages, none carrying a record. The replay walks
-  the results in played order under the published rules — two wins goes
-  through, a meeting of two 0–2 teams is the round robin (kept apart from the
-  record), a match with a two-loss team in it is the decider — and puts each
-  fixture in the box its two teams' records name. A fixture Riot has not
-  drawn yet takes the round of the other games on its day, or the round after
-  the last one seen: the stage's days are its rounds. It reads blocks named
-  *Swiss*, and `api-canary.mjs` fails if the feed stops naming them that.
-- **Under the spoiler guard** each Swiss card (`.swc`, a fourth row shape
+  feed's own spelling, because the Swiss board joins on it.
+- **Layout, as Tom asked for it:** Live Now, the two stage-date cards, Next
+  Up and Recent Games, then the **Swiss Stage** board with the **Knockout
+  Stage** (Riot's bracket, titled by `CUP.feed.title`) straight under it. No
+  power rankings and no standings table — he did not want them, and the
+  board carries every record.
+- **The Swiss board is drawn in the Worlds board's own classes** (`.sw-grid`,
+  `.sw-box`, `.sw-mt`, `.sw-end`) — Tom pointed at the Worlds tab as the look
+  he wanted — with each match on one line, `RED 1–0 NAVI`. Five columns: 0–0;
+  1–0, 0–1; 2–0 qualified, 1–1, the 0–2 round robin; 2–1 qualified, the
+  decider, round-robin eliminated; then the decider's qualified and
+  eliminated. Its shape is `CUP_BOX` / `CUP_ROUNDS`. It is computed, not
+  fetched (`cupSwiss()`): the feed files the stage as three standings stages,
+  none carrying a record. The replay walks the results in played order under
+  the published rules — two wins goes through, a meeting of two 0–2 teams is
+  the round robin (kept apart from the record), a match with a two-loss team
+  in it is the decider — and puts each fixture in the box its two teams'
+  records name. A fixture Riot has not drawn yet takes the round of the other
+  games on its day, or the round after the last one seen: the stage's days
+  are its rounds. It reads blocks named *Swiss*, and `api-canary.mjs` fails if
+  the feed stops naming them that.
+- **Under the spoiler guard** each match row (`.swc`, a fourth row shape
   `applySpoil()` knows) hides its score and winner behind the usual per-match
-  SHOW button, and the through/out boxes are masked whole. Pairings stay
-  visible, as they do on the fixture boards. The standings table is drawn in
-  the field's order, never by record, because a table sorted by masked
-  columns would still be the results, in order.
+  SHOW button, and the qualified/eliminated boxes are masked whole. Pairings
+  stay visible, as they do on the fixture boards.
 - **The published-bracket panel now honours the spoiler guard — on both
   tabs.** It used to paint winners and scores regardless of the switch, which
   was latent on Worlds (nothing played) and live on the cup. Under the guard
@@ -780,16 +782,16 @@ just missed Worlds. Driven by the `CUP` constant and by the API league
   `EVENT` (one shared `eventShape()`: slug ↔ nav `data-tab` ↔ section id,
   dates, stage windows, feed slug), plus a team list that matches
   `CUP.field`'s count. `smoke.mjs` renders the tab, checks no board is drawing
-  another event's rows, holds the Swiss table to its arithmetic (wins equal
+  another event's rows, holds the Swiss board to its arithmetic (wins equal
   losses, at most eight through and four out, Riot's quarterfinalists equal to
-  the eight it put through, both result columns masked under the guard), checks
-  the board places every Swiss fixture exactly once with no box over its
-  capacity, and sweeps it with axe. `stale.mjs` calls it STALE once `CUP.end` has passed;
+  the eight it put through, the five qualified/eliminated boxes masked under
+  the guard), checks the board places every Swiss fixture exactly once with
+  no box over its capacity, and sweeps it with axe. `stale.mjs` calls it STALE once `CUP.end` has passed;
   `links.mjs` checks its links.
 - **Retiring it** once the cup is over: record the result in `HONOURS`, then
   remove `CUP`, the nav button and the section together — `check.mjs` fails a
   build that removes only some of them. The `tab-cup` CSS, `buildCupPage()`,
-  `cupSwiss()` and the `CUP` references in `renderEvents()`, `LOGO_SLUGS`,
+  `cupSwiss()`, `renderCupSwiss()` and the `CUP` references in `renderEvents()`, `LOGO_SLUGS`,
   `watchLinks()` and the tools go with it.
 
 ## The tab in the URL
