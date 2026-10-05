@@ -47,8 +47,7 @@ const SLUGS = ['lec', 'lck', 'lpl', 'lcs'];
    last year's league would pass forever while the tab it guards went dark.
    Unreadable is not fatal — this file is about the API, not about index.html,
    and the check below skips rather than failing the run. */
-const EVENT = readDataConstants().EVENT || null;
-const EVT = EVENT?.feed?.league ? EVENT.feed : null;
+const { EVENT = null, CUP = null } = readDataConstants();
 const TIMEOUT_MS = 20000;
 const RETRIES = 3;              // transient flakiness shouldn't wake anyone up
 
@@ -269,16 +268,23 @@ if (Object.keys(leagueIds).length !== SLUGS.length) {
      tournament's real state until the draw is made; what would be a break is
      the league id vanishing, or a bracket that no longer carries the `origin`
      wiring the panel turns into "Winner of …". */
-  await check('event tab (getSchedule + bracket)', async () => {
-    if (!EVT) return 'skipped — EVENT.feed could not be read from index.html';
+  /* Both event tabs walk the same calls — Worlds through EVENT, the Demacia
+     Cup through CUP — so both are walked here, each read from its constant. */
+  const eventFeed = async (EVENT, NAME) => {
+    const EVT = EVENT?.feed?.league ? EVENT.feed : null;
+    if (!EVT) return `skipped — ${NAME}.feed could not be read from index.html`;
     const leagues = (await apiJSON('/getLeagues'))?.data?.leagues || [];
     const lg = leagues.find(l => String(l.slug || '').toLowerCase() === EVT.league);
-    if (!lg) throw new Error(`no league for EVENT.feed.league "${EVT.league}"`);
+    if (!lg) throw new Error(`no league for ${NAME}.feed.league "${EVT.league}"`);
 
     const sched = await apiJSON('/getSchedule', { leagueId: lg.id });
     if (!Array.isArray(sched?.data?.schedule?.events))
       throw new Error('data.schedule.events is not an array for the event league');
     const mine = sched.data.schedule.events.filter(e => e.startTime >= EVENT.start);
+    /* The cup's Swiss table counts the blocks named Swiss and nothing else;
+       renamed, the table would sit at 0–0 for every team, looking fine. */
+    if (NAME === 'CUP' && mine.length && !mine.some(e => /swiss/i.test(e.blockName || '')))
+      throw new Error(`no fixture in a block named Swiss (has: ${[...new Set(mine.map(e => e.blockName))].join(', ')})`);
 
     const ts = (await apiJSON('/getTournamentsForLeague', { leagueId: lg.id }))
       ?.data?.leagues?.[0]?.tournaments;
@@ -312,7 +318,9 @@ if (Object.keys(leagueIds).length !== SLUGS.length) {
 
     return `${t.slug} · ${st.name}: ${matches.length} matches, ${wired} wired slots · ${mine.length} fixture(s) scheduled`
       + (sims.length ? ` · simulator stages ${sims.map(([, s]) => s).join(', ')} present` : '');
-  });
+  };
+  await check('event tab (getSchedule + bracket)', () => eventFeed(EVENT, 'EVENT'));
+  await check('cup tab (getSchedule + bracket)', () => eventFeed(CUP, 'CUP'));
 
   /* ---- the CORS proxy fallback ------------------------------------------- */
 

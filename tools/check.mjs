@@ -424,7 +424,7 @@ if (m && !fails.length) {
   }
 
   if (C) {
-    const { SEASON, REGIONS, EVENT, QUAL_AUTO, HONOURS, STORYLINES, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF, GPR_PTS, FORMATS } = C;
+    const { SEASON, REGIONS, EVENT, CUP, QUAL_AUTO, HONOURS, STORYLINES, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF, GPR_PTS, FORMATS } = C;
 
     /* -- SEASON -------------------------------------------------------------
        The render code reads SEASON; the <title> carries its own literal,
@@ -616,36 +616,39 @@ if (m && !fails.length) {
        see the constant. Rolling the tab to the next event means editing all
        three, and getting two of them right renders a tab that opens a blank
        page and throws nothing. So they are held against each other here. */
-    if (EVENT) {
-      for (const field of ['slug', 'name', 'full', 'when', 'host', 'logo', 'wiki', 'liqui'])
-        if (!EVENT[field]) fail(`EVENT.${field} is missing.`);
+    /* Both event tabs — Worlds (EVENT) and the Demacia Cup (CUP) — are the same
+       shape where they overlap, and drawn by the same feed, fixture and
+       bracket functions, so they are held to the same checks. */
+    const eventShape = (E, N, need) => {
+      for (const field of need)
+        if (!E[field]) fail(`${N}.${field} is missing.`);
 
-      if (EVENT.slug) {
-        if (REGIONS && REGIONS[EVENT.slug])
-          fail(`EVENT.slug is "${EVENT.slug}", which is also a REGIONS key.`,
-               `The event tab and the region page would fight over #page-${EVENT.slug}, and fetchEventSchedule() `
+      if (E.slug) {
+        if (REGIONS && REGIONS[E.slug])
+          fail(`${N}.slug is "${E.slug}", which is also a REGIONS key.`,
+               `The event tab and the region page would fight over #page-${E.slug}, and fetchEventSchedule() `
                + `caches under that slug — so the tournament's fixtures would also overwrite that league's schedule.`);
-        if (!new RegExp(`data-tab=["']${EVENT.slug}["']`).test(html))
-          fail(`No nav tab carries data-tab="${EVENT.slug}".`,
+        if (!new RegExp(`data-tab=["']${E.slug}["']`).test(html))
+          fail(`No nav tab carries data-tab="${E.slug}".`,
                'switchTab() matches the button to the section by that name; without it the tab does not exist.');
-        if (!new RegExp(`id=["']page-${EVENT.slug}["']`).test(html))
-          fail(`No section carries id="page-${EVENT.slug}".`,
+        if (!new RegExp(`id=["']page-${E.slug}["']`).test(html))
+          fail(`No section carries id="page-${E.slug}".`,
                'buildEventPage() writes into it, and returns silently when it is not there.');
       }
 
       for (const field of ['start', 'end'])
-        if (EVENT[field] !== undefined && Number.isNaN(Date.parse(EVENT[field])))
-          fail(`EVENT.${field} is "${EVENT[field]}", which does not parse as a date.`);
-      if (EVENT.start && EVENT.end && Date.parse(EVENT.start) > Date.parse(EVENT.end))
-        fail(`EVENT.start (${EVENT.start}) is after EVENT.end (${EVENT.end}).`);
+        if (E[field] !== undefined && Number.isNaN(Date.parse(E[field])))
+          fail(`${N}.${field} is "${E[field]}", which does not parse as a date.`);
+      if (E.start && E.end && Date.parse(E.start) > Date.parse(E.end))
+        fail(`${N}.start (${E.start}) is after ${N}.end (${E.end}).`);
 
       /* Inlined as a data: URI so the tab's mark cannot 404 — it used to, for
          the CI runner but not for a desktop, which is the worst version of a
          broken image. A remote one is still allowed, but only over https: the
          page is served over https and http would be blocked as mixed content,
          leaving the tab silently showing its text fallback. */
-      if (EVENT.logo && !/^(https:\/\/|data:image\/[a-z+]+;base64,)/.test(EVENT.logo))
-        fail(`EVENT.logo is neither an https URL nor an inline data:image URI: ${EVENT.logo.slice(0, 60)}…`);
+      if (E.logo && !/^(https:\/\/|data:image\/[a-z+]+;base64,)/.test(E.logo))
+        fail(`${N}.logo is neither an https URL nor an inline data:image URI: ${E.logo.slice(0, 60)}…`);
 
       /* The stage strip carries Riot's published dates, and `when` is the string
          a viewer reads while `from`/`to` are the same window in a form a machine
@@ -655,14 +658,14 @@ if (m && !fails.length) {
          belongs to, is a typo that would otherwise surface as the strip quietly
          naming the wrong stage months later. Both are optional: a stage Riot has
          not dated yet still renders, it just reads TBD. */
-      if (EVENT.stages !== undefined) {
-        if (!Array.isArray(EVENT.stages) || !EVENT.stages.length) fail('EVENT.stages is not a non-empty array.');
+      if (E.stages !== undefined) {
+        if (!Array.isArray(E.stages) || !E.stages.length) fail(`${N}.stages is not a non-empty array.`);
         else {
           const ISO = /^\d{4}-\d{2}-\d{2}$/;
           let prevTo = null;
-          EVENT.stages.forEach((st, i) => {
-            const at = `EVENT.stages[${i}] (${st.name || '?'})`;
-            if (!st.name) fail(`EVENT.stages[${i}] has no name.`);
+          E.stages.forEach((st, i) => {
+            const at = `${N}.stages[${i}] (${st.name || '?'})`;
+            if (!st.name) fail(`${N}.stages[${i}] has no name.`);
             if (!st.sub) fail(`${at} has no sub.`);
             /* A date a viewer can read but no check can: the strip would go on
                printing a window nothing holds to the tournament around it. */
@@ -672,10 +675,10 @@ if (m && !fails.length) {
             for (const k of ['from', 'to'])
               if (!ISO.test(String(st[k] || ''))) fail(`${at} has ${k}:"${st[k]}", which is not a YYYY-MM-DD date.`);
             if (st.from > st.to) fail(`${at} runs backwards: from ${st.from} to ${st.to}.`);
-            if (EVENT.start && st.from < EVENT.start)
-              fail(`${at} starts ${st.from}, before the event itself (${EVENT.start}).`);
-            if (EVENT.end && st.to > EVENT.end)
-              fail(`${at} ends ${st.to}, after the event itself (${EVENT.end}).`);
+            if (E.start && st.from < E.start)
+              fail(`${at} starts ${st.from}, before the event itself (${E.start}).`);
+            if (E.end && st.to > E.end)
+              fail(`${at} ends ${st.to}, after the event itself (${E.end}).`);
             if (prevTo && st.from < prevTo)
               fail(`${at} starts ${st.from}, before the stage above it ends (${prevTo}) — the strip is in playing order.`);
             prevTo = st.to;
@@ -683,25 +686,30 @@ if (m && !fails.length) {
         }
       }
 
-      /* -- EVENT.feed: the tab's connection to the API --------------------- */
+      /* -- feed: the tab's connection to the API ------------------------ */
       /* A misspelt `league` is invisible from the page. It produces an event
          tab with empty boards — which is exactly what the tab looks like
          today, before the draw — so nothing on screen would ever say the
          wiring was wrong, and nothing would say so when the draw landed
          either. (The slug collision that would put the tournament's fixtures
-         into a league's cache is caught above, with EVENT.slug.) */
-      if (EVENT.feed !== undefined) {
-        const f = EVENT.feed;
-        if (!f || typeof f !== 'object') fail('EVENT.feed is not an object.');
+         into a league's cache is caught above, with the slug.) */
+      if (E.feed !== undefined) {
+        const f = E.feed;
+        if (!f || typeof f !== 'object') fail(`${N}.feed is not an object.`);
         else {
           if (!f.league || typeof f.league !== 'string')
-            fail('EVENT.feed.league is missing — it is the API league slug the tab fetches.');
+            fail(`${N}.feed.league is missing — it is the API league slug the tab fetches.`);
           else if (f.league !== f.league.toLowerCase())
-            fail(`EVENT.feed.league ("${f.league}") is not lower case; the page matches league slugs in lower case.`);
+            fail(`${N}.feed.league ("${f.league}") is not lower case; the page matches league slugs in lower case.`);
           if (f.stage !== undefined && (typeof f.stage !== 'string' || !f.stage))
-            fail('EVENT.feed.stage is present but not a non-empty string.');
+            fail(`${N}.feed.stage is present but not a non-empty string.`);
         }
       }
+
+    };
+
+    if (EVENT) {
+      eventShape(EVENT, 'EVENT', ['slug', 'name', 'full', 'when', 'host', 'logo', 'wiki', 'liqui']);
 
       /* -- EVENT.qual: the qualification board ---------------------------- */
       /* The board is hand-researched, and the two halves of it can disagree
@@ -836,6 +844,21 @@ if (m && !fails.length) {
           }
         }
       }
+    }
+
+    /* -- CUP: the Demacia Cup tab ------------------------------------------ */
+    if (CUP) {
+      eventShape(CUP, 'CUP', ['slug', 'name', 'full', 'when', 'host', 'wiki', 'liqui', 'huya']);
+      if (EVENT && CUP.slug === EVENT.slug)
+        fail(`CUP.slug and EVENT.slug are both "${CUP.slug}".`, 'The two tabs would share one section and one schedule cache.');
+      /* The Swiss table joins its teams to the feed by name, so an empty or
+         duplicated list draws a table that silently lacks somebody. */
+      const ts = Array.isArray(CUP.teams) ? CUP.teams : [];
+      if (!ts.length) fail('CUP.teams is not a non-empty array.');
+      for (const t of ts) if (!t.t || !t.lg || !Number.isInteger(t.seed)) fail(`CUP.teams has an entry without t, lg and an integer seed: ${JSON.stringify(t)}`);
+      if (new Set(ts.map(t => t.t)).size !== ts.length) fail('CUP.teams names a team twice.');
+      const total = /(\d+)\s+teams/.exec(CUP.field || '');
+      if (total && +total[1] !== ts.length) fail(`CUP.field says ${total[1]} teams; CUP.teams lists ${ts.length}.`);
     }
 
     /* -- EVENT.swiss: the Swiss simulator's draw ------------------------------

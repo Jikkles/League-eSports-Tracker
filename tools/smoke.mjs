@@ -156,10 +156,11 @@ if (loaded) {
     // there is no data-tab=home button — home is the "All" chip, and the
     // .tab[data-tab=home] CSS rule is left over from an older nav
     await raceCrash(page.waitForSelector('.fchip[data-f=all]', { timeout: STEP_MS }));
-    // the four leagues, plus the international-event tab leading them
-    const tabs = await page.$$eval('nav .tab', t => t.length);
-    if (tabs !== LEAGUE_COUNT + 1) throw new Error(`nav has ${tabs} tabs, expected ${LEAGUE_COUNT + 1}`);
+    // the four leagues, plus the two event tabs leading them
+    const tabs = await page.$$eval('nav .tab:not(.tab-evt):not(.tab-cup)', t => t.length);
+    if (tabs !== LEAGUE_COUNT) throw new Error(`nav has ${tabs} league tabs, expected ${LEAGUE_COUNT}`);
     if (!await page.$('nav .tab-evt')) throw new Error('the international-event tab is missing from the nav');
+    if (!await page.$('nav .tab-cup')) throw new Error('the Demacia Cup tab is missing from the nav');
     return await page.title() || 'untitled';
   }, { fatal: true });
 
@@ -375,7 +376,7 @@ if (loaded) {
   await check('event tab: stage strip', async () => {
     const r = await page.evaluate(() => {
       const stages = typeof EVENT !== 'undefined' ? (EVENT.stages || []) : [];
-      const cards = [...document.querySelectorAll('.evt-stages .ov-rg')];
+      const cards = [...document.querySelectorAll(`#page-${EVENT.slug} .evt-stages .ov-rg`)];
       if (!stages.length) return { err: 'EVENT.stages is not on the page' };
       if (cards.length !== stages.length) return { err: `${stages.length} stages in the constant, ${cards.length} cards drawn` };
       for (let i = 0; i < stages.length; i++) {
@@ -737,6 +738,103 @@ if (loaded) {
     }
   });
 
+
+  /* ---- the Demacia Cup tab ---- */
+
+  /* The second event tab, drawn by the same feed, fixture and bracket
+     functions as the first with CUP passed in. So the failure worth catching
+     is one of those functions still reading EVENT somewhere: the cup's boards
+     drawing Worlds' rows, or its ids, or nothing. */
+  await check('cup tab renders', async () => {
+    await page.click('.tab-cup');
+    const slug = await page.$eval('.tab-cup', b => b.dataset.tab);
+    await page.waitForSelector(`#page-${slug}.active`, { timeout: STEP_MS });
+    const r = await page.evaluate(s => {
+      const pg = document.querySelector(`#page-${s}`);
+      const cards = [...pg.querySelectorAll('.evt-stages .ov-rg .n')].map(c => c.textContent.trim());
+      const rows = [...pg.querySelectorAll('#cupNext .nxt, #cupRecent .nxt')].filter(x => !x.classList.contains('empty'));
+      const slots = [...pg.querySelectorAll('#cupBracketBody .bslot')];
+      return {
+        stages: cards.join('|') === CUP.stages.map(x => x.when).join('|'),
+        teams: pg.querySelectorAll('#cupSwissBody tr').length - 1,
+        rows: rows.length,
+        real: rows.filter(x => !x.classList.contains('tbd')).length,
+        foreign: rows.filter(x => !(x.querySelector('.n-rg')?.textContent || '').includes(CUP.name)).length,
+        live: !!pg.querySelector('#cupLive .lc-off, #cupLive .lcard'),
+        bracket: !!pg.querySelector('#cupBracketBody .bracket, #cupBracketBody .loading'),
+        blank: slots.filter(x => !(x.querySelector('.tname')?.textContent || '').trim()).length,
+        slots: slots.length,
+      };
+    }, slug);
+    if (!r.stages) throw new Error('the stage strip does not match CUP.stages');
+    if (r.teams !== 12) throw new Error(`the Swiss table has ${r.teams} rows, not CUP's 12 teams`);
+    if (!r.rows) throw new Error('the fixture boards drew no rows at all');
+    if (r.foreign) throw new Error(`${r.foreign} fixture rows are not labelled ${slug} — a board is reading another event`);
+    if (!r.live) throw new Error('the live panel drew neither a card nor an offline state');
+    if (!r.bracket) throw new Error('the bracket panel drew nothing');
+    if (r.blank) throw new Error(`${r.blank} of ${r.slots} bracket slots named neither a team nor a route`);
+    return `${r.real} real fixture rows, ${r.slots} bracket slots`;
+  });
+
+  /* The Swiss table is computed from results rather than fetched, so like the
+     race panel it is held to arithmetic: every match it counts has one winner
+     and one loser, the round robin likewise, no more than eight through and
+     four out. And once Riot names the quarterfinalists, they have to be
+     exactly the teams the table put through — the two halves of the tab
+     telling one story. Under the guard both result columns must be masked. */
+  await check('cup tab: Swiss table adds up', async () => {
+    const r = await page.evaluate(() => {
+      const t = cupSwiss(), sum = k => t.reduce((n, x) => n + x[k], 0);
+      const inn = t.filter(x => x.st === 'in').map(x => nk(x.t)).sort();
+      const qf = (cupBracket?.stage?.cols?.[0]?.cells || []).flatMap(c => c.matches)
+        .flatMap(m => m.teams).map(x => x.name).filter(n => n && n !== 'TBD').map(nk).sort();
+      const masked = [...document.querySelectorAll('#cupSwissBody .sp-mask')]
+        .filter(x => getComputedStyle(x).visibility === 'hidden').length;
+      return { n: t.length, w: sum('w'), l: sum('l'), rw: sum('rw'), rl: sum('rl'), inn, qf,
+               out: t.filter(x => x.st === 'out').length, guard: spoilFree, masked };
+    });
+    if (r.w !== r.l) throw new Error(`${r.w} Swiss wins against ${r.l} losses`);
+    if (r.rw !== r.rl) throw new Error(`${r.rw} round-robin wins against ${r.rl} losses`);
+    if (r.inn.length > 8) throw new Error(`${r.inn.length} teams through to an eight-team knockout`);
+    if (r.out > 4) throw new Error(`${r.out} teams out, where four leave the Swiss stage`);
+    if (r.qf.length === 8 && r.inn.length === 8 && r.qf.join() !== r.inn.join())
+      throw new Error(`Riot's quarterfinalists are not the eight the table put through`);
+    if (r.guard && r.masked !== r.n * 2) throw new Error(`${r.masked} of ${r.n * 2} result cells masked under the guard`);
+    return `${r.w} matches + ${r.rw} round robin · ${r.inn.length} through, ${r.out} out`;
+  });
+
+  /* The published bracket used to paint winners and scores whatever the
+     spoiler switch said. Nothing in either bracket has been played yet, so
+     the guard is fed a synthetic one: a played quarterfinal whose winner sits
+     in the semifinal. Guarded, neither the score, the winner nor the team the
+     result moved on may show; unguarded, all three must. */
+  await check('cup tab: bracket holds results under the guard', async () => {
+    const r = await page.evaluate(() => {
+      const keep = cupBracket, guard = spoilFree;
+      const T = (name, win, org) => ({ name, win, gw: win ? 3 : 1, org });
+      try {
+        cupBracket = { tid: 'x', first: false, others: [], stage: { name: 'Playoffs', cols: [
+          { cells: [{ name: 'Quarterfinals', matches: [{ sid: 'q1', teams: [T('kt Rolster', true, { type: 'decisionPoint' }), T('FlyQuest', false, { type: 'decisionPoint' })] }] }] },
+          { cells: [{ name: 'Semifinals', matches: [{ sid: 's1', teams: [T('kt Rolster', false, { type: 'match', sid: 'q1', slot: 1 }), T('TBD', false, null)] }] }] },
+        ] } };
+        const read = () => {
+          renderEventBracket(CUP);
+          const b = document.querySelector('#cupBracketBody');
+          return { win: b.querySelectorAll('.bslot.winner').length, score: b.querySelectorAll('.bs').length,
+                   names: [...b.querySelectorAll('.tname')].map(x => x.textContent.trim()) };
+        };
+        spoilFree = true; const on = read();
+        spoilFree = false; const off = read();
+        return { on, off };
+      } finally { cupBracket = keep; spoilFree = guard; renderEventBracket(CUP); }
+    });
+    if (r.on.win || r.on.score) throw new Error(`guarded, the bracket still shows ${r.on.win} winner(s) and ${r.on.score} score(s)`);
+    if (r.on.names.includes('kt Rolster')) throw new Error(`guarded, the bracket names a team a result put there: ${r.on.names.join(', ')}`);
+    if (!r.on.names.some(n => /^Winner of /.test(n))) throw new Error('guarded, the semifinal slot lost its route');
+    if (!r.off.win || !r.off.score || !r.off.names.includes('kt Rolster')) throw new Error('unguarded, the played result did not draw');
+    return 'guarded: draw and routes only · unguarded: winner, scores and teams';
+  });
+
   await check('back to home', async () => {
     await page.click('.fchip[data-f=all]');
     await page.waitForSelector('#page-home.active', { timeout: STEP_MS });
@@ -1043,7 +1141,7 @@ if (loaded) {
   await check('spoiler switch reaches every board', async () => {
     const count = () => page.evaluate(() => ({
       rows: document.querySelectorAll('#results-lck .match.spoil, #recentStrip .nxt.spoil').length,
-      masked: [...document.querySelectorAll('#table-lck .sp-mask')]
+      masked: [...document.querySelectorAll('#table-lck .sp-mask, #cupSwissBody .sp-mask')]
         .filter(x => getComputedStyle(x).visibility === 'hidden').length,
     }));
     const before = await count();
@@ -1119,8 +1217,8 @@ if (loaded) {
     const seen = [];
     // the event tab too: it is the widest thing in the strip, being a wordmark
     // rather than three letters, and so the likeliest to drag the nav sideways
-    const evt = await page.$eval('.tab-evt', b => b.dataset.tab).catch(() => null);
-    for (const slug of evt ? [...LEAGUES, evt] : LEAGUES) {
+    const evt = await page.$$eval('.tab-evt, .tab-cup', bs => bs.map(b => b.dataset.tab)).catch(() => []);
+    for (const slug of [...LEAGUES, ...evt]) {
       await page.click(`.tab[data-tab=${slug}]`);
       await page.waitForSelector(`#page-${slug}.active`, { timeout: STEP_MS });
       await page.waitForTimeout(250);
@@ -1225,6 +1323,20 @@ if (loaded) {
       } finally {
         await page.click('#evtSwissBody [data-sw="reset"]');
       }
+    });
+
+    /* The Demacia Cup's Swiss table is the one thing on that tab no other tab
+       draws, and its status chips and masks are new markup. */
+    await check('accessibility: cup tab', async () => {
+      await page.click('.tab-cup');
+      const slug = await page.$eval('.tab-cup', b => b.dataset.tab);
+      await page.waitForSelector(`#page-${slug}.active`, { timeout: STEP_MS });
+      await settled(`#page-${slug}`);
+      const { violations } = await axeRun();
+      const blocking = violations.filter(v =>
+        ['serious', 'critical'].includes(v.impact) && !A11Y_ADVISORY.includes(v.id));
+      if (blocking.length) throw new Error(blocking.map(a11ySummary).join(', '));
+      return `${slug}: clean`;
     });
   }
 

@@ -97,7 +97,7 @@ if (C.missing.length) {
   console.error(`Could not read ${C.missing.join(', ')} from index.html — run node tools/check.mjs first.`);
   process.exit(1);
 }
-const { SEASON, REGIONS, EVENT, HONOURS, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
+const { SEASON, REGIONS, EVENT, CUP, HONOURS, TICKER_NOTES, POWER_RANKINGS, POWER_RANKINGS_ASOF, FORMATS } = C;
 const NOW = Date.now();
 const YEAR = new Date(NOW).getUTCFullYear();
 
@@ -190,6 +190,22 @@ if (EVENT) {
     const next = (EVENT.stages || []).find(st => st.from);
     fine('EVENT', `${EVENT.name} is ${days} day${days === 1 ? '' : 's'} away${next ? ` (${next.name} ${next.when})` : ''}`);
   }
+}
+
+/* ---- CUP: the Demacia Cup tab --------------------------------------------- */
+
+/* Its boards are fetched, so they fill and empty themselves — but the tab
+   itself is a constant, and once the cup is over it goes on sitting in the
+   nav beside Worlds. That is the one thing about it that goes out of date.
+   `end` is a day, so it has not passed until the day is over. */
+if (CUP) {
+  const ends = Date.parse(CUP.end) + 86400e3;
+  if (Number.isNaN(ends)) stale('CUP', `CUP.end ("${CUP.end}") does not parse as a date.`, 'Fix the date.');
+  else if (NOW > ends) {
+    const days = Math.floor((NOW - ends) / 86400e3) + 1;
+    stale('CUP', `${CUP.name} finished ${days} day${days === 1 ? '' : 's'} ago (${CUP.end}), and its tab is still in the nav.`,
+          'Record the result in HONOURS, then retire the tab: CUP, the nav button and the section, which check.mjs holds together.');
+  } else fine('CUP', `${CUP.name} runs to ${CUP.end}`);
 }
 
 /* Every league the API knows, not just the four with a season on the page:

@@ -98,6 +98,9 @@ Deployed via GitHub Pages straight from this repo.
     dates, host, field, stages, wordmark, wiki links and `qual`, the
     qualification board of who is through and what decides the rest. See the
     section below
+  - `CUP` — the second event tab, the Demacia Cup Global Invitational: its
+    dates, field (`teams`, by region and seed), stages and feed slug. See
+    **The Demacia Cup tab** below
   - `HONOURS` — season honours board (tournament winners, runners-up, dates)
   - `STORYLINES` — home-tab narrative bullets
   - `TICKER_NOTES` — the ticker's standing headlines, the ones the feed cannot
@@ -724,6 +727,57 @@ hold for free.
   board quietly never taking Riot's data. `check.mjs` holds the slug's shape
   and `EVENT.rules` to https.
 
+## The Demacia Cup tab
+
+A second event tab sits beside Worlds, inside the same fence: the **Demacia Cup
+Global Invitational 2026** (3–17 Oct), the twelve teams from six regions that
+just missed Worlds. Driven by the `CUP` constant and by the API league
+`demacia_cup` (which the feed names "DCGI").
+
+- **It is drawn by the Worlds tab's own functions, with the event passed in.**
+  `fetchEventSchedule`, `fetchEventBracket`, `evtFixtures`, `evtLiveList`,
+  `evtFixRow`, `evtFillList`, `renderEventBoard` and `renderEventBracket` all
+  take an event and default to `EVENT`, so every Worlds caller and every
+  `smoke.mjs` hook is unchanged. Element ids carry a per-event prefix
+  (`evtPre()` — `evt…` for Worlds, `cup…` for the cup). Worlds keeps its
+  `evtBracket` variable and `nexusdesk_evtBracket` key, because both
+  simulators and `smoke.mjs` reach for them; the cup's bracket is `cupBracket`.
+  `renderEvents()` draws both, each in its own try.
+- **What it does not have is a qualification board or simulators.** The field
+  was settled before it started, so `CUP.teams` is a plain list — `t` in the
+  feed's own spelling, because the Swiss table joins on it.
+- **The Swiss table is computed, not fetched** (`cupSwiss()`): the feed files
+  the stage as three standings stages, none carrying a record. It replays the
+  results in played order under the published rules — two wins goes through,
+  a meeting of two 0–2 teams is the round robin (kept apart from the record),
+  and a match with a two-loss team in it is the decider. It reads blocks named
+  *Swiss*, and `api-canary.mjs` fails if the feed stops naming them that.
+- **The table is drawn in the field's order, never by record**, because the
+  spoiler guard masks its Record and Status cells (`sp-cell`) and a table
+  sorted by them would still be the results, in order.
+- **The published-bracket panel now honours the spoiler guard — on both
+  tabs.** It used to paint winners and scores regardless of the switch, which
+  was latent on Worlds (nothing played) and live on the cup. Under the guard
+  it draws the draw and nothing that follows from a result: no winner, no
+  score, and a slot a result filled names its route instead. A seeding slot
+  counts as a draw only in the tournament's opening stage (`first`, read from
+  the feed's stage order); the cup's quarterfinal seeds are the Swiss results
+  by another name, so they stay TBD.
+- **What checks it.** `check.mjs` holds `CUP` to the same shape checks as
+  `EVENT` (one shared `eventShape()`: slug ↔ nav `data-tab` ↔ section id,
+  dates, stage windows, feed slug), plus a team list that matches
+  `CUP.field`'s count. `smoke.mjs` renders the tab, checks no board is drawing
+  another event's rows, holds the Swiss table to its arithmetic (wins equal
+  losses, at most eight through and four out, Riot's quarterfinalists equal to
+  the eight it put through, both result columns masked under the guard), and
+  sweeps it with axe. `stale.mjs` calls it STALE once `CUP.end` has passed;
+  `links.mjs` checks its links.
+- **Retiring it** once the cup is over: record the result in `HONOURS`, then
+  remove `CUP`, the nav button and the section together — `check.mjs` fails a
+  build that removes only some of them. The `tab-cup` CSS, `buildCupPage()`,
+  `cupSwiss()` and the `CUP` references in `renderEvents()`, `LOGO_SLUGS`,
+  `watchLinks()` and the tools go with it.
+
 ## The tab in the URL
 
 `switchTab()` keeps the current tab in the location hash as well as in
@@ -871,11 +925,12 @@ looking at.
   the tabs rather than tucked in with the clock. It is cyan while the guard is
   on, because a page with scores hidden and nothing saying so looks like a page
   with missing data.
-  Below **1249px** it drops to the icon alone, and that number is measured
-  rather than picked: the tabs and their two rules take 1022px, so the labelled
-  pill only fits on that row from about 1250px up, and below it the nav wraps
-  and leaves the switch orphaned on a line of its own. The common laptop widths
-  (1280, 1366, 1440) keep the words. The same block trims the tab padding,
+  Below **1339px** it drops to the icon alone, and that number is measured
+  rather than picked: with the Demacia Cup's tab beside Worlds the labelled
+  pill only fits on the tab row from about 1340px up (it was 1250px before the
+  cup), and below it the nav wraps and leaves the switch orphaned on a line of
+  its own. 1366 and 1440 keep the words; 1280 no longer does. The cup tab is a
+  crest alone below 1600px for the same reason — its label cost the row. The same block trims the tab padding,
   because the tab row was *exactly* full at 1024px before the switch joined it
   — anything at all pushed LCS onto a second line, and the tabs give back the
   44px rather than the switch giving up its tap target.

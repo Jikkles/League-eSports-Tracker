@@ -153,6 +153,20 @@ nav{max-width:1900px;margin:0 auto;display:flex;gap:4px;padding:0 20px}
 .evt-mark{display:inline-flex;align-items:center;justify-content:center;height:36px;max-width:210px}
 .evt-mark img{height:100%;width:auto;max-width:100%;object-fit:contain;opacity:.62;transition:opacity .12s ease}
 .tab-evt:hover .evt-mark img,.tab-evt.active .evt-mark img{opacity:1}
+/* The Demacia Cup sits beside it, inside the same fence: its mark is a crest
+   rather than a wordmark, so it is carried the way a league's is. */
+.tab-cup{--tabclr:var(--cyan)}
+/* Measured: the label costs the nav its single row anywhere below 1600px —
+   the spoiler switch drops first, then LCS — so below that the crest carries
+   the tab alone, named by its aria-label. */
+@media (max-width:1599px){.cup-lbl{display:none}.tab-cup{padding-left:14px;padding-right:14px}}
+.evt-hero .cup-mark{width:56px;height:56px}
+.evt-stages.cup-stages{grid-template-columns:repeat(2,1fr)}
+.tbl-big.cup-tbl td{font-size:16px;padding:9px 10px}
+.cup-seed{font-family:var(--mono);font-size:13px!important;color:var(--dim)}
+.cup-rr{color:var(--faint);font-size:12px}
+/* a phone keeps the two columns that change over the stage, not the seeds */
+@media (max-width:640px){.cup-tbl tr>:nth-child(2){display:none}.tbl-big.cup-tbl td{font-size:14px;padding:8px 6px}}
 .evt-mark .ini{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:1.6px;color:inherit}
 
 /* ============ LAYOUT ============ */
@@ -1040,12 +1054,12 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
 .spoil-toggle:hover{color:#FFFFFF;border-color:var(--cyan)}
 .spoil-toggle.on{color:var(--dim);border-color:var(--line2)}
 .spoil-toggle .sp-eye{font-size:16px;line-height:1}
-/* Measured, not guessed: the tabs and their two rules take 1022px, so the
-   labelled pill only sits on that row from about 1250px up. Below it the nav
-   wraps and the switch lands orphaned on a line of its own — so below it the
-   switch is the icon alone, which the colour and the aria-label carry. Common
-   laptop widths (1280, 1366, 1440) keep the words; a narrow window does not. */
-@media (max-width:1249px){
+/* Measured, not guessed: with the Demacia Cup's tab beside Worlds the labelled
+   pill only sits on the tab row from about 1340px up (it was 1250px before).
+   Below it the nav wraps and the switch lands orphaned on a line of its own —
+   so below it the switch is the icon alone, which the colour and the
+   aria-label carry. 1366 and 1440 keep the words; 1280 no longer does. */
+@media (max-width:1339px){
   .navbtn{flex:none;width:44px;min-height:44px;padding:0;justify-content:center;gap:0}
   .navbtn .sp-lbl{display:none}
   .navbtn .sp-eye{font-size:18px}
@@ -1054,6 +1068,8 @@ nav{align-items:center;flex-wrap:wrap;gap:2px}
      the 44px in padding rather than the switch giving up its tap target. */
   .tab,.fchip{padding-left:16px;padding-right:16px}
   .nav-div{margin:0 10px}
+  .tab-cup{padding-left:6px;padding-right:6px}
+  .tab-cup .lgw{width:34px;height:34px}
 }
 
 /* Masked wholesale rather than revealed row by row: the standings' Form and
@@ -1254,6 +1270,11 @@ body.spoil-free td.num.sp-cell::after{justify-content:flex-end;letter-spacing:0}
   /* the wordmark is the widest thing in the strip, so it is measured by height
      and then clamped: object-fit keeps it letterboxed rather than squashed */
   .tab-evt{padding:12px 2px}
+  /* a crest and nothing else, so it takes a crest's width rather than an
+     equal share of a row the league tabs are already tight in */
+  .tab-cup{flex:0 0 28px;padding:12px 0}
+  .tab-cup .lgw{width:22px;height:22px}
+  .tab{font-size:13.5px;letter-spacing:0;gap:3px}
   .evt-mark{height:15px;max-width:100%}
   .evt-hero .evt-mark{height:30px}
   .q-grid{grid-template-columns:1fr}
@@ -1395,6 +1416,9 @@ body.spoil-free td.num.sp-cell::after{justify-content:flex-end;letter-spacing:0}
          to match it, and check.mjs holds all three together so a half-finished
          rollover fails rather than going blank. -->
     <button class="tab tab-evt" data-tab="worlds"><span class="evt-mark"></span></button>
+    <!-- The Demacia Cup, beside Worlds: the other event on now. Its slug lives
+         in CUP, held to this data-tab and the section id the same way. -->
+    <button class="tab tab-cup" data-tab="demacia" title="Demacia Cup Global Invitational 2026" aria-label="Demacia Cup"><span class="lgw" data-lg="demacia_cup" data-lgn="DC"></span><span class="cup-lbl">Demacia</span></button>
     <span class="nav-div"></span>
     <button class="tab" data-tab="lec"><span class="lgw" data-lg="lec"></span>LEC</button>
     <button class="tab" data-tab="lck"><span class="lgw" data-lg="lck"></span>LCK</button>
@@ -1496,6 +1520,7 @@ body.spoil-free td.num.sp-cell::after{justify-content:flex-end;letter-spacing:0}
   <section class="page" id="page-lpl"></section>
   <section class="page" id="page-lcs"></section>
   <section class="page evt-page" id="page-worlds"></section>
+  <section class="page evt-page" id="page-demacia"></section>
 
 </main>
 </div>
@@ -1982,6 +2007,53 @@ const EVENT = {
   },
 };
 
+/* The second event tab: the Demacia Cup Global Invitational, played in the
+   weeks before Worlds by the twelve teams from six regions that just missed
+   it. Same shape as EVENT where the two overlap — slug, dates, `feed`,
+   `stages` — and drawn by the same feed, fixture and bracket functions, which
+   take the event as an argument. What it does not have is a qualification
+   board or simulators: the field was settled before it started, so `teams`
+   is a plain list, and its Swiss table is computed from the feed.
+
+   `teams` is the field in Leaguepedia's participants table: `t` is the
+   feed's own spelling (the Swiss table joins on it), `lg` and `seed` the
+   place each team came through. Order is the table's, and the table keeps
+   it rather than sorting by record, because a sorted table under the
+   spoiler guard would still be the results, in order.
+
+   The rules the Swiss table applies (Leaguepedia's format section, and the
+   feed agrees: Round 1 is six Bo1s, every later round Bo3): two wins goes
+   through, and the three teams who start 0–2 play a single round robin in
+   Round 3 whose best goes on to the Round 4 decider against the three 1–2s.
+
+   Verified 5 Oct 2026 against Leaguepedia's 2026 Demacia Cup Global
+   Invitational and the feed's schedule (league `demacia_cup`, which the API
+   names "DCGI"). The Swiss venue is not published; the knockouts are at JD
+   Gaming's arena in Beijing. Rolling it on is this constant plus the nav
+   button and section id, which check.mjs holds together as it does EVENT's. */
+const CUP = {
+  slug:'demacia', name:'Demacia Cup 2026', full:'Demacia Cup Global Invitational 2026',
+  when:'3–17 Oct 2026', host:'China', start:'2026-10-03', end:'2026-10-17',
+  field:'12 teams · 3 Korea · 3 China · 2 EMEA · 2 North America · 1 Asia-Pacific · 1 Brazil',
+  wiki:'https://lol.fandom.com/wiki/2026_Demacia_Cup_Global_Invitational',
+  liqui:'https://liquipedia.net/leagueoflegends/Demacia_Cup_Global_Invitational/2026',
+  huya:'https://www.huya.com/lpl',
+  feed:{ league:'demacia_cup', stage:'playoffs' },
+  stages:[
+    {name:'Swiss', from:'2026-10-03', to:'2026-10-08', when:'3–8 Oct',
+     detail:'R1 3 Oct · R2 4–5 · R3 6–7 · R4 8 Oct', sub:'12 TEAMS · BO1 THEN BO3 · 2 WINS THROUGH'},
+    {name:'Knockout', from:'2026-10-12', to:'2026-10-17', when:'12–17 Oct', venue:'JDG Esports Center · Beijing',
+     detail:'QF 12–13 Oct · SF 14–15 · Final 17 Oct', sub:'8 TEAMS · SINGLE ELIM · BO5'},
+  ],
+  teams:[
+    {t:'kt Rolster', lg:'LCK', seed:5}, {t:'BNK FEARX', lg:'LCK', seed:6}, {t:'HANJIN BRION', lg:'LCK', seed:7},
+    {t:'Beijing JDG Esports', lg:'LPL', seed:5}, {t:'Xi\'an Team WE', lg:'LPL', seed:6}, {t:'LGD GAMING', lg:'LPL', seed:7},
+    {t:'Natus Vincere', lg:'LEC', seed:4}, {t:'Team Vitality', lg:'LEC', seed:5},
+    {t:'Shopify Rebellion', lg:'LCS', seed:4}, {t:'FlyQuest', lg:'LCS', seed:5},
+    {t:'GAM Esports', lg:'LCP', seed:4}, {t:'RED Kalunga', lg:'CBLOL', seed:4},
+  ],
+};
+
 /* -------- Baked-in 2026 season data (verified Aug 2026) -------- */
 const HONOURS = [
   {date:'Jan–Mar', ev:'LCK Cup', champ:'Gen.G', detail:'def. BNK FearX 3–0 in Hong Kong · MVP: Canyon · both finalists → First Stand', done:true,
@@ -2272,7 +2344,7 @@ const HONOURS = [
   {date:'3–17 Oct', ev:'Demacia Cup Global Invitational', champ:'China', detail:'The Demacia Cup goes global — the 12 teams that missed Worlds: LPL and LCK 5–7, LEC and LCS 4–5, LCP and CBLOL 4 · Swiss, then Bo5 knockouts in Beijing', done:false,
    d:{ dates:'3 – 17 October 2026', host:'Online, then the JDG Esports Center, Beijing for the knockouts (hosted by JD Gaming)', upcoming:true,
        fmt:'China\'s traditional off-circuit cup, opened up. Huya and TJ Sports have upgraded it into a global invitational for the 12 top-ranked teams from six regions that did not qualify for Worlds: LPL 5–7, LCK 5–7, LEC 4–5, LCS 4–5, LCP 4 and CBLOL 4 (the CBLOL sends its fourth seed because its third is only settled after the tournament starts). Four Swiss rounds — Bo1 in the first, Bo3 after it — cut the field to eight, then a single-elimination knockout, all Bo5, with coach comms allowed. ¥1.5m on the table, ¥600k of it to the winner.',
-       podium:[], teams:['kt Rolster','BNK FEARX','HANJIN BRION','GAM Esports'], teamsNote:'the four seeds settled so far — the LCK\'s fifth, sixth and seventh and the LCP\'s fourth. The LPL, LEC, LCS and CBLOL places are decided by playoffs still being played.',
+       podium:[], teams:['kt Rolster','BNK FEARX','HANJIN BRION','Beijing JDG Esports','Xi\'an Team WE','LGD GAMING','Natus Vincere','Team Vitality','Shopify Rebellion','FlyQuest','GAM Esports','RED Kalunga'], teamsNote:'the full field: LCK 5–7, LPL 5–7, LEC 4–5, LCS 4–5, LCP 4, CBLOL 4',
        results:[],
        wiki:'https://lol.fandom.com/wiki/Demacia_Cup_Global_Invitational_2026', liqui:'https://liquipedia.net/leagueoflegends/Demacia_Cup_Global_Invitational/2026' }},
   {date:'Oct–Nov', ev:'Worlds 2026', champ:'North America', detail:'Final: Barclays Center, NYC · 14 Nov · T1 three-time defending champions', done:false,
@@ -2325,7 +2397,8 @@ const STORYLINES = [
 const TICKER_NOTES = [
   {tag:'MSI',    until:'2026-12-31', text:'Hanwha Life Esports — champions of Daejeon'},
   {tag:'EWC',    until:'2026-12-31', text:'Dplus KIA — Paris 2026 winners'},
-  {tag:'WORLDS', until:'2026-11-14', text:'Final · Barclays Center NYC · 14 Nov'}
+  {tag:'WORLDS', until:'2026-11-14', text:'Final · Barclays Center NYC · 14 Nov'},
+  {tag:'DEMACIA', until:'2026-10-17', text:'Demacia Cup knockouts · JDG Esports Center, Beijing · 12–17 Oct'}
 ];
 
 /* GPR:generated */
@@ -3238,7 +3311,7 @@ const REGION_SLUGS = Object.keys(REGIONS);
    — but their images are, so the harvest below is widened to them while
    `out` stays the four leagues the rest of the page walks. */
 const LOGO_SLUGS = [...new Set([...REGION_SLUGS,
-  ...((EVENT.qual?.regions || []).map(r => r.slug).filter(Boolean))])];
+  ...((EVENT.qual?.regions || []).map(r => r.slug).filter(Boolean)), CUP.feed.league])];
 let leaguesResolvedFor = lsRead(LS('leaguesFor')) || '';
 let leaguesTried = false;
 async function resolveLeagues() {
@@ -3316,12 +3389,16 @@ let evtBracket = lsJSON(LS('evtBracket'), null);  // {tid, stage, others:[{name,
    announces 'Riot has not published a bracket' during the second before the
    first refresh answers, which is a claim about the tournament made from not
    having looked. */
-let evtBracketTried = false;
+const evtTried = new Set();
+/* The Demacia Cup's bracket, the same shape as evtBracket. Worlds keeps its own
+   variable and storage key, which the simulators and smoke.mjs both reach for. */
+let cupBracket = lsJSON(LS('evtBracket_' + CUP.slug), null);
+const brkOf = E => E === EVENT ? evtBracket : cupBracket;
 
-async function fetchEventSchedule() {
-  const id = allLeagues[EVENT.feed?.league];
+async function fetchEventSchedule(E = EVENT) {
+  const id = allLeagues[E.feed?.league];
   if (!id) return [];
-  const from = Date.parse(EVENT.start);
+  const from = Date.parse(E.start);
   const mine = evs => (evs || []).filter(ev => Date.parse(ev.startTime) >= from);
   const first = await api('/getSchedule', { leagueId:id });
   let events = mine(first.data.schedule.events);
@@ -3341,7 +3418,7 @@ async function fetchEventSchedule() {
     const k = (ev.match?.id||'') + ev.startTime;
     if (seen.has(k)) return false; seen.add(k); return true;
   });
-  scheduleCache[EVENT.slug] = events;
+  scheduleCache[E.slug] = events;
   return events;
 }
 
@@ -3350,11 +3427,11 @@ async function fetchEventSchedule() {
    before a single team is known. Trimmed to what the panel draws and cached,
    because the shape of a bracket does not change once it is announced —
    only who is standing in it. */
-async function fetchEventBracket() {
-  evtBracketTried = true;
-  const lid = allLeagues[EVENT.feed?.league];
+async function fetchEventBracket(E = EVENT) {
+  evtTried.add(E.slug);
+  const lid = allLeagues[E.feed?.league];
   if (!lid) return null;
-  let tid = evtBracket?.tid;
+  let tid = brkOf(E)?.tid;
   if (!tid) {
     const data = await api('/getTournamentsForLeague', { leagueId: lid });
     const ts = data.data.leagues?.[0]?.tournaments || [];
@@ -3363,28 +3440,31 @@ async function fetchEventBracket() {
        20 Nov where its announcement reads 15 Oct to 14 Nov, so the two agree
        on overlapping and on nothing else. Both ends are YYYY-MM-DD, which
        compares as a string. */
-    tid = ts.find(t => t.startDate <= EVENT.end && t.endDate >= EVENT.start)?.id;
+    tid = ts.find(t => t.startDate <= E.end && t.endDate >= E.start)?.id;
     if (!tid) return null;
   }
   const data = await api('/getStandingsV3', { tournamentId: tid });
   const stages = data.data.standings?.[0]?.stages || [];
   const countOf = st => (st.sections||[]).flatMap(s => s.columns||[])
     .flatMap(c => c.cells||[]).reduce((n, c) => n + (c.matches||[]).length, 0);
-  const pick = stages.find(s => s.slug === EVENT.feed?.stage) || stages[0];
+  const pick = stages.find(s => s.slug === E.feed?.stage) || stages[0];
   if (!pick) return null;
   /* The two simulators read two more stages the same way — the Swiss stage
      and the knockouts — whose real draws and results take the viewer's boards
      over as they are published. */
   const bySlug = slug => { const s = stages.find(x => x.slug === slug); return s ? evtTrimStage(s) : null; };
-  evtBracket = {
-    tid,
+  /* `first` is what the spoiler guard reads: only the opening stage's first
+     round is a draw rather than a consequence of somebody's results. */
+  const b = {
+    tid, first: pick === stages[0],
     stage: evtTrimStage(pick),
-    swiss: bySlug(EVENT.swiss?.stage),
-    ko: bySlug(EVENT.ko?.stage),
-    others: stages.filter(s => s !== pick).map(s => ({ name: s.name, n: countOf(s) })),
+    swiss: bySlug(E.swiss?.stage),
+    ko: bySlug(E.ko?.stage),
+    others: stages.slice(stages.indexOf(pick) + 1).map(s => ({ name: s.name, n: countOf(s) })),
   };
-  lsWrite(LS('evtBracket'), JSON.stringify(evtBracket));
-  return evtBracket;
+  if (E === EVENT) evtBracket = b; else cupBracket = b;
+  lsWrite(LS(E === EVENT ? 'evtBracket' : 'evtBracket_' + E.slug), JSON.stringify(b));
+  return b;
 }
 function evtTrimStage(pick) {
   return {
@@ -4541,8 +4621,9 @@ document.addEventListener('click', e => {
   lsWrite(LS('spoilerFree'), JSON.stringify(spoilFree));
   syncSpoilToggles();
   applySpoil();
-  /* the simulator uses played results only while scores are shown */
+  /* the simulator and both brackets use played results only while scores are shown */
   try { renderSwiss(); } catch (err) { console.error('swiss failed', err); }
+  renderEvents();
 });
 
 /* -------- recent games \u2014 same row rhythm as Next Up, score instead of VS -------- */
@@ -4821,7 +4902,7 @@ function eventMark(cls) {
    Next Up and Recent Games use, with TBD wherever a time, a team or a result
    will go — a result row carrying the score column's "nothing published" dash,
    because that is exactly what it is. */
-function evtRow(kind) {
+function evtRow(kind, E = EVENT) {
   const done = kind === 'done';
   const blank = '<span class="n-lg"><span class="ini" style="display:flex">?</span></span>';
   const mid = done
@@ -4829,7 +4910,7 @@ function evtRow(kind) {
     : '<div class="n-vs">VS</div>';
   return `<div class="nxt tbd">
       <div class="n-when"><div class="${done ? 'n-date' : 'n-time'}">TBD</div><span class="n-cd">date TBD</span></div>
-      <div class="n-rg"><div><span class="nm">${esc(EVENT.name.split(' ')[0].toUpperCase())}</span><span class="sp">${esc(EVENT.name)}</span></div></div>
+      <div class="n-rg"><div><span class="nm">${esc(E.name.split(' ')[0].toUpperCase())}</span><span class="sp">${esc(E.name)}</span></div></div>
       <div class="n-mid">
         <div class="n-a"><span class="n-code">TBD</span>${blank}</div>
         ${mid}
@@ -5013,28 +5094,30 @@ function evtQual() {
    the state the tournament is actually in. So the boards show today exactly
    what they showed before they were wired, and stop being a placeholder the day
    Riot publishes the draw without anybody editing this file. */
-function evtFixtures() {
-  return (scheduleCache[EVENT.slug] || []).filter(ev => ev.match?.teams?.length === 2);
+function evtFixtures(E = EVENT) {
+  return (scheduleCache[E.slug] || []).filter(ev => ev.match?.teams?.length === 2);
 }
+/* Each event tab's element ids, which carry this prefix: Worlds' are `evt…`. */
+const evtPre = E => E === EVENT ? 'evt' : 'cup';
 
 /* On air now: the live feed's own entries for this league first, then fixtures
    past their start time that the feed never mentioned — the same two passes
    liveNowList() makes for the leagues, and for the same reason. Worlds is
    broadcast in more places than /getLive lists. */
-function evtLiveList() {
-  const lg = EVENT.feed?.league;
+function evtLiveList(E = EVENT) {
+  const lg = E.feed?.league;
   const out = [], seen = new Set();
   for (const ev of (liveFeedFresh() ? liveEvents : [])) {
     if (ev.state !== 'inProgress' || !ev.match) continue;
     if (matchFinished(ev)) continue;
     if ((ev.league?.slug || '').toLowerCase() !== lg) continue;
-    out.push({ ev, slug: EVENT.slug, assumed: false });
+    out.push({ ev, slug: E.slug, assumed: false });
     if (ev.match.id) seen.add(ev.match.id);
   }
-  for (const ev of evtFixtures()) {
+  for (const ev of evtFixtures(E)) {
     if (ev.match.id && seen.has(ev.match.id)) continue;
     if (evPhase(ev, seen) !== 'onair') continue;
-    out.push({ ev, slug: EVENT.slug, assumed: true });
+    out.push({ ev, slug: E.slug, assumed: true });
     if (ev.match.id) seen.add(ev.match.id);
   }
   return out.sort((a, b) => new Date(a.ev.startTime) - new Date(b.ev.startTime));
@@ -5044,7 +5127,7 @@ function evtLiveList() {
    the event's own identity rather than a league crest, because every row on
    this board is the same tournament and a column of identical marks says
    nothing — the stage is what varies, and it is in the meta cell. */
-function evtFixRow(ev, done) {
+function evtFixRow(ev, done, E = EVENT) {
   const t = ev.match.teams, a = t[0] || {}, b = t[1] || {};
   const w = fmtWhen(ev.startTime);
   const bo = ev.match?.strategy?.count;
@@ -5062,7 +5145,7 @@ function evtFixRow(ev, done) {
   row.style.setProperty('--rg', 'var(--cyan)');
   row.innerHTML = `
       <div class="n-when">${when}</div>
-      <div class="n-rg"><div><span class="nm">${esc(EVENT.name.split(' ')[0].toUpperCase())}</span><span class="sp">${esc(EVENT.name)}</span></div></div>
+      <div class="n-rg"><div><span class="nm">${esc(E.name.split(' ')[0].toUpperCase())}</span><span class="sp">${esc(E.name)}</span></div></div>
       <div class="n-mid">
         <div class="n-a${done && !aWin && !tbc ? ' lost' : ''}"><span class="n-code" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</span>${crestHTML(a.name,'n-lg')}</div>
         ${mid}
@@ -5075,16 +5158,16 @@ function evtFixRow(ev, done) {
 /* Fills a list panel from `list`, or leaves the TBD placeholder standing when
    there is nothing — one function because the two panels differ only in which
    way round they sort and in what they say when empty. */
-function evtFillList(box, sub, list, done, emptyText) {
+function evtFillList(box, sub, list, done, emptyText, E = EVENT) {
   if (!box) return;
   box.innerHTML = '';
   if (!list.length) {
-    box.innerHTML = Array.from({length: BOARD_ROWS}, () => evtRow(done ? 'done' : 'up')).join('');
+    box.innerHTML = Array.from({length: BOARD_ROWS}, () => evtRow(done ? 'done' : 'up', E)).join('');
     if (sub) sub.textContent = emptyText;
     return;
   }
   const shown = list.slice(0, BOARD_ROWS);
-  for (const ev of shown) box.appendChild(evtFixRow(ev, done));
+  for (const ev of shown) box.appendChild(evtFixRow(ev, done, E));
   padRows(box, shown.length, false);
   const noun = done ? (list.length === 1 ? 'result' : 'results')
                     : (list.length === 1 ? 'fixture' : 'fixtures');
@@ -5093,16 +5176,16 @@ function evtFillList(box, sub, list, done, emptyText) {
     : `${list.length} ${noun} · local time`;
 }
 
-function renderEventBoard() {
+function renderEventBoard(E = EVENT) {
   const lids = liveMatchIds();
-  const all = evtFixtures();
+  const all = evtFixtures(E), P = '#' + evtPre(E);
 
   /* Live Now. The panel keeps its offline dressing until something is actually
      on air, which is what stops a tournament that has not started reading as a
      feed that has fallen over. */
-  const box = $('#evtLive'), panel = $('#evtLivePanel'), title = $('#evtLiveTitle'), count = $('#evtLiveCount');
+  const box = $(P + 'Live'), panel = $(P + 'LivePanel'), title = $(P + 'LiveTitle'), count = $(P + 'LiveCount');
   if (box) {
-    const on = evtLiveList();
+    const on = evtLiveList(E);
     if (!on.length) {
       if (panel) panel.classList.add('off');
       if (title) title.textContent = 'Streams Offline';
@@ -5111,13 +5194,14 @@ function renderEventBoard() {
       if (count) count.textContent = next ? 'next up ' + fmtCountdown(next.startTime) : 'not started';
       box.dataset.n = '0';
       box.style.gridTemplateColumns = '1fr';
-      const opens = EVENT.when.split('–')[0].trim() + ' ' + new Date(EVENT.start).getUTCFullYear();
+      const opens = E.when.split('–')[0].trim() + ' ' + new Date(E.start).getUTCFullYear();
       const nw = next ? fmtWhen(next.startTime) : null;
       box.innerHTML = `<div class="lc-off"><span class="off-dot"></span><div>
         <div class="off-h">${next ? 'Nothing on air' : 'No broadcast yet'}</div>
         <div class="off-sub">${next
           ? `Next up <b>${esc(teamsLabel(next))}</b> — ${esc(nw.day)} ${esc(nw.time)}, ${esc(fmtCountdown(next.startTime))}.`
-          : `${esc(EVENT.name)} opens ${esc(opens)}. Live games appear here once it does.`}</div></div></div>`;
+          : Date.now() > Date.parse(E.end) + 864e5 ? `${esc(E.name)} is over.`
+          : `${esc(E.name)} opens ${esc(opens)}. Live games appear here once it does.`}</div></div></div>`;
     } else {
       if (panel) panel.classList.remove('off');
       if (title) title.textContent = 'Live Now';
@@ -5130,15 +5214,15 @@ function renderEventBoard() {
     }
   }
 
-  evtFillList($('#evtNext'), $('#evtNextSub'),
+  evtFillList($(P + 'Next'), $(P + 'NextSub'),
     all.filter(ev => evPhase(ev, lids) === 'up')
        .sort((a, b) => new Date(a.startTime) - new Date(b.startTime)),
-    false, 'fixtures land here as Riot schedules them');
+    false, 'fixtures land here as Riot schedules them', E);
 
-  evtFillList($('#evtRecent'), $('#evtRecentSub'),
+  evtFillList($(P + 'Recent'), $(P + 'RecentSub'),
     all.filter(ev => ['done', 'pending'].includes(evPhase(ev, lids)))
        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime)),
-    true, 'no games played yet');
+    true, 'no games played yet', E);
 }
 
 /* -------- the published bracket --------------------------------------------
@@ -5165,19 +5249,26 @@ function evtOriginLabel(stage, org) {
   return null;
 }
 
-function renderEventBracket() {
-  const body = $('#evtBracketBody'), sub = $('#evtBracketSub');
+/* Under the spoiler guard the bracket draws the draw and nothing that follows
+   from a result: no winner, no score, and no team in a slot a result put it
+   in — that slot names its route instead ("Winner of Quarterfinals 1"), which
+   is the bracket as it stood before anything was played. A seeding slot is a
+   draw only in the tournament's opening stage; anywhere later (the Demacia
+   Cup's quarterfinals) it is filled by who survived the stage before, which is
+   the Swiss results by another name, so it stays TBD as well. */
+function renderEventBracket(E = EVENT) {
+  const P = '#' + evtPre(E), body = $(P + 'BracketBody'), sub = $(P + 'BracketSub');
   if (!body) return;
-  const st = evtBracket?.stage;
+  const B = brkOf(E), st = B?.stage;
   if (!st || !(st.cols || []).length) {
     body.innerHTML = `<div class="loading">${apiOk === false
       ? 'API unreachable — the bracket appears once it responds.'
-      : evtBracketTried ? 'Riot has not published a bracket for this tournament yet.'
+      : evtTried.has(E.slug) ? 'Riot has not published a bracket for this tournament yet.'
       : 'Loading the published bracket…'}</div>`;
     if (sub) sub.textContent = '';
     return;
   }
-  let drawnN = 0, total = 0, inner = '';
+  let drawnN = 0, total = 0, inner = '', held = false;
   for (const col of st.cols) {
     let cell = '<div class="bcell">';
     for (const c of col.cells) {
@@ -5185,14 +5276,18 @@ function renderEventBracket() {
       c.matches.forEach(m => {
         total++;
         if (m.teams.some(t => t.name && t.name !== 'TBD')) drawnN++;
-        const played = m.teams.some(t => t.win);
+        const real = m.teams.some(t => t.win);
+        const played = real && !spoilFree;
+        if (real && spoilFree) held = true;
         cell += '<div class="bmatch">' + m.teams.map(t => {
-          const known = !!(t.name && t.name !== 'TBD');
+          const named = !!(t.name && t.name !== 'TBD');
+          const known = named && !(spoilFree && (t.org?.type === 'match' || !(B.first && col === st.cols[0])));
+          if (named && !known) held = true;
           const from = known ? null : evtOriginLabel(st, t.org);
           /* No score box on a match nobody has played. A column of dashes is
              the panel filling twelve slots with the same non-answer, where
              leaving them out says the same thing and reads as a bracket. */
-          return `<div class="bslot${t.win ? ' winner' : played ? ' eliminated' : ''}">${
+          return `<div class="bslot${played && t.win ? ' winner' : played ? ' eliminated' : ''}">${
             known ? logoHTML(t.name) : '<span class="twrap"><span class="tmono only">?</span></span>'
           }<span class="tname${known ? '' : ' tbd'}" title="${esc(known ? t.name : (from || 'To be decided'))}">${
             esc(known ? t.name : (from || 'TBD'))}</span>${
@@ -5205,11 +5300,12 @@ function renderEventBracket() {
   /* Titled by the stage the feed returned, not by the constant: the two name
      the same stage differently (Riot's "Play-Ins", the strip's "Play-In") and
      only one of them is guaranteed to be the stage actually drawn here. */
-  const ttl = $('#evtBracketTitle');
+  const ttl = $(P + 'BracketTitle');
   if (ttl) ttl.textContent = st.name + ' Bracket';
   body.innerHTML = `<div class="bracket evt-bracket" style="grid-template-columns:repeat(${st.cols.length}, minmax(${BCOL_MIN}px,1fr))">${inner}</div>`;
-  const rest = (evtBracket.others || []).filter(o => o.n);
-  if (sub) sub.textContent = (drawnN ? `${drawnN} of ${total} matches drawn` : `${total} matches · no teams drawn yet`)
+  const rest = (B.others || []).filter(o => o.n);
+  if (sub) sub.textContent = (held ? 'results hidden · ' : '')
+    + (drawnN ? `${drawnN} of ${total} matches drawn` : `${total} matches · no teams drawn yet`)
     + (rest.length ? ' · then ' + rest.map(o => `${o.name} (${o.n})`).join(', ') : '');
 }
 
@@ -5814,6 +5910,161 @@ function buildEventPage() {
 `;
 }
 
+/* -------- the Demacia Cup tab ----------------------------------------------
+
+   The Worlds tab's rhythm — live, the field, the stage strip, what is next,
+   what has been played, the bracket — drawn by the same functions with CUP
+   passed in. What it adds is the Swiss table, and that is computed rather
+   than fetched: the feed files the stage as three standings stages none of
+   which carries a record, so the records are rebuilt from the results. */
+
+/* Every team's Swiss record and where it stands, replayed from the results in
+   the order they were played. The two rules that make this more than a win
+   count (CUP's comment has the source): a meeting of two 0–2 teams is the
+   round robin, kept apart from the record, and a match with a two-loss team
+   in it is the decider — its winner goes through on any record, its loser
+   goes out. */
+function cupSwiss() {
+  const rec = new Map(CUP.teams.map(x => [nk(x.t), { ...x, w: 0, l: 0, rw: 0, rl: 0, st: '' }]));
+  const get = n => rec.get(nk(n || ''));
+  const evs = evtFixtures(CUP).filter(e => /swiss/i.test(e.blockName || ''))
+    .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
+  const rr = (a, b) => a.w === 0 && a.l === 2 && b.w === 0 && b.l === 2;
+  let rrPlayed = 0;
+  for (const e of evs) {
+    const [x, y] = e.match.teams, a = get(x.name), b = get(y.name);
+    if (!a || !b || !hasWinner(e)) continue;
+    const [W, L] = x.result?.outcome === 'win' ? [a, b] : [b, a];
+    if (rr(a, b)) { W.rw++; L.rl++; rrPlayed++; continue; }
+    const decider = a.l === 2 || b.l === 2;
+    if (decider) a.dec = b.dec = true;
+    W.w++; L.l++;
+    if (decider || W.w === 2) W.st = 'in';
+    if (decider) L.st = 'out';
+  }
+  /* The round robin's winner is whoever goes on to a decider: a 2–0 in it,
+     the one that has played a decider, or — when it ended level and the
+     tiebreak is not ours to compute — the one the feed has drawn into one. */
+  const pool = [...rec.values()].filter(t => t.rw + t.rl > 0 || (!t.st && t.w === 0 && t.l === 2));
+  const drawn = t => evs.some(e => !hasWinner(e) && e.match.teams.some(x => get(x.name) === t)
+    && e.match.teams.some(x => { const o = get(x.name); return o && o !== t && !pool.includes(o); }));
+  const on = pool.find(t => t.rw === 2 || t.dec) || (rrPlayed >= 3 ? pool.find(drawn) : null);
+  for (const t of pool) {
+    if (t === on) { if (!t.st) t.next = 'Decider'; }
+    else if (t.rl === 2 || on) t.st = 'out';
+    else t.next = 'Round robin';
+  }
+  for (const t of rec.values()) if (!t.st && !t.next)
+    t.next = t.l === 2 ? 'Decider' : `Round ${t.w + t.l + 1}`;
+  return [...rec.values()];
+}
+
+/* Drawn in the field's own order, never by record: the spoiler guard masks
+   the two result columns, and a table sorted by them would still be the
+   results, in order. */
+function renderCupSwiss() {
+  const box = $('#cupSwissBody'), sub = $('#cupSwissSub');
+  if (!box) return;
+  const rows = cupSwiss();
+  const n = k => rows.filter(t => t.st === k).length;
+  box.innerHTML = `<table class="tbl-big cup-tbl"><tr><th>Team</th><th>Seed</th><th class="num">Record</th><th>Status</th></tr>${
+    rows.map(t => `<tr>
+      <td>${logoHTML(t.t)}${esc(t.t)}</td>
+      <td class="cup-seed">${esc(t.lg)} #${t.seed}</td>
+      <td class="num sp-cell" data-mask="—"><span class="sp-mask">${t.w}–${t.l}${
+        t.rw + t.rl ? `<span class="cup-rr"> · RR ${t.rw}–${t.rl}</span>` : ''}</span></td>
+      <td class="sp-cell" data-mask="···"><span class="sp-mask">${
+        t.st === 'in' ? '<span class="race-chip in">Knockouts</span>'
+        : t.st === 'out' ? '<span class="race-chip out">Out</span>'
+        : `<span class="race-chip live">${esc(t.next)}</span>`}</span></td></tr>`).join('')}</table>`;
+  if (sub) sub.textContent = spoilFree ? 'records hidden'
+    : `${n('in')} through · ${n('out')} out · ${rows.length - n('in') - n('out')} playing`;
+}
+
+function buildCupPage() {
+  const E = CUP, page = $('#page-' + E.slug);
+  if (!page) return;
+  page.style.setProperty('--rg', 'var(--cyan)');
+  const rows = kind => Array.from({length: BOARD_ROWS}, () => evtRow(kind, E)).join('');
+  page.innerHTML = `
+    <div class="region-hero evt-hero">
+      <span class="lgw cup-mark" data-lg="${esc(E.feed.league)}" data-lgn="DC"></span>
+      <div>
+        <h1>Demacia Cup</h1>
+        <div class="sub">${esc(E.full)}</div>
+        <div class="sub" style="color:var(--cyan)">${esc(E.when)} · ${esc(E.host)}</div>
+        <div class="sub">${esc(E.field)}</div>
+      </div>
+      <div class="links">
+        <a class="btn small" href="${esc(E.huya)}" target="_blank" rel="noopener">Huya ↗</a>
+        <a class="btn small" href="${esc(E.wiki)}" target="_blank" rel="noopener">Leaguepedia ↗</a>
+        <a class="btn small" href="${esc(E.liqui)}" target="_blank" rel="noopener">Liquipedia ↗</a>
+      </div>
+    </div>
+
+    <div class="panel live-panel off" id="cupLivePanel">
+      <div class="p-head"><div class="p-title"><span class="dot-live"></span><span id="cupLiveTitle">Live Now</span></div>
+        <span class="p-sub" id="cupLiveCount"></span></div>
+      <div class="live-grid" id="cupLive" data-n="0"><div class="loading">Checking for live broadcasts…</div></div>
+    </div>
+
+    <div class="evt-duo">
+      <div class="evt-main">
+        <div class="panel">
+          <div class="p-head"><div class="p-title">Swiss Stage</div>
+            <span class="p-sub" id="cupSwissSub"></span></div>
+          <div class="p-sub sub-line">two wins reach the knockouts · the three 0–2 teams play a round robin for a place in the Round 4 decider</div>
+          <div id="cupSwissBody" class="tbl-scroll"></div>
+        </div>
+        <div class="ov-regions evt-stages cup-stages">
+          ${E.stages.map(st => `<div class="ov-rg tbd">
+            <div class="top">${esc(st.name)}</div>
+            <div class="st-mid">
+              <div class="n set">${esc(st.when)}</div>
+              ${st.venue ? `<div class="st-where">${esc(st.venue)}</div>` : ''}
+              <div class="st-when">${esc(st.detail)}</div>
+            </div>
+            <div class="lbl">${esc(st.sub)}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="panel evt-ranks">
+        <div class="p-head"><div class="p-title">🏆 Global Power Rankings</div>
+          <div class="right"><a class="mini" href="https://lolesports.com/en-GB/power-rankings" target="_blank" rel="noopener">lolesports ↗</a></div></div>
+        <div data-ranks></div>
+        <div class="rk-note" data-rknote></div>
+      </div>
+    </div>
+
+    <div class="duo">
+      <div class="panel">
+        <div class="p-head"><div class="p-title">Next Up</div><span class="p-sub">${esc(E.name)}</span></div>
+        <div class="p-sub sub-line" id="cupNextSub"></div>
+        <div class="nxt-list" id="cupNext">${rows('up')}</div>
+      </div>
+      <div class="panel">
+        <div class="p-head"><div class="p-title">Recent Games</div><span class="p-sub">${esc(E.name)}</span></div>
+        <div class="p-sub sub-line" id="cupRecentSub"></div>
+        <div class="nxt-list" id="cupRecent">${rows('done')}</div>
+      </div>
+    </div>
+
+    <div class="panel evt-brk">
+      <div class="p-head"><div class="p-title" id="cupBracketTitle">Knockout Bracket</div>
+        <span class="p-sub" id="cupBracketSub"></span></div>
+      <div class="p-sub sub-line">published by Riot — every slot names the match that fills it</div>
+      <div id="cupBracketBody"><div class="loading">Loading the published bracket…</div></div>
+    </div>
+`;
+}
+
+/* Both event tabs, drawn after the leagues and each in its own try: a
+   tournament this page merely previews must never cost another its render. */
+function renderEvents() {
+  try { renderEventBoard(); renderEventBracket(); } catch (e) { console.error('event board failed', e); }
+  try { renderEventBoard(CUP); renderEventBracket(CUP); renderCupSwiss(); } catch (e) { console.error('cup board failed', e); }
+}
+
 /* The region page's own honours board. Built at boot and redrawn on every
    refresh for the same reason the home board's is: a champion's crest comes
    from the logo cache, which the fixtures fill after this page already exists.
@@ -6144,7 +6395,7 @@ function brandKey(name) { return String(name||'').toLowerCase().replace(/[^a-z]/
 /* primary + alternate places to watch, shared by the live cards and the
    region pages: the feed's own stream first, otherwise the league's channels */
 function watchLinks(ev, slug) {
-  const R = REGIONS[slug] || REGIONS[(ev.league?.slug||'').toLowerCase()];
+  const R = REGIONS[slug] || REGIONS[(ev.league?.slug||'').toLowerCase()] || (slug === CUP.slug ? CUP : null);
   const s = bestStream(ev);
   const alts = [];
   if (R?.huya   && s?.provider !== 'huya')     alts.push(['Huya', R.huya]);
@@ -8617,7 +8868,8 @@ async function refreshAll(deep=true) {
          four leagues down with it. Both are cheap — the schedule is one request
          that returns nothing until the draw, and the bracket is two the first
          time and one after that, the tournament id being cached. */
-      await Promise.allSettled([fetchEventSchedule(), fetchEventBracket()]);
+      await Promise.allSettled([fetchEventSchedule(), fetchEventBracket(),
+                                fetchEventSchedule(CUP), fetchEventBracket(CUP)]);
     }
     await fetchLive();
     if (deep) await fetchAllTeams();
@@ -8658,7 +8910,7 @@ async function refreshAll(deep=true) {
   /* Drawn after the leagues and outside their loop: this tab is one
      tournament, not a fifth region, and a throw in either of these must not
      cost the home board its render. */
-  try { renderEventBoard(); renderEventBracket(); } catch (e) { console.error('event board failed', e); }
+  renderEvents();
   if (midDrag()) dragHeld = true;
   else try { renderSwiss(); } catch (e) { console.error('swiss failed', e); }
   // a refresh that failed must not stamp the clock as though the board were
@@ -8671,12 +8923,12 @@ $('#refreshBtn').addEventListener('click', () => refreshAll(true));
 /* boot */
 for (const slug of Object.keys(REGIONS)) buildRegionPage(slug);
 buildEventPage();
+buildCupPage();
 syncSpoilToggles();
 applySpoil();
 /* A cached bracket paints before the first request goes out — the shape of a
    bracket does not change once it is announced, so there is nothing to wait for. */
-renderEventBoard();
-renderEventBracket();
+renderEvents();
 try { renderSwiss(); } catch (e) { console.error('swiss failed', e); }
 renderLeagueChrome();
 renderHome();
