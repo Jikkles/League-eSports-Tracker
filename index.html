@@ -165,6 +165,26 @@ nav{max-width:1900px;margin:0 auto;display:flex;gap:4px;padding:0 20px}
 .tbl-big.cup-tbl td{font-size:16px;padding:9px 10px}
 .cup-seed{font-family:var(--mono);font-size:13px!important;color:var(--dim)}
 .cup-rr{color:var(--faint);font-size:12px}
+/* the Swiss board: Riot's on-air graphic, one box per record */
+.sw5{display:grid;grid-template-columns:repeat(5,minmax(176px,1fr));gap:12px;overflow-x:auto;align-items:start}
+.sw5 .col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.swr{font-family:var(--mono);font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--cyan)}
+.swb{background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);padding:10px}
+.swb.q{border-color:rgba(49,196,111,.45)} .swb.o{border-color:rgba(232,57,74,.45)}
+.swb-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--dim)}
+.swb-h b{font-family:var(--body);font-size:16px;letter-spacing:0;color:#FFFFFF}
+.swb.q .swb-h b{color:var(--win)} .swb.o .swb-h b{color:var(--loss)}
+.swc{position:relative;background:var(--panel2);border-radius:4px;padding:5px 8px;margin-top:8px}
+.swc-r{display:flex;align-items:center;gap:8px;padding:3px 0;font-weight:700;font-size:15px}
+.swc-s{margin-left:auto;font-family:var(--mono)}
+.swc-r.w .swc-s{color:var(--win)} .swc-r.l{color:var(--faint)} .swc-r.l .swc-lg{opacity:.5}
+.swc.spoil .swc-s{visibility:hidden} .swc.spoil .swc-r.l{color:inherit} .swc.spoil .swc-r.l .swc-lg{opacity:1}
+.swc.spoil .sp-btn{top:6px;bottom:6px;right:6px;width:46px}
+.swc-lg{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.swc-lg img{max-width:100%;max-height:100%;object-fit:contain} .swc-lg .ini{font-size:9px}
+.swc-when{font-family:var(--mono);font-size:10px;color:var(--faint);padding-top:2px}
+.swt{display:flex;align-items:center;gap:8px;padding:5px 0 0;font-weight:600;font-size:14px}
+.swt.empty{color:var(--faint)}
 /* a phone keeps the two columns that change over the stage, not the seeds */
 @media (max-width:640px){.cup-tbl tr>:nth-child(2){display:none}.tbl-big.cup-tbl td{font-size:14px;padding:8px 6px}}
 .evt-mark .ini{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:1.6px;color:inherit}
@@ -785,8 +805,14 @@ footer{border-top:1px solid var(--line);background:#080808;margin-top:24px}
 .btn.icon{padding:7px 11px;font-size:13px;line-height:1}
 
 /* ---- nav: view filters + region tabs ---- */
-nav{align-items:center;flex-wrap:wrap;gap:2px}
-.nav-div{width:1px;height:40px;background:var(--line);margin:0 18px}
+/* Stretched, not centred: a wordmark, a crest and three letters are three
+   different heights, and centring them left each underline at its own height
+   — Worlds' sat 5px above the leagues'. Stretched, every tab is the row's
+   height, so every underline sits on one line. The rules and the switch keep
+   their own size. */
+nav{align-items:stretch;flex-wrap:wrap;gap:2px}
+.nav-div{width:1px;height:40px;background:var(--line);margin:0 18px;align-self:center}
+nav .navbtn{align-self:center}
 .fchip{position:relative;font-family:var(--body);font-weight:700;font-size:24px;letter-spacing:1.9px;text-transform:uppercase;
   color:var(--dim);background:transparent;border:none;padding:16px 22px;margin:6px 0 16px;border-radius:var(--radius);
   transition:color .12s ease,background .12s ease}
@@ -2038,7 +2064,7 @@ const CUP = {
   wiki:'https://lol.fandom.com/wiki/2026_Demacia_Cup_Global_Invitational',
   liqui:'https://liquipedia.net/leagueoflegends/Demacia_Cup_Global_Invitational/2026',
   huya:'https://www.huya.com/lpl',
-  feed:{ league:'demacia_cup', stage:'playoffs' },
+  feed:{ league:'demacia_cup', stage:'playoffs', title:'Knockout Stage' },
   stages:[
     {name:'Swiss', from:'2026-10-03', to:'2026-10-08', when:'3–8 Oct',
      detail:'R1 3 Oct · R2 4–5 · R3 6–7 · R4 8 Oct', sub:'12 TEAMS · BO1 THEN BO3 · 2 WINS THROUGH'},
@@ -4548,7 +4574,7 @@ function applySpoil() {
      question and gets a per-match button; form is a mode. */
   document.body.classList.toggle('spoil-free', spoilFree);
   document.querySelectorAll('.sp-btn[data-spoil]').forEach(btn => {
-    const row = btn.closest('.nxt, .match, .lcard');
+    const row = btn.closest('.nxt, .match, .lcard, .swc');
     if (!row) return;
     row.classList.toggle('spoil', spoilFree && !spoilShown.has(btn.dataset.spoil));
   });
@@ -5301,7 +5327,7 @@ function renderEventBracket(E = EVENT) {
      the same stage differently (Riot's "Play-Ins", the strip's "Play-In") and
      only one of them is guaranteed to be the stage actually drawn here. */
   const ttl = $(P + 'BracketTitle');
-  if (ttl) ttl.textContent = st.name + ' Bracket';
+  if (ttl) ttl.textContent = E.feed?.title || st.name + ' Bracket';
   body.innerHTML = `<div class="bracket evt-bracket" style="grid-template-columns:repeat(${st.cols.length}, minmax(${BCOL_MIN}px,1fr))">${inner}</div>`;
   const rest = (B.others || []).filter(o => o.n);
   if (sub) sub.textContent = (held ? 'results hidden · ' : '')
@@ -5912,35 +5938,55 @@ function buildEventPage() {
 
 /* -------- the Demacia Cup tab ----------------------------------------------
 
-   The Worlds tab's rhythm — live, the field, the stage strip, what is next,
-   what has been played, the bracket — drawn by the same functions with CUP
-   passed in. What it adds is the Swiss table, and that is computed rather
-   than fetched: the feed files the stage as three standings stages none of
-   which carries a record, so the records are rebuilt from the results. */
+   The Worlds tab's pieces, drawn by the same functions with CUP passed in —
+   live, the fixtures, Riot's knockout bracket — under a Swiss stage drawn the
+   way Riot draws it on air: one box per record, a match moving right on a win
+   and down on a loss. The feed files the Swiss stage as three standings
+   stages none of which carries a record, so the board is rebuilt from the
+   results rather than fetched. */
+
+/* The board's shape, which is the cup's format (CUP's comment has the
+   source): twelve teams, six Bo1s, then Bo3s; 2–0 and 2–1 go through, the
+   three 0–2s play a round robin whose winner meets the three 1–2s in a
+   decider. Matches per box, and the rounds in playing order. */
+const CUP_BOX = { '0-0': 6, '1-0': 3, '0-1': 3, '1-1': 3, rr: 3, dec: 2 };
+const CUP_ROUNDS = [['0-0'], ['1-0', '0-1'], ['1-1'], ['rr'], ['dec']];
+let cupBox = new Map();          // fixture -> its box, from the last replay
 
 /* Every team's Swiss record and where it stands, replayed from the results in
-   the order they were played. The two rules that make this more than a win
-   count (CUP's comment has the source): a meeting of two 0–2 teams is the
-   round robin, kept apart from the record, and a match with a two-loss team
-   in it is the decider — its winner goes through on any record, its loser
-   goes out. */
+   the order they were played — and every fixture's box, read off the records
+   of the two teams in it. A fixture Riot has not drawn yet has no teams to read
+   a record from, so it takes the round of the other games on its day, or else
+   the round after the last one seen: the stage's days are its rounds. */
 function cupSwiss() {
   const rec = new Map(CUP.teams.map(x => [nk(x.t), { ...x, w: 0, l: 0, rw: 0, rl: 0, st: '' }]));
   const get = n => rec.get(nk(n || ''));
   const evs = evtFixtures(CUP).filter(e => /swiss/i.test(e.blockName || ''))
     .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
   const rr = (a, b) => a.w === 0 && a.l === 2 && b.w === 0 && b.l === 2;
-  let rrPlayed = 0;
+  const roundOf = k => CUP_ROUNDS.findIndex(r => r.includes(k));
+  let rrPlayed = 0, last = -1;
+  const dayR = {};
+  cupBox = new Map();
   for (const e of evs) {
     const [x, y] = e.match.teams, a = get(x.name), b = get(y.name);
+    const day = String(e.startTime).slice(0, 10);
+    let box = a && b ? (rr(a, b) ? 'rr' : a.l === 2 || b.l === 2 ? 'dec' : `${a.w}-${a.l}`) : null;
+    if (!box) {
+      const ks = CUP_ROUNDS[dayR[day] ?? Math.min(CUP_ROUNDS.length - 1, last + 1)];
+      const used = k => [...cupBox.values()].filter(v => v === k).length;
+      box = ks.find(k => used(k) < CUP_BOX[k]) || ks[0];
+    }
+    cupBox.set(e, box);
+    const r = roundOf(box);
+    if (dayR[day] === undefined) dayR[day] = r;
+    last = Math.max(last, r);
     if (!a || !b || !hasWinner(e)) continue;
     const [W, L] = x.result?.outcome === 'win' ? [a, b] : [b, a];
-    if (rr(a, b)) { W.rw++; L.rl++; rrPlayed++; continue; }
-    const decider = a.l === 2 || b.l === 2;
-    if (decider) a.dec = b.dec = true;
+    if (box === 'rr') { W.rw++; L.rl++; rrPlayed++; continue; }
     W.w++; L.l++;
-    if (decider || W.w === 2) W.st = 'in';
-    if (decider) L.st = 'out';
+    if (box === 'dec') { a.dec = b.dec = true; W.st = 'in'; L.st = 'out'; }
+    else if (W.w === 2) W.st = 'in';
   }
   /* The round robin's winner is whoever goes on to a decider: a 2–0 in it,
      the one that has played a decider, or — when it ended level and the
@@ -5959,15 +6005,69 @@ function cupSwiss() {
   return [...rec.values()];
 }
 
-/* Drawn in the field's own order, never by record: the spoiler guard masks
-   the two result columns, and a table sorted by them would still be the
-   results, in order. */
+/* One Swiss match. The score and the winner's marking hang off the card's
+   `spoil` class, revealed per match by the same button every results row on
+   the page carries — applySpoil() knows `.swc` as a fourth row shape. */
+function cupCard(ev) {
+  const t = ev?.match?.teams || [];
+  const played = !!ev && hasWinner(ev);
+  const side = s => {
+    const named = !!(s?.name && s.name !== 'TBD');
+    const cls = played ? (s.result?.outcome === 'win' ? ' w' : ' l') : '';
+    return `<div class="swc-r${cls}">${named ? crestHTML(s.name, 'swc-lg') : '<span class="swc-lg"><span class="ini" style="display:flex">?</span></span>'}<span class="swc-c" title="${esc(named ? s.name : 'To be decided')}">${esc(named ? teamAbbr(s) : 'TBD')}</span>${
+      played ? `<b class="swc-s">${esc(s.result?.gameWins ?? 0)}</b>` : ''}</div>`;
+  };
+  const when = ev && !played ? `<div class="swc-when">${esc(fmtWhen(ev.startTime).day)} · ${esc(fmtWhen(ev.startTime).time)}</div>` : '';
+  return `<div class="swc${played && spoilHidden(ev) ? ' spoil' : ''}">${side(t[0])}${side(t[1])}${when}${played ? spoilBtn(ev) : ''}</div>`;
+}
+
+/* Who a box has sent through or out: the result of everything before it, so
+   it is masked under the spoiler guard the way the standings' form is. */
+function cupTeams(list, n) {
+  const rows = list.map(t => `<div class="swt">${crestHTML(t.t, 'swc-lg')}<span>${esc(t.t)}</span></div>`);
+  while (rows.length < n) rows.push('<div class="swt empty">—</div>');
+  return `<div class="sp-cell" data-mask="hidden"><div class="sp-mask">${rows.join('')}</div></div>`;
+}
+
 function renderCupSwiss() {
-  const box = $('#cupSwissBody'), sub = $('#cupSwissSub');
-  if (!box) return;
   const rows = cupSwiss();
+  const box = $('#cupSwissBody'), sub = $('#cupSwissSub');
+  if (box) {
+    const evs = [...cupBox.keys()];
+    const of = k => evs.filter(e => cupBox.get(e) === k);
+    const games = k => {
+      const list = of(k).map(cupCard);
+      while (list.length < CUP_BOX[k]) list.push(cupCard(null));
+      return list.join('');
+    };
+    const B = (title, sub, inner, cls = '') =>
+      `<div class="swb${cls}"><div class="swb-h"><b>${title}</b><span>${sub}</span></div>${inner}</div>`;
+    const q = f => rows.filter(t => t.st === 'in' && f(t)), o = f => rows.filter(t => t.st === 'out' && f(t));
+    box.innerHTML = `<div class="sw5">
+      <div class="col"><div class="swr">Round 1</div>${B('0–0', 'Bo1', games('0-0'))}</div>
+      <div class="col"><div class="swr">Round 2</div>${B('1–0', 'Bo3', games('1-0'))}${B('0–1', 'Bo3', games('0-1'))}</div>
+      <div class="col"><div class="swr">Round 3</div>
+        ${B('2–0', 'Knockouts', cupTeams(q(t => !t.dec && t.l === 0), 3), ' q')}
+        ${B('1–1', 'Bo3', games('1-1'))}
+        ${B('0–2', 'Round robin', games('rr'))}</div>
+      <div class="col"><div class="swr">Round 4</div>
+        ${B('2–1', 'Knockouts', cupTeams(q(t => !t.dec && t.l === 1), 3), ' q')}
+        ${B('Decider', 'Bo3', games('dec'))}
+        ${B('Out', 'Round robin', cupTeams(o(t => !t.dec), 2), ' o')}</div>
+      <div class="col"><div class="swr">Decided</div>
+        ${B('Through', 'Won the decider', cupTeams(q(t => t.dec), 2), ' q')}
+        ${B('Out', 'Lost the decider', cupTeams(o(t => t.dec), 2), ' o')}</div>
+    </div>`;
+  }
   const n = k => rows.filter(t => t.st === k).length;
-  box.innerHTML = `<table class="tbl-big cup-tbl"><tr><th>Team</th><th>Seed</th><th class="num">Record</th><th>Status</th></tr>${
+  if (sub) sub.textContent = spoilFree ? 'results hidden'
+    : `${n('in')} through · ${n('out')} out · ${rows.length - n('in') - n('out')} playing`;
+
+  /* The same records as a table, in the field's own order — never sorted by
+     record, because under the guard a sorted table would still be the
+     results, in order. */
+  const tb = $('#cupTableBody');
+  if (tb) tb.innerHTML = `<table class="tbl-big cup-tbl"><tr><th>Team</th><th>Seed</th><th class="num">Record</th><th>Status</th></tr>${
     rows.map(t => `<tr>
       <td>${logoHTML(t.t)}${esc(t.t)}</td>
       <td class="cup-seed">${esc(t.lg)} #${t.seed}</td>
@@ -5977,10 +6077,11 @@ function renderCupSwiss() {
         t.st === 'in' ? '<span class="race-chip in">Knockouts</span>'
         : t.st === 'out' ? '<span class="race-chip out">Out</span>'
         : `<span class="race-chip live">${esc(t.next)}</span>`}</span></td></tr>`).join('')}</table>`;
-  if (sub) sub.textContent = spoilFree ? 'records hidden'
-    : `${n('in')} through · ${n('out')} out · ${rows.length - n('in') - n('out')} playing`;
 }
 
+/* The dates, then the Swiss stage with the knockouts straight under it — the
+   order the cup is played in and the two things anyone opens this tab for —
+   then the fixtures and the standings. */
 function buildCupPage() {
   const E = CUP, page = $('#page-' + E.slug);
   if (!page) return;
@@ -6002,38 +6103,36 @@ function buildCupPage() {
       </div>
     </div>
 
+    <div class="ov-regions evt-stages cup-stages">
+      ${E.stages.map(st => `<div class="ov-rg tbd">
+        <div class="top">${esc(st.name)}</div>
+        <div class="st-mid">
+          <div class="n set">${esc(st.when)}</div>
+          ${st.venue ? `<div class="st-where">${esc(st.venue)}</div>` : ''}
+          <div class="st-when">${esc(st.detail)}</div>
+        </div>
+        <div class="lbl">${esc(st.sub)}</div>
+      </div>`).join('')}
+    </div>
+
     <div class="panel live-panel off" id="cupLivePanel">
       <div class="p-head"><div class="p-title"><span class="dot-live"></span><span id="cupLiveTitle">Live Now</span></div>
         <span class="p-sub" id="cupLiveCount"></span></div>
       <div class="live-grid" id="cupLive" data-n="0"><div class="loading">Checking for live broadcasts…</div></div>
     </div>
 
-    <div class="evt-duo">
-      <div class="evt-main">
-        <div class="panel">
-          <div class="p-head"><div class="p-title">Swiss Stage</div>
-            <span class="p-sub" id="cupSwissSub"></span></div>
-          <div class="p-sub sub-line">two wins reach the knockouts · the three 0–2 teams play a round robin for a place in the Round 4 decider</div>
-          <div id="cupSwissBody" class="tbl-scroll"></div>
-        </div>
-        <div class="ov-regions evt-stages cup-stages">
-          ${E.stages.map(st => `<div class="ov-rg tbd">
-            <div class="top">${esc(st.name)}</div>
-            <div class="st-mid">
-              <div class="n set">${esc(st.when)}</div>
-              ${st.venue ? `<div class="st-where">${esc(st.venue)}</div>` : ''}
-              <div class="st-when">${esc(st.detail)}</div>
-            </div>
-            <div class="lbl">${esc(st.sub)}</div>
-          </div>`).join('')}
-        </div>
-      </div>
-      <div class="panel evt-ranks">
-        <div class="p-head"><div class="p-title">🏆 Global Power Rankings</div>
-          <div class="right"><a class="mini" href="https://lolesports.com/en-GB/power-rankings" target="_blank" rel="noopener">lolesports ↗</a></div></div>
-        <div data-ranks></div>
-        <div class="rk-note" data-rknote></div>
-      </div>
+    <div class="panel evt-swiss">
+      <div class="p-head"><div class="p-title">Swiss Stage</div>
+        <span class="p-sub" id="cupSwissSub"></span></div>
+      <div class="p-sub sub-line">a win moves a team right, a loss down · two wins reach the knockouts · the three 0–2 teams play a round robin for the last place in the decider</div>
+      <div id="cupSwissBody"></div>
+    </div>
+
+    <div class="panel evt-brk">
+      <div class="p-head"><div class="p-title" id="cupBracketTitle">Knockout Stage</div>
+        <span class="p-sub" id="cupBracketSub"></span></div>
+      <div class="p-sub sub-line">published by Riot — every slot names the match that fills it</div>
+      <div id="cupBracketBody"><div class="loading">Loading the published bracket…</div></div>
     </div>
 
     <div class="duo">
@@ -6049,11 +6148,9 @@ function buildCupPage() {
       </div>
     </div>
 
-    <div class="panel evt-brk">
-      <div class="p-head"><div class="p-title" id="cupBracketTitle">Knockout Bracket</div>
-        <span class="p-sub" id="cupBracketSub"></span></div>
-      <div class="p-sub sub-line">published by Riot — every slot names the match that fills it</div>
-      <div id="cupBracketBody"><div class="loading">Loading the published bracket…</div></div>
+    <div class="panel">
+      <div class="p-head"><div class="p-title">Swiss Standings</div></div>
+      <div id="cupTableBody" class="tbl-scroll"></div>
     </div>
 `;
 }
