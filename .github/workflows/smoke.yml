@@ -36,12 +36,18 @@ on:
     types: [completed]
   workflow_dispatch:
 
-# workflow_run always reports github.ref as the default branch, so the three
-# generators would share one group and cancel each other's checks. Key those
-# runs on the generator instead.
+# Every commit and every trigger gets its own run, and nothing cancels
+# anything. This used to be keyed on the branch with cancel-in-progress, which
+# saved nothing worth having — Actions minutes are free on a public repo — and
+# cost a verdict: a second push, or the daily schedule firing late (GitHub
+# delays it by hours), cancelled the run already in flight and left that commit
+# with a grey ✕. On 5 Oct that happened twice in an hour, on commits whose
+# code passed, and a cancelled run reads exactly like a failed one at a
+# glance. (workflow_run reports github.ref as the default branch, which is why
+# the run id is in the key: the generators must not share a group either.)
 concurrency:
-  group: smoke-${{ github.ref }}-${{ github.event.workflow_run.name || '' }}
-  cancel-in-progress: true
+  group: smoke-${{ github.event_name }}-${{ github.sha }}-${{ github.event.workflow_run.id || '' }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
