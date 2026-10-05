@@ -1371,19 +1371,36 @@ if (loaded) {
       if (!/unreachable/i.test(agenda))
         throw new Error('the fixtures board is empty without saying why');
 
+      // the live panel used to say "showing cached data" here too, with nothing cached
+      const live = (await p.textContent('#homeLive'))?.trim() || '';
+      if (/cached/i.test(live))
+        throw new Error(`the live panel claims cached data on a first visit: "${live}"`);
+
       if (threw.length) throw new Error(`the page threw: ${threw[0]}`);
       return `"${status}"`;
     } finally { await ctx.close(); }
   });
 
   /* Return visit with the API down: there IS a cache, so the page should say so
-     and render it. Seeded by letting one real load succeed first. */
+     and render it. Seeded by letting one real load succeed first.
+
+     Measured against what the same visit drew online, not against a fixed
+     board having rows. This used to require Next Up to be non-empty, which is
+     a fact about the calendar rather than the cache: from the last league game
+     of the year (the LCS final, 4 Oct) until January there is nothing to play,
+     the board is correctly empty online and off, and the check failed nightly.
+     The cache is the same data, so each board should draw the same rows — and
+     a board that is empty with a cache behind it must not blame the API. */
   await check('offline: return visit falls back to cache', async () => {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     try {
       const { p, threw } = await offlinePage(ctx);
       await p.goto(origin, { waitUntil: 'domcontentloaded', timeout: LOAD_MS });
       await p.waitForSelector('#apiStatus .dot.ok', { timeout: LOAD_MS });   // writes schedCache
+      const BOARDS = ['#homeAgenda', '#recentStrip'];
+      const count = () => p.evaluate(ids => ids.map(id =>
+        document.querySelectorAll(id + ' .nxt:not(.empty)').length), BOARDS);
+      const online = await count();
 
       // now take the API away and make it refresh
       await blockAPI(p);
@@ -1395,11 +1412,19 @@ if (loaded) {
         throw new Error(`expected the cached-data message, got "${status}"`);
 
       // the cache is only worth claiming if it actually rendered something
-      const rows = await p.$$eval('#homeAgenda .nxt:not(.empty)', n => n.length);
-      if (!rows) throw new Error('says it is showing cached data but the board is empty');
+      const offline = await count();
+      const rows = offline.reduce((a, b) => a + b, 0);
+      if (!rows) throw new Error('says it is showing cached data but every board is empty');
+      for (const [i, id] of BOARDS.entries()) {
+        if (offline[i] !== online[i])
+          throw new Error(`${id} drew ${online[i]} rows online and ${offline[i]} from the cache of the same data`);
+        const text = (await p.textContent(id))?.trim() || '';
+        if (!offline[i] && /unreachable/i.test(text))
+          throw new Error(`${id} is empty with a cache behind it and blames the API: "${text}"`);
+      }
 
       if (threw.length) throw new Error(`the page threw: ${threw[0]}`);
-      return `"${status}", ${rows} row${rows === 1 ? '' : 's'} from cache`;
+      return `"${status}", ${offline.join(' + ')} rows from cache, matching online`;
     } finally { await ctx.close(); }
   });
 

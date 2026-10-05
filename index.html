@@ -3042,6 +3042,13 @@ let liveEventsAt = 0;
 const LIVE_FEED_TTL = 5*60e3;                 // ~5 failed polls before we stop trusting it
 const liveFeedFresh = () => Date.now() - liveEventsAt < LIVE_FEED_TTL;
 let apiOk = null;
+/* "The feed is down" and "the feed is down and we have nothing" are different
+   screens. Offline with a cache, an empty board is the cache's own answer — out
+   of season there is simply nothing left to play — and telling the viewer the
+   schedules "will appear once it responds" says they are missing when they are
+   not. Only a board with no cache behind it is waiting on the API. */
+const schedCached = () => Object.values(scheduleCache).some(evs => Array.isArray(evs) && evs.length);
+const noFeed = () => apiOk === false && !schedCached();
 
 const $ = s => document.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if(cls) e.className = cls; if(html!=null) e.innerHTML = html; return e; };
@@ -4333,7 +4340,7 @@ function renderLiveCards() {
     box.innerHTML = `<div class="lc-off"><span class="off-dot"></span><div>
       <div class="off-h">${apiOk===false ? 'Can\u2019t reach the API' : 'No broadcast on air'}</div>
       <div class="off-sub">${apiOk===false
-        ? 'Showing cached data \u2014 open lolesports.com to check live games.'
+        ? (schedCached() ? 'Showing cached data' : 'No data yet') + ' \u2014 open lolesports.com to check live games.'
         : (next
             ? `Nothing live across LEC \u00b7 LCK \u00b7 LPL \u00b7 LCS. Next up <b>${esc(teamsLabel(next.ev))}</b> (${REGIONS[next.slug].name}) \u2014 ${esc(w.day)} ${esc(w.time)}, ${esc(fmtCountdown(next.ev.startTime))}.`
             : 'Nothing live across LEC \u00b7 LCK \u00b7 LPL \u00b7 LCS.')}</div></div></div>`;
@@ -4376,7 +4383,7 @@ function renderAgenda() {
   const subEl = $('#agendaSub'); if (subEl) subEl.textContent = sub;
   box.innerHTML = '';
   if (!list.length) {
-    padRows(box, 0, false, apiOk===false
+    padRows(box, 0, false, noFeed()
       ? 'API unreachable \u2014 schedules will appear once it responds.'
       : 'No fixtures scheduled in this window.');
     return;
@@ -4559,7 +4566,7 @@ function renderRecent() {
   strip.innerHTML = '';
   // same distinction the fixtures board draws: an empty window and an
   // unreachable API look identical here otherwise
-  if (!done.length) { padRows(strip, 0, false, apiOk===false
+  if (!done.length) { padRows(strip, 0, false, noFeed()
     ? 'API unreachable — results will appear once it responds.'
     : 'No completed matches in the fetched window.'); return; }
   for (const {slug, ev} of done) {
@@ -6288,7 +6295,7 @@ function renderRegionData(slug) {
     schedMore.disabled = !remaining;
     schedMore.textContent = remaining
       ? `View full schedule (${remaining}) ›`
-      : (apiOk===false ? 'Schedule unavailable' : 'No fixtures published');
+      : (noFeed() ? 'Schedule unavailable' : 'No fixtures published');
   }
 
   const schedEl = $('#sched-'+slug);
@@ -8626,8 +8633,7 @@ async function refreshAll(deep=true) {
     // than like the feed is down. #lastRefresh and the fixtures board already
     // draw this distinction; the status line is the one that did not.
     scheduleCache = lsJSON(LS('schedCache'), {});
-    const cached = Object.values(scheduleCache).some(evs => Array.isArray(evs) && evs.length);
-    setStatus(false, cached ? 'Offline — showing cached data' : 'Offline — no data yet');
+    setStatus(false, schedCached() ? 'Offline — showing cached data' : 'Offline — no data yet');
   }
   renderLeagueChrome();
   // one bad region must not stop the home board from rendering
