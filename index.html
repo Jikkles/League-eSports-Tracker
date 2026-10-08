@@ -3325,7 +3325,7 @@ const REGION_SLUGS = Object.keys(REGIONS);
    — but their images are, so the harvest below is widened to them while
    `out` stays the four leagues the rest of the page walks. */
 const LOGO_SLUGS = [...new Set([...REGION_SLUGS,
-  ...((EVENT.qual?.regions || []).map(r => r.slug).filter(Boolean)), CUP.feed.league])];
+  ...((EVENT.qual?.regions || []).map(r => r.slug).filter(Boolean)), EVENT.feed.league, CUP.feed.league])];
 let leaguesResolvedFor = lsRead(LS('leaguesFor')) || '';
 let leaguesTried = false;
 async function resolveLeagues() {
@@ -4388,7 +4388,9 @@ function liveCard(ev, cols, opts) {
   acts += alts.slice(0, cols >= 4 ? 1 : 2).map(([label, href]) =>   // narrow cards keep one alternate
     `<a class="lc-alt" data-brand="${esc(brandKey(label))}" href="${href}" target="_blank" rel="noopener">${esc(label)} ↗</a>`).join('');
   const watch = acts ? `<div class="lc-act">${acts}</div>` : '';
-  const chip = `<span class="lg"${R ? ` style="--rg:${R.color}"` : ''}>${R ? `<span class="lgw">${leagueLogoHTML(slug)}</span>` : ''}${esc(R ? R.name : (ev.league?.name || 'LIVE'))}</span>`;
+  const evLg = (ev.league?.slug || '').toLowerCase();   // an event's own crest, where the harvest has one
+  const crest = R ? leagueLogoHTML(slug) : (leagueLogos[evLg] ? leagueLogoHTML(evLg) : '');
+  const chip = `<span class="lg"${R ? ` style="--rg:${R.color}"` : ''}>${crest ? `<span class="lgw">${crest}</span>` : ''}${esc(R ? R.name : (ev.league?.name || 'LIVE'))}</span>`;
   const clock = `<span class="lc-clock" data-since="${esc(ev.startTime)}" title="Time since this broadcast went live">--:--</span>`;
   const card = el('div','lcard');
   const bothTBD = (!a.name || a.name==='TBD') && (!b.name || b.name==='TBD');
@@ -4924,7 +4926,7 @@ function evtRow(kind, E = EVENT) {
     : '<div class="n-vs">VS</div>';
   return `<div class="nxt tbd">
       <div class="n-when"><div class="${done ? 'n-date' : 'n-time'}">TBD</div><span class="n-cd">date TBD</span></div>
-      <div class="n-rg"><div><span class="nm">${esc(E.name.split(' ')[0].toUpperCase())}</span><span class="sp">${esc(E.name)}</span></div></div>
+      ${evtRgCell(E)}
       <div class="n-mid">
         <div class="n-a"><span class="n-code">TBD</span>${blank}</div>
         ${mid}
@@ -5137,10 +5139,20 @@ function evtLiveList(E = EVENT) {
   return out.sort((a, b) => new Date(a.ev.startTime) - new Date(b.ev.startTime));
 }
 
-/* A real fixture in the shape evtRow() holds open for it. The region cell keeps
-   the event's own identity rather than a league crest, because every row on
-   this board is the same tournament and a column of identical marks says
-   nothing — the stage is what varies, and it is in the meta cell. */
+/* The region cell on an event board: the tournament's own crest, the league
+   image Riot files under `E.feed.league` (harvested with the rest through
+   LOGO_SLUGS). Until that harvest lands — or on an offline first visit — the
+   name stands in, which is what the cell printed before there was a crest. */
+function evtRgCell(E = EVENT) {
+  const lg = E.feed?.league;
+  if (lg && leagueLogos[lg])
+    return `<div class="n-rg" title="${esc(E.name)}"><span class="lgw">${leagueLogoHTML(lg, E.name.split(' ')[0].toUpperCase())}</span></div>`;
+  return `<div class="n-rg"><div><span class="nm">${esc(E.name.split(' ')[0].toUpperCase())}</span><span class="sp">${esc(E.name)}</span></div></div>`;
+}
+
+/* A real fixture in the shape evtRow() holds open for it. The region cell
+   carries the event's crest alone: every row on this board is the same
+   tournament, so the stage is what varies, and it is in the meta cell. */
 function evtFixRow(ev, done, E = EVENT) {
   const t = ev.match.teams, a = t[0] || {}, b = t[1] || {};
   const w = fmtWhen(ev.startTime);
@@ -5159,7 +5171,7 @@ function evtFixRow(ev, done, E = EVENT) {
   row.style.setProperty('--rg', 'var(--cyan)');
   row.innerHTML = `
       <div class="n-when">${when}</div>
-      <div class="n-rg"><div><span class="nm">${esc(E.name.split(' ')[0].toUpperCase())}</span><span class="sp">${esc(E.name)}</span></div></div>
+      ${evtRgCell(E)}
       <div class="n-mid">
         <div class="n-a${done && !aWin && !tbc ? ' lost' : ''}"><span class="n-code" title="${esc(a.name||'TBD')}">${esc(teamAbbr(a))}</span>${crestHTML(a.name,'n-lg')}</div>
         ${mid}

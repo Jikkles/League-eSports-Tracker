@@ -759,7 +759,9 @@ if (loaded) {
         teams: new Set([...pg.querySelectorAll('#cupSwissBody .swc .sw-tk[title]')].map(x => x.title)).size,
         rows: rows.length,
         real: rows.filter(x => !x.classList.contains('tbd')).length,
-        foreign: rows.filter(x => !(x.querySelector('.n-rg')?.textContent || '').includes(CUP.name)).length,
+        // the cell is a crest once the league image has loaded, named by its title
+        foreign: rows.filter(x => { const c = x.querySelector('.n-rg');
+          return !((c?.title || '') + (c?.textContent || '')).includes(CUP.name); }).length,
         live: !!pg.querySelector('#cupLive .lc-off, #cupLive .lcard'),
         bracket: !!pg.querySelector('#cupBracketBody .bracket, #cupBracketBody .loading'),
         blank: slots.filter(x => !(x.querySelector('.tname')?.textContent || '').trim()).length,
